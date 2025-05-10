@@ -12,7 +12,8 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { getInitialPageDataAction, organizePdfAction, type PageData, type PageOperation } from './actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import PdfPagePreview from '@/components/feature/pdf-page-preview'; // Import the new component
+import PdfPagePreview from '@/components/feature/pdf-page-preview'; 
+import { cn } from '@/lib/utils';
 
 // Helper to ensure rotation stays within 0, 90, 180, 270
 const normalizeRotation = (angle: number): number => {
@@ -24,6 +25,7 @@ const normalizeRotation = (angle: number): number => {
     else if (newAngle > 90 && newAngle < 180) newAngle = newAngle < 135 ? 90 : 180;
     else if (newAngle > 180 && newAngle < 270) newAngle = newAngle < 225 ? 180 : 270;
     else if (newAngle > 270 && newAngle < 360) newAngle = newAngle < 315 ? 270 : 0;
+    else newAngle = 0; // Default fallback
   }
   return newAngle;
 };
@@ -33,13 +35,13 @@ export default function OrganizePage() {
   const [file, setFile] = useState<File | null>(null);
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
   const [pages, setPages] = useState<PageData[]>([]);
-  const [originalPages, setOriginalPages] = useState<PageData[]>([]); // For reset functionality
+  const [originalPages, setOriginalPages] = useState<PageData[]>([]); 
   
-  const [isLoading, setIsLoading] = useState(false); // For initial PDF load
-  const [isProcessing, setIsProcessing] = useState(false); // For final organization
+  const [isLoading, setIsLoading] = useState(false); 
+  const [isProcessing, setIsProcessing] = useState(false); 
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const PREVIEW_TARGET_HEIGHT = 100; // Define target height for previews in organize page
+  const PREVIEW_TARGET_HEIGHT = 100; 
 
   const handleFileSelected = async (selectedFiles: File[]) => {
     if (selectedFiles.length > 0) {
@@ -49,6 +51,7 @@ export default function OrganizePage() {
       setPages([]);
       setOriginalPages([]);
       setIsLoading(true);
+      setPdfDataUri(null);
       try {
         const dataUri = await readFileAsDataURL(selectedFile);
         setPdfDataUri(dataUri);
@@ -61,7 +64,7 @@ export default function OrganizePage() {
         } else if (result.pages) {
           const initialPages = result.pages.map(p => ({...p, rotation: normalizeRotation(p.rotation)}));
           setPages(initialPages);
-          setOriginalPages(JSON.parse(JSON.stringify(initialPages))); // Deep copy for reset
+          setOriginalPages(JSON.parse(JSON.stringify(initialPages))); 
         }
       } catch (e: any) {
         setError(e.message || "Failed to read or process file.");
@@ -91,9 +94,9 @@ export default function OrganizePage() {
     const page = pages[index];
     let newRotation = page.rotation;
     if (direction === 'cw') {
-      newRotation = (page.rotation + 90) % 360;
+      newRotation = (page.rotation + 90);
     } else {
-      newRotation = (page.rotation - 90 + 360) % 360;
+      newRotation = (page.rotation - 90);
     }
     handlePageUpdate(index, { rotation: normalizeRotation(newRotation) });
   };
@@ -105,15 +108,22 @@ export default function OrganizePage() {
   const handleMovePage = (index: number, direction: 'up' | 'down') => {
     setPages(currentPages => {
       const newPages = [...currentPages];
+      const pageToMove = newPages[index];
+      newPages.splice(index, 1); // Remove page from current position
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= newPages.length) return newPages;
-      [newPages[index], newPages[targetIndex]] = [newPages[targetIndex], newPages[index]];
+      
+      // Ensure targetIndex is within bounds
+      if (targetIndex < 0 || targetIndex > newPages.length) {
+        newPages.splice(index, 0, pageToMove); // Put it back if out of bounds
+        return newPages;
+      }
+      newPages.splice(targetIndex, 0, pageToMove); // Insert at new position
       return newPages;
     });
   };
 
   const handleResetChanges = () => {
-    setPages(JSON.parse(JSON.stringify(originalPages))); // Reset to deep copied original state
+    setPages(JSON.parse(JSON.stringify(originalPages))); 
     toast({ title: "Changes Reset", description: "Page order, rotations, and deletions have been reset." });
   };
 
@@ -156,14 +166,14 @@ export default function OrganizePage() {
     }
   };
   
-  const getDisplayedPageIndex = (index: number): number => {
-    let count = 0;
-    for(let i=0; i<=index; i++) {
+  const getDisplayedPageIndex = (currentIndex: number): number => {
+    let visibleCount = 0;
+    for(let i = 0; i <= currentIndex; i++) {
         if(!pages[i].isDeleted) {
-            count++;
+            visibleCount++;
         }
     }
-    return count;
+    return visibleCount;
   }
 
 
@@ -194,7 +204,7 @@ export default function OrganizePage() {
         </div>
       )}
 
-      {error && (
+      {error && !isLoading && (
         <Alert variant="destructive">
           <Info className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
@@ -204,59 +214,60 @@ export default function OrganizePage() {
 
       {pdfDataUri && pages.length > 0 && !isLoading && (
         <>
-          <Card>
+          <Card className="shadow-lg">
             <CardHeader>
               <CardTitle>Manage Pages</CardTitle>
-              <CardDescription>Drag and drop to reorder, or use controls for rotation and deletion. Changes are applied when you click "Apply & Download".</CardDescription>
+              <CardDescription>Drag to reorder, use controls for rotation/deletion. Click "Apply & Download" to save changes.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[600px] p-1 border rounded-md">
-                <div className="space-y-3">
+              <ScrollArea className="h-[600px] p-1 border rounded-md bg-muted/20">
+                <div className="space-y-3 p-2">
                 {pages.map((page, index) => (
-                  <Card key={`${page.id}-${page.originalIndex}`} className={`transition-opacity ${page.isDeleted ? 'opacity-50 bg-muted/30' : 'bg-card'}`}>
-                    <div className="flex items-start p-3">
-                      {pdfDataUri && (
-                        <div className="flex-shrink-0 mr-3 mt-1">
-                           <PdfPagePreview
-                             pdfDataUri={pdfDataUri}
-                             pageIndex={page.originalIndex}
-                             rotation={page.rotation}
-                             targetHeight={PREVIEW_TARGET_HEIGHT}
-                           />
-                        </div>
-                      )}
+                  <Card key={`${page.id}-${page.originalIndex}-${index}`} className={cn(`transition-opacity shadow-sm bg-card`, page.isDeleted ? 'opacity-60 ring-2 ring-destructive/50' : '')}>
+                    <div className="flex items-start p-3 gap-3">
+                       <div className="flex-shrink-0 mr-1 mt-1 flex items-center justify-center w-[80px] h-[${PREVIEW_TARGET_HEIGHT}px]">
+                          {pdfDataUri && (
+                             <PdfPagePreview
+                               pdfDataUri={pdfDataUri}
+                               pageIndex={page.originalIndex}
+                               rotation={page.rotation}
+                               targetHeight={PREVIEW_TARGET_HEIGHT}
+                             />
+                          )}
+                       </div>
                       <div className="flex-grow">
-                        <CardHeader className="py-0 px-0">
+                        <CardHeader className="p-0 mb-1">
                            <CardTitle className="text-md flex justify-between items-center">
-                            <span>
-                                {page.isDeleted ? 'Page (Deleted)' : `Page ${getDisplayedPageIndex(index)}`} (Original: {page.originalIndex + 1})
+                            <span className={cn(page.isDeleted && "line-through text-muted-foreground")}>
+                                {page.isDeleted ? 'Page (Kept, will be deleted)' : `Page ${getDisplayedPageIndex(index)}`} 
+                                <span className="text-xs text-muted-foreground ml-1">(Original: {page.originalIndex + 1})</span>
                             </span>
-                             <Button variant="ghost" size="sm" onClick={() => handleDeleteToggle(index)} title={page.isDeleted ? "Restore Page" : "Delete Page"}>
+                             <Button variant="ghost" size="icon" onClick={() => handleDeleteToggle(index)} title={page.isDeleted ? "Restore Page" : "Delete Page"} className="h-7 w-7">
                                 {page.isDeleted ? <RefreshCcw className="h-4 w-4 text-green-600" /> : <Trash2 className="h-4 w-4 text-destructive" />}
                              </Button>
                            </CardTitle>
                         </CardHeader>
-                        <CardContent className="py-1 px-0 text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground mb-2">
                             Dimensions: {page.width.toFixed(0)}pt x {page.height.toFixed(0)}pt | Rotation: {page.rotation}°
-                        </CardContent>
-                        <CardFooter className="py-1 px-0 flex justify-between items-center">
+                        </p>
+                        <div className="flex justify-between items-center gap-1">
                           <div className="flex gap-1">
-                            <Button variant="outline" size="xs" onClick={() => handleRotate(index, 'ccw')} disabled={page.isDeleted} title="Rotate Counter-Clockwise">
-                              <RotateCcw className="h-3 w-3" />
+                            <Button variant="outline" size="xs" onClick={() => handleRotate(index, 'ccw')} disabled={page.isDeleted || isLoading || isProcessing} title="Rotate Counter-Clockwise">
+                              <RotateCcw className="h-3 w-3 mr-1" /> Left
                             </Button>
-                            <Button variant="outline" size="xs" onClick={() => handleRotate(index, 'cw')} disabled={page.isDeleted} title="Rotate Clockwise">
-                              <RotateCw className="h-3 w-3" />
+                            <Button variant="outline" size="xs" onClick={() => handleRotate(index, 'cw')} disabled={page.isDeleted || isLoading || isProcessing} title="Rotate Clockwise">
+                              <RotateCw className="h-3 w-3 mr-1" /> Right
                             </Button>
                           </div>
                           <div className="flex gap-1">
-                            <Button variant="outline" size="xs" onClick={() => handleMovePage(index, 'up')} disabled={index === 0 || page.isDeleted} title="Move Up">
+                            <Button variant="outline" size="xs" onClick={() => handleMovePage(index, 'up')} disabled={index === 0 || page.isDeleted || isLoading || isProcessing} title="Move Up">
                               <ArrowUp className="h-3 w-3" />
                             </Button>
-                            <Button variant="outline" size="xs" onClick={() => handleMovePage(index, 'down')} disabled={index === pages.length - 1 || page.isDeleted} title="Move Down">
+                            <Button variant="outline" size="xs" onClick={() => handleMovePage(index, 'down')} disabled={index === pages.length - 1 || page.isDeleted || isLoading || isProcessing} title="Move Down">
                               <ArrowDown className="h-3 w-3" />
                             </Button>
                           </div>
-                        </CardFooter>
+                        </div>
                       </div>
                     </div>
                   </Card>
@@ -264,11 +275,15 @@ export default function OrganizePage() {
                 </div>
               </ScrollArea>
             </CardContent>
-            <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+            <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
                 <Button variant="outline" onClick={handleResetChanges} disabled={isProcessing || isLoading}>
                     <RefreshCcw className="mr-2 h-4 w-4" /> Reset All Changes
                 </Button>
-                <Button onClick={handleOrganizeAndDownload} disabled={isProcessing || isLoading || !file || pages.filter(p => !p.isDeleted).length === 0}>
+                <Button 
+                  onClick={handleOrganizeAndDownload} 
+                  disabled={isProcessing || isLoading || !file || pages.filter(p => !p.isDeleted).length === 0}
+                  size="lg"
+                >
                 {isProcessing ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -283,4 +298,3 @@ export default function OrganizePage() {
     </div>
   );
 }
-

@@ -13,6 +13,7 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { getInitialPageDataAction, organizePdfAction, type PageData, type PageOperation } from '../organize/actions'; // Reusing actions from organize
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview'; // Import the new component
+import { cn } from '@/lib/utils';
 
 // Helper to ensure rotation stays within 0, 90, 180, 270
 const normalizeRotation = (angle: number): number => {
@@ -46,9 +47,10 @@ export default function RotatePage() {
       setPages([]);
       setOriginalPages([]);
       setIsLoading(true);
+      setPdfDataUri(null); // Reset URI before loading new file
       try {
         const dataUri = await readFileAsDataURL(selectedFile);
-        setPdfDataUri(dataUri);
+        setPdfDataUri(dataUri); // Set URI first
         const result = await getInitialPageDataAction({ pdfDataUri: dataUri });
         if (result.error) {
           setError(result.error);
@@ -117,7 +119,7 @@ export default function RotatePage() {
     // All pages are included, order is preserved, only rotation changes.
     const operations: PageOperation[] = pages.map(page => ({
       originalIndex: page.originalIndex,
-      rotation: page.rotation,
+      rotation: page.rotation, // Use the current rotation from the state
     }));
 
     try {
@@ -164,7 +166,7 @@ export default function RotatePage() {
         </div>
       )}
 
-      {error && (
+      {error && !isLoading && ( // Only show PDF-level error if not loading pages
         <Alert variant="destructive">
           <Info className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
@@ -181,43 +183,42 @@ export default function RotatePage() {
             </CardHeader>
             <CardContent>
               <div className="mb-4 flex flex-col sm:flex-row gap-2 justify-center">
-                 <Button variant="outline" onClick={() => handleRotateAllPages('ccw')} disabled={isProcessing}>
+                 <Button variant="outline" onClick={() => handleRotateAllPages('ccw')} disabled={isProcessing || isLoading}>
                     <RotateCcw className="mr-2 h-4 w-4" /> Rotate All Left
                   </Button>
-                  <Button variant="outline" onClick={() => handleRotateAllPages('cw')} disabled={isProcessing}>
+                  <Button variant="outline" onClick={() => handleRotateAllPages('cw')} disabled={isProcessing || isLoading}>
                     <RotateCw className="mr-2 h-4 w-4" /> Rotate All Right
                   </Button>
               </div>
-              <ScrollArea className="h-[500px] p-1 border rounded-md">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <ScrollArea className="h-[500px] p-1 border rounded-md bg-muted/20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-2">
                 {pages.map((page, index) => (
-                  <Card key={page.id} className="flex flex-col">
-                    <CardHeader className="py-3 px-4">
-                       <CardTitle className="text-md flex justify-between items-center">
+                  <Card key={`${page.id}-${page.originalIndex}`} className="flex flex-col shadow-md bg-card">
+                    <CardHeader className="py-3 px-4 border-b">
+                       <CardTitle className="text-base flex justify-between items-center">
                         <span>Page {page.originalIndex + 1}</span>
+                         <span className="text-xs text-muted-foreground">({page.rotation}° Rot)</span>
                        </CardTitle>
                     </CardHeader>
-                    <CardContent className="py-2 px-4 text-sm text-muted-foreground flex-grow flex flex-col items-center justify-center">
-                        <div className='mb-1 w-full text-xs'>
-                            Dimensions: {page.width.toFixed(0)}pt x {page.height.toFixed(0)}pt
-                            <br />
-                            Current Rotation: {page.rotation}°
-                        </div>
+                    <CardContent className="py-3 px-4 text-sm text-muted-foreground flex-grow flex flex-col items-center justify-center">
                         {pdfDataUri && (
                            <PdfPagePreview
                              pdfDataUri={pdfDataUri}
                              pageIndex={page.originalIndex}
-                             rotation={page.rotation}
+                             rotation={page.rotation} // Pass current dynamic rotation
                              targetHeight={PREVIEW_TARGET_HEIGHT}
-                             className="mt-1"
+                             className="my-2"
                            />
                         )}
+                        <div className='w-full text-xs text-center'>
+                            Original: {page.width.toFixed(0)}pt x {page.height.toFixed(0)}pt
+                        </div>
                     </CardContent>
-                    <CardFooter className="py-3 px-4 flex justify-center gap-2 items-center border-t">
-                        <Button variant="outline" size="sm" onClick={() => handleRotatePage(index, 'ccw')} title="Rotate Counter-Clockwise">
+                    <CardFooter className="py-3 px-4 flex justify-center gap-2 items-center border-t bg-background/50">
+                        <Button variant="outline" size="sm" onClick={() => handleRotatePage(index, 'ccw')} title="Rotate Counter-Clockwise" disabled={isLoading || isProcessing}>
                           <RotateCcw className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleRotatePage(index, 'cw')} title="Rotate Clockwise">
+                        <Button variant="outline" size="sm" onClick={() => handleRotatePage(index, 'cw')} title="Rotate Clockwise" disabled={isLoading || isProcessing}>
                           <RotateCw className="h-4 w-4" />
                         </Button>
                     </CardFooter>
@@ -245,4 +246,3 @@ export default function RotatePage() {
     </div>
   );
 }
-
