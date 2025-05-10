@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -27,7 +28,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background`}>
+      <body 
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background`}
+        suppressHydrationWarning={true}
+      >
         <Navbar />
         {/* Adjusted padding for main content area to give more space if needed */}
         <main className="flex-grow container mx-auto px-4 py-6 md:py-10">
@@ -39,3 +43,4 @@ export default function RootLayout({
     </html>
   );
 }
+
