@@ -13,7 +13,8 @@ if (typeof window !== 'undefined') {
   // Hardcode the version to match the one installed via package.json ("pdfjs-dist": "^4.4.168")
   // This ensures we request a valid worker script from the CDN.
   const pdfjsVersion = '4.4.168'; 
-  const cdnWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.js`;
+  // Use the .mjs version of the worker for ES module compatibility
+  const cdnWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.mjs`;
   
   // Set the worker source for pdf.js.
   // It's important this points to a valid and accessible URL.
@@ -82,6 +83,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           bytes[i] = binaryString.charCodeAt(i);
         }
         
+        // console.log('Current workerSrc before getDocument:', pdfjsLib.GlobalWorkerOptions.workerSrc);
         const loadingTask = pdfjsLib.getDocument({ data: bytes.buffer });
         const pdf: PDFDocumentProxy = await loadingTask.promise;
         
@@ -120,23 +122,19 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     };
     
     // Ensure worker is configured before attempting to render.
-    // The global workerSrc setup should ideally complete before this component mounts,
-    // or pdfjsLib should handle waiting if workerSrc is a promise/future.
-    // Adding a small delay or check if workerSrc is ready can be a robust measure.
     if (pdfjsLib.GlobalWorkerOptions.workerSrc) {
         renderPage();
     } else {
-        // If workerSrc is not set, it might be due to async setup.
-        // We can wait a bit or rely on the CDN fallback to have been set.
-        console.warn("pdf.js workerSrc not immediately available. Retrying render in a moment or relying on CDN.");
+        // This case should ideally not be hit if the top-level workerSrc setup is effective.
+        console.warn("pdf.js workerSrc not immediately available at useEffect. Render might be delayed or fail.");
         const timeoutId = setTimeout(() => {
-            if (pdfjsLib.GlobalWorkerOptions.workerSrc) {
+            if (pdfjsLib.GlobalWorkerOptions.workerSrc && isMounted) {
                 renderPage();
             } else if (isMounted) {
                  setError("PDF.js worker could not be initialized. Cannot render preview.");
                  setIsLoading(false);
             }
-        }, 500); // Wait 500ms for workerSrc to potentially be set
+        }, 500); 
         return () => {
           clearTimeout(timeoutId);
           isMounted = false;
@@ -144,14 +142,14 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     }
     
     return () => {
-      isMounted = false; // Cleanup function to set isMounted to false when component unmounts
+      isMounted = false; 
     };
   }, [pdfDataUri, pageIndex, rotation, targetHeight]);
 
   const containerStyle: React.CSSProperties = {
     height: `${targetHeight}px`,
-    width: pageDimensions ? `${pageDimensions.width}px` : 'auto',
-    maxWidth: '100%',
+    width: pageDimensions ? `${pageDimensions.width}px` : 'auto', // Adjust width based on rendered page or keep auto
+    maxWidth: '100%', // Ensure it doesn't overflow its container
     margin: '0 auto', 
     display: 'flex',
     alignItems: 'center',
