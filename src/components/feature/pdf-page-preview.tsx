@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
@@ -27,27 +28,21 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   
-  // Unique ID for this instance for logging, created once
   const instanceId = useRef(Math.random().toString(36).substring(7)).current;
   const logPrefix = `PdfPagePreview[${instanceId}](page:${pageIndex}, rot:${rotation}):`;
 
   useEffect(() => {
-    // Set workerSrc once on component mount on the client
     if (typeof window !== 'undefined') {
-      const PDF_JS_VERSION = "4.4.168"; // Match this with your pdfjs-dist version from package.json
+      const PDF_JS_VERSION = "4.4.168"; 
       const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
       if (pdfjsLib.GlobalWorkerOptions.workerSrc !== cdnPath) {
         console.log(`${logPrefix} Initializing: Setting pdfjsLib.GlobalWorkerOptions.workerSrc to CDN path for version ${PDF_JS_VERSION}`);
         pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
+      } else {
+        console.log(`${logPrefix} Initializing: pdfjsLib.GlobalWorkerOptions.workerSrc already set correctly to ${cdnPath}`);
       }
     }
-  }, [logPrefix]); // logPrefix is stable, so this runs once on mount.
-
-
-  useEffect(() => {
-    // Log props on change to see if re-renders are expected
-    console.log(`${logPrefix} Props update. pdfDataUri: ${pdfDataUri ? 'present' : 'null'}, pageIndex: ${pageIndex}, rotation: ${rotation}, targetHeight: ${targetHeight}`);
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, logPrefix]);
+  }, [logPrefix]);
 
 
   const renderPage = useCallback(async () => {
@@ -64,9 +59,8 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
     if (!canvas) {
       console.warn(`${logPrefix} Canvas element not available yet. Aborting renderPage.`);
-      // This might happen if called before canvas is in DOM. useEffect should handle re-triggering.
-      setError("Canvas element not found (renderPage)."); // Set an error to be safe
-      setLoading(false); // If canvas isn't there, we are not actively loading this page.
+      setError("Canvas element not found (renderPage)."); 
+      setLoading(false); 
       setDimensions(null);
       return;
     }
@@ -74,7 +68,6 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     console.log(`${logPrefix} Starting render process. Setting loading=true, error=null.`);
     setLoading(true);
     setError(null);
-    // Not clearing dimensions immediately to avoid layout shift if possible
 
     try {
       console.log(`${logPrefix} Decoding base64 PDF data URI.`);
@@ -109,11 +102,11 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
 
       console.log(`${logPrefix} Getting page number ${pageIndex + 1} (0-indexed: ${pageIndex}).`);
-      const page: PDFPageProxy = await pdf.getPage(pageIndex + 1); // pdf.js pages are 1-indexed
+      const page: PDFPageProxy = await pdf.getPage(pageIndex + 1); 
       console.log(`${logPrefix} Page ${pageIndex + 1} loaded. Original page rotation: ${page.rotate}, Original width: ${page.view[2]}, height: ${page.view[3]}.`);
 
       const normalizedDynamicRotation = (rotation || 0) % 360;
-      const totalRotation = (page.rotate + normalizedDynamicRotation + 360) % 360; // Ensure positive and within 0-359
+      const totalRotation = (page.rotate + normalizedDynamicRotation + 360) % 360; 
       console.log(`${logPrefix} Input dynamic rotation: ${rotation}, Normalized: ${normalizedDynamicRotation}. Total effective rotation for viewport: ${totalRotation}.`);
       
       const viewportAtScale1 = page.getViewport({ scale: 1, rotation: totalRotation });
@@ -150,68 +143,89 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       const newCanvasWidth = Math.round(viewport.width);
       const newCanvasHeight = Math.round(viewport.height);
 
-      canvas.height = newCanvasHeight; // Set canvas buffer size
-      canvas.width = newCanvasWidth;   // Set canvas buffer size
+      canvas.height = newCanvasHeight; 
+      canvas.width = newCanvasWidth;   
       console.log(`${logPrefix} Canvas actual attributes set: width=${canvas.width}, height=${canvas.height}.`);
       
-      // This state update is for styling the canvas element container / responsive sizing if needed.
       setDimensions({ width: newCanvasWidth, height: newCanvasHeight });
       console.log(`${logPrefix} Dimensions state updated for styling: width=${newCanvasWidth}, height=${newCanvasHeight}.`);
+
+      const RENDER_TIMEOUT = 10000; // 10 seconds
+      const renderPromise = page.render(renderContext).promise;
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error(`Render timed out after ${RENDER_TIMEOUT/1000}s for page ${pageIndex+1}`)), RENDER_TIMEOUT)
+      );
 
       const renderContext: RenderParameters = {
         canvasContext: context,
         viewport: viewport,
       };
-      console.log(`${logPrefix} Starting page.render() with context and viewport...`);
-      await page.render(renderContext).promise;
-      console.log(`${logPrefix} page.render() COMPLETED SUCCESSFULLY.`);
+      console.log(`${logPrefix} Starting page.render() with context and viewport (timeout: ${RENDER_TIMEOUT/1000}s)...`);
       
-      // Cleanup
-      // page.cleanup(); // Recommended for freeing resources if the page object is not going to be used further.
-      // pdf.destroy(); // Call this if the PDFDocumentProxy itself is not needed anymore. Be careful if it might be reused (e.g. for other pages).
-      // For this component, if each preview is independent, destroying might be okay.
-      // However, if the parent component might re-render with the same pdfDataUri for different pages,
-      // destroying pdf too early might be an issue. Let's omit destroy() for now to be safe.
+      await Promise.race([renderPromise, timeoutPromise]);
+      
+      console.log(`${logPrefix} page.render() COMPLETED SUCCESSFULLY for page ${pageIndex + 1}.`);
+      
+      // Optional: Aggressive cleanup if experiencing memory issues, but generally not needed per-preview
+      // if (page && typeof page.cleanup === 'function') {
+      //   page.cleanup();
+      //   console.log(`${logPrefix} Page ${pageIndex + 1} cleanup called.`);
+      // }
+      // if (pdf && typeof pdf.destroy === 'function') {
+      //    // Be cautious with destroy() if the PDFDocumentProxy might be reused.
+      //    // await pdf.destroy(); 
+      //    // console.log(`${logPrefix} PDF document destroy called.`);
+      // }
+
 
     } catch (err: any) {
-      console.error(`${logPrefix} Error during renderPage process:`, err.message, err.stack, err);
+      console.error(`${logPrefix} Error during renderPage process for page ${pageIndex + 1}:`, err.message, err.stack, err);
       setError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
-      setDimensions(null); // Clear dimensions on error to ensure error UI is sized correctly
+      setDimensions(null); 
     } finally {
       setLoading(false);
-      console.log(`${logPrefix} renderPage finished. Loading state set to false.`);
+      console.log(`${logPrefix} renderPage finished for page ${pageIndex + 1}. Loading state set to false.`);
     }
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, logPrefix]); // canvasRef is stable via useRef
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, logPrefix]); 
 
   useEffect(() => {
-    console.log(`${logPrefix} useEffect[renderPage] triggered. pdfDataUri: ${!!pdfDataUri}, canvasRef.current: ${!!canvasRef.current}`);
-    if (pdfDataUri && canvasRef.current) {
-      console.log(`${logPrefix} Conditions met, calling renderPage.`);
-      renderPage();
-    } else if (!pdfDataUri) {
-      console.log(`${logPrefix} No PDF data URI, cancelling render. Setting loading=false, error, dimensions=null.`);
-      setLoading(false);
-      setError("No PDF data provided for preview.");
-      setDimensions(null);
-    } else if (!canvasRef.current) {
-      console.log(`${logPrefix} Canvas ref not ready yet. Setting loading=true (or keeping it true), error=null.`);
-      // This indicates we are likely in an initial render phase waiting for the canvas element.
-      // No explicit setLoading(true) here if it's already true from initial state.
-      // We want to avoid flashing if pdfDataUri is present.
-      if(!loading) setLoading(true); // If for some reason loading was false, set it true as we wait for canvas
-      setError(null); // Clear any previous error
+    // This effect triggers the rendering process when essential props change or canvas becomes available.
+    if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        // Fallback: Ensure worker is set if the mount effect somehow didn't run or was cleared.
+        const PDF_JS_VERSION = "4.4.168";
+        const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
+        console.warn(`${logPrefix} WorkerSrc not set in render useEffect. Setting to: ${cdnPath}`);
+        pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
     }
-  }, [pdfDataUri, renderPage, logPrefix, loading]); // renderPage is memoized, logPrefix is stable. Added 'loading' to re-evaluate if canvas becomes available.
 
-  // --- UI Rendering ---
-  // Use targetHeight for skeleton/error initially, then actual dimensions if available
+    if (pdfDataUri && canvasRef.current) {
+      console.log(`${logPrefix} useEffect[render trigger for page ${pageIndex+1}]: Conditions met, calling renderPage.`);
+      renderPage();
+    } else {
+      console.log(`${logPrefix} useEffect[render trigger for page ${pageIndex+1}]: Conditions NOT met. pdfDataUri: ${!!pdfDataUri}, canvasRef.current: ${!!canvasRef.current}`);
+      if (!pdfDataUri) {
+        setLoading(false); 
+        setError("No PDF data provided for preview.");
+        setDimensions(null);
+      } else { 
+        // pdfDataUri exists, but canvasRef.current is null. We are waiting for canvas.
+        if (!loading) setLoading(true); // Set loading true as we expect canvas to appear
+        setError(null); 
+      }
+    }
+  // renderPage is memoized by useCallback.
+  // logPrefix is stable.
+  // pageIndex, rotation, targetHeight are primitive props.
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, renderPage, logPrefix, loading]);
+
+
   const currentDisplayHeight = dimensions?.height || targetHeight;
-  // Approx A4 ratio for width if not available, ensuring a minimum width
   const currentDisplayWidth = dimensions?.width || Math.max(50, targetHeight * (210 / 297));
 
 
   if (loading) {
-    console.log(`${logPrefix} Rendering: Skeleton. Height: ${targetHeight}, Width: ${currentDisplayWidth}`);
+    // console.log(`${logPrefix} Rendering: Skeleton for page ${pageIndex+1}. Height: ${targetHeight}, Width: ${currentDisplayWidth}`);
     return (
       <Skeleton
         className={cn("rounded-md bg-muted/50", className)}
@@ -222,7 +236,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   }
 
   if (error) {
-    console.log(`${logPrefix} Rendering: Error UI. Message: ${error}. Height: ${targetHeight}, Width: ${currentDisplayWidth}`);
+    // console.log(`${logPrefix} Rendering: Error UI for page ${pageIndex+1}. Message: ${error}. Height: ${targetHeight}, Width: ${currentDisplayWidth}`);
     return (
       <div
         className={cn(
@@ -230,20 +244,16 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           className
         )}
         style={{ height: `${targetHeight}px`, width: `${currentDisplayWidth}px` }}
-        title={error} // Full error on hover
+        title={error} 
       >
         <FileWarning className="h-5 w-5 mb-1 flex-shrink-0" />
         <p className="leading-tight">Page {pageIndex + 1}: Error</p>
-        {/* Optionally, a short error message if it's user-friendly */}
-        {/* <p className="leading-tight text-[10px] break-words">{error.substring(0,50)}...</p> */}
       </div>
     );
   }
   
   if (!dimensions || dimensions.width <= 0 || dimensions.height <= 0) {
-    // This case should ideally be covered by error handling if rendering failed to produce dimensions.
-    // But as a fallback, show an "invalid size" message.
-    console.log(`${logPrefix} Rendering: Invalid Size UI. Dimensions:`, dimensions, `Height: ${targetHeight}, Width: ${currentDisplayWidth}`);
+    // console.log(`${logPrefix} Rendering: Invalid Size UI for page ${pageIndex+1}. Dimensions:`, dimensions, `Height: ${targetHeight}, Width: ${currentDisplayWidth}`);
     return (
       <div
         className={cn(
@@ -259,18 +269,16 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     );
   }
 
-  // If loading is false, no error, and dimensions are valid, render the canvas
-  console.log(`${logPrefix} Rendering: Canvas. Dimensions:`, dimensions);
+  // console.log(`${logPrefix} Rendering: Canvas for page ${pageIndex+1}. Dimensions:`, dimensions);
   return (
     <canvas
       ref={canvasRef}
       className={cn("border border-muted shadow-sm rounded-md bg-white", className)}
-      style={{ // These styles are for the canvas element's display box
+      style={{ 
         display: 'block', 
         width: `${dimensions.width}px`, 
         height: `${dimensions.height}px`,
       }}
-      // Width and height attributes for the canvas drawing surface are set in renderPage
       role="img"
       aria-label={`Preview of PDF page ${pageIndex + 1}`}
     />
@@ -278,3 +286,4 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
+
