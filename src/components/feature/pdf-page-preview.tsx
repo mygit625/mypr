@@ -10,13 +10,17 @@ import { cn } from '@/lib/utils';
 
 // Configure pdf.js worker
 if (typeof window !== 'undefined') {
-  // Consistently use CDN for pdf.js worker to avoid path resolution issues.
-  // The previous new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url) approach
-  // could lead to incorrect file:/// paths for assets within node_modules.
-  const pdfjsVersion = (pdfjsLib as any).version || '4.4.168'; // Use installed or a recent fallback
-  const cdnWorkerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.js`;
+  // Hardcode the version to match the one installed via package.json ("pdfjs-dist": "^4.4.168")
+  // This ensures we request a valid worker script from the CDN.
+  const pdfjsVersion = '4.4.168'; 
+  const cdnWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.js`;
+  
+  // Set the worker source for pdf.js.
+  // It's important this points to a valid and accessible URL.
   pdfjsLib.GlobalWorkerOptions.workerSrc = cdnWorkerSrc;
-  console.log('Using CDN for pdf.js workerSrc:', cdnWorkerSrc);
+
+  // Optional: For debugging, you can log the worker source being set.
+  // console.log('pdf.js workerSrc configured to:', cdnWorkerSrc);
 }
 
 
