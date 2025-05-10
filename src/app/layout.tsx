@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/layout/navbar';
 import { Toaster } from '@/components/ui/toaster';
+import ClientFooterYear from '@/components/layout/client-footer-year';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -33,7 +34,7 @@ export default function RootLayout({
         </main>
         <Toaster />
         <footer className="bg-card border-t py-6 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} DocuEase. All rights reserved.
+          © <ClientFooterYear /> DocuEase. All rights reserved.
         </footer>
       </body>
     </html>
