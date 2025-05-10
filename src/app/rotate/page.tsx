@@ -6,7 +6,7 @@ import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { RotateCcw, RotateCw, Loader2, Info, Download, RefreshCcw } from 'lucide-react';
+import { RotateCcw, RotateCw, Loader2, Info, Download, RefreshCcw, FileText } from 'lucide-react'; // Added FileText
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
@@ -199,11 +199,21 @@ export default function RotatePage() {
                         Dimensions: {page.width.toFixed(0)}pt x {page.height.toFixed(0)}pt
                         <br />
                         Current Rotation: {page.rotation}°
-                        <div className="mt-2 aspect-[1/1.414] bg-muted flex items-center justify-center rounded border text-foreground"
-                             style={{ transform: `rotate(${page.rotation}deg)`}}
-                             data-ai-hint="blank page"
+                        <div
+                            className="mt-2 bg-background flex items-center justify-center rounded border-2 border-dashed border-border text-muted-foreground overflow-hidden"
+                            style={{
+                                height: '120px',
+                                maxWidth: '100%',
+                                aspectRatio: page.width && page.height && page.height !== 0 ? `${page.width} / ${page.height}` : '1 / 1.414',
+                                transform: `rotate(${page.rotation}deg)`,
+                                margin: '0 auto'
+                            }}
+                            data-ai-hint="document page"
                         >
-                           <span style={{ transform: `rotate(${-page.rotation}deg)`}}>Page {page.originalIndex + 1}</span>
+                           <div style={{ transform: `rotate(${-page.rotation}deg)` }} className="flex flex-col items-center justify-center text-xs p-1 text-center">
+                                <FileText className="h-6 w-6 mb-1" />
+                                <span>Page {page.originalIndex + 1}</span>
+                            </div>
                         </div>
                     </CardContent>
                     <CardFooter className="py-3 px-4 flex justify-center gap-2 items-center border-t">
@@ -238,3 +248,4 @@ export default function RotatePage() {
     </div>
   );
 }
+
