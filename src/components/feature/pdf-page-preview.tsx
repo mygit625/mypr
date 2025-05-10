@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { VersionResponses } from 'pdfjs-dist';
@@ -10,32 +11,22 @@ import { cn } from '@/lib/utils';
 
 // Configure pdf.js worker
 if (typeof window !== 'undefined') {
-  import('pdfjs-dist/build/pdf.worker.mjs')
-    .then(workerModule => {
-      if (workerModule.default) {
-        // Check if default is a valid path or constructor (less likely for modern pdf.worker.mjs)
-        console.log('Attempting to use workerModule.default for pdf.js workerSrc');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
-      } else {
-        // For pdfjs-dist v3+ and ES module workers, the module namespace itself might be expected.
-        console.warn('workerModule.default not found. Attempting to use the entire workerModule for pdf.js workerSrc.');
-        // The 'as any' is to bypass TypeScript complaints if workerModule type doesn't directly match string | Worker.
-        // pdf.js internally handles this if 'workerModule' is the correct type of object (e.g. a worker constructor or module).
-        pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule as any;
-      }
-    })
-    .catch(error => {
-      console.error("Failed to initialize pdf.js worker from module, falling back to CDN. Error:", error);
-      const pdfjsVersion = (pdfjsLib as any).version;
-      if (pdfjsVersion) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.js`;
-      } else {
-        // Fallback to a known recent version if somehow pdfjsLib.version is not available
-        console.warn("pdfjsLib.version not available, using a hardcoded CDN version for pdf.worker.min.js");
-        // Ensure this version matches your installed pdfjs-dist version for compatibility.
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js`;
-      }
-    });
+  try {
+    // Using `new URL` with `import.meta.url` is the recommended approach for Next.js App Router (v13+).
+    // This constructs a URL to the worker file within the `pdfjs-dist` package.
+    // Next.js's bundler should handle making this file accessible.
+    // We use `pdf.worker.min.js` as it's a bundled and minified version, generally more robust.
+    const workerSrcUrl = new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url).toString();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrcUrl;
+    console.log('Successfully set pdf.js workerSrc using import.meta.url:', workerSrcUrl);
+  } catch (error) {
+    console.error("Failed to set pdf.js workerSrc using new URL with import.meta.url, falling back to CDN. Error:", error);
+    // Fallback to CDN if the above method fails (e.g., if import.meta.url is not available or resolution fails)
+    const pdfjsVersion = (pdfjsLib as any).version || '4.4.168'; // Use installed or a recent fallback
+    const cdnWorkerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.js`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = cdnWorkerSrc;
+    console.log('Using CDN fallback for pdf.js workerSrc:', cdnWorkerSrc);
+  }
 }
 
 
@@ -70,18 +61,22 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       return;
     }
 
+    let isMounted = true; // Flag to prevent state updates on unmounted component
+
     const renderPage = async () => {
+      if (!isMounted) return;
+
       try {
         const canvas = canvasRef.current;
         if (!canvas) {
-            setError("Canvas element not found.");
-            setIsLoading(false);
+            if (isMounted) setError("Canvas element not found.");
+            if (isMounted) setIsLoading(false);
             return;
         }
         const context = canvas.getContext('2d');
         if (!context) {
-          setError("Could not get canvas context.");
-          setIsLoading(false);
+          if (isMounted) setError("Could not get canvas context.");
+          if (isMounted) setIsLoading(false);
           return;
         }
 
@@ -96,13 +91,16 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         const loadingTask = pdfjsLib.getDocument({ data: bytes.buffer });
         const pdf: PDFDocumentProxy = await loadingTask.promise;
         
+        if (!isMounted) return;
+
         if (pageIndex >= pdf.numPages) {
-          setError(`Page index ${pageIndex} is out of bounds for PDF with ${pdf.numPages} pages.`);
-          setIsLoading(false);
+          if (isMounted) setError(`Page index ${pageIndex} is out of bounds for PDF with ${pdf.numPages} pages.`);
+          if (isMounted) setIsLoading(false);
           return;
         }
 
         const page: PDFPageProxy = await pdf.getPage(pageIndex + 1); 
+        if (!isMounted) return;
 
         const viewport = page.getViewport({ scale: 1, rotation: rotation });
         
@@ -111,7 +109,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
         canvas.height = scaledViewport.height;
         canvas.width = scaledViewport.width;
-        setPageDimensions({ width: scaledViewport.width, height: scaledViewport.height});
+        if (isMounted) setPageDimensions({ width: scaledViewport.width, height: scaledViewport.height});
 
         const renderContext: RenderParameters = {
           canvasContext: context,
@@ -121,30 +119,39 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         
       } catch (e: any) {
         console.error(`Error rendering PDF page ${pageIndex}:`, e);
-        setError(e.message || `Failed to render page ${pageIndex + 1}.`);
+        if (isMounted) setError(e.message || `Failed to render page ${pageIndex + 1}.`);
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
     
-    if (pdfjsLib.GlobalWorkerOptions.workerSrc || typeof window === 'undefined') {
+    // Ensure worker is configured before attempting to render.
+    // The global workerSrc setup should ideally complete before this component mounts,
+    // or pdfjsLib should handle waiting if workerSrc is a promise/future.
+    // Adding a small delay or check if workerSrc is ready can be a robust measure.
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc) {
         renderPage();
     } else {
-        const timer = setTimeout(() => {
+        // If workerSrc is not set, it might be due to async setup.
+        // We can wait a bit or rely on the CDN fallback to have been set.
+        console.warn("pdf.js workerSrc not immediately available. Retrying render in a moment or relying on CDN.");
+        const timeoutId = setTimeout(() => {
             if (pdfjsLib.GlobalWorkerOptions.workerSrc) {
                 renderPage();
-            } else {
-                console.warn("PDF.js workerSrc still not set after delay. Rendering might fail or use fallback CDN.");
-                // At this point, if workerSrc isn't set, renderPage() will likely use the CDN if catch block succeeded,
-                // or it might fail if CDN also failed.
-                // If the CDN fallback in the global scope failed to set workerSrc, renderPage will error out.
-                // Forcing a re-check or calling renderPage assuming CDN might have been set.
-                renderPage(); 
+            } else if (isMounted) {
+                 setError("PDF.js worker could not be initialized. Cannot render preview.");
+                 setIsLoading(false);
             }
-        }, 1000); 
-        return () => clearTimeout(timer);
+        }, 500); // Wait 500ms for workerSrc to potentially be set
+        return () => {
+          clearTimeout(timeoutId);
+          isMounted = false;
+        }
     }
     
+    return () => {
+      isMounted = false; // Cleanup function to set isMounted to false when component unmounts
+    };
   }, [pdfDataUri, pageIndex, rotation, targetHeight]);
 
   const containerStyle: React.CSSProperties = {
