@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
@@ -34,6 +35,15 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
 
+  // Log when the component re-renders and its props
+  console.log(
+    `PdfPagePreview RENDER (pageIndex: ${pageIndex}, rotation: ${rotation}, targetHeight: ${targetHeight}, pdfDataUri: ${pdfDataUri ? pdfDataUri.substring(0, 30) + '...' : 'null'})`
+  );
+  if (typeof window !== 'undefined') {
+    console.log("pdfjsLib.version:", pdfjsLib.version);
+  }
+
+
   const renderPage = useCallback(async () => {
     const PPREVIEW_LOG_PREFIX = `PdfPagePreview(page:${pageIndex}, rot:${rotation}, file:${pdfDataUri ? pdfDataUri.substring(0,40) + '...' : 'N/A'}):`;
     console.log(`${PPREVIEW_LOG_PREFIX} Render attempt. canvasRef: ${!!canvasRef.current}`);
@@ -47,6 +57,8 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           setError("No PDF data provided.");
           console.log(`${PPREVIEW_LOG_PREFIX} Set error: No PDF data provided, loading false.`);
       } else if (!canvas) {
+          // If canvas is not available yet, it might be too early. Deferring might be an option or ensuring parent doesn't render too soon.
+          // For now, consider it an error or keep loading. Let's set error for clarity if canvas is missing post-mount.
           setLoading(false);
           setError("Canvas element not available.");
           console.log(`${PPREVIEW_LOG_PREFIX} Set error: Canvas element not available, loading false.`);
@@ -57,7 +69,9 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     console.log(`${PPREVIEW_LOG_PREFIX} Initializing render: setting loading true, error null, dimensions null.`);
     setLoading(true);
     setError(null);
-    setDimensions(null); 
+    // Do not reset dimensions here if a previous valid render occurred, 
+    // only if we are certain a new render cycle for different content is starting.
+    // setDimensions(null); // Let's keep previous dimensions visible while loading new one if possible.
 
     try {
       if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
@@ -124,23 +138,24 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
       console.log(`${PPREVIEW_LOG_PREFIX} Canvas 2D context obtained.`);
 
-      canvas.height = Math.round(viewport.height);
-      canvas.width = Math.round(viewport.width);
-      setDimensions({ width: canvas.width, height: canvas.height });
+      const newWidth = Math.round(viewport.width);
+      const newHeight = Math.round(viewport.height);
+
+      canvas.height = newHeight;
+      canvas.width = newWidth;
+      setDimensions({ width: newWidth, height: newHeight });
       console.log(`${PPREVIEW_LOG_PREFIX} Canvas dimensions set via attributes and state: W=${canvas.width}, H=${canvas.height}.`);
 
       const renderContext: RenderParameters = {
         canvasContext: context,
         viewport: viewport,
       };
-      console.log(`${PPREVIEW_LOG_PREFIX} Starting page.render() with context and viewport...`, renderContext);
+      console.log(`${PPREVIEW_LOG_PREFIX} Starting page.render() with context and viewport...`);
       await page.render(renderContext).promise;
-      console.log(`${PPREVIEW_LOG_PREFIX} page.render() completed successfully.`);
+      console.log(`${PPREVIEW_LOG_PREFIX} page.render() COMPLETED SUCCESSFULLY.`);
 
-      // Clean up
-      // page.cleanup(); // Recommended by pdf.js docs for memory management, but can cause issues if page object is reused or accessed later. Test carefully.
-      // pdf.destroy(); // If you are done with the entire PDF document. Be careful if other previews share the same pdfDataUri.
-
+      // page.cleanup(); // Consider cleanup if memory becomes an issue, test thoroughly.
+      // pdf.destroy(); // Do not call destroy if the PDFDocumentProxy is shared or might be reused.
     } catch (err: any) {
       console.error(`${PPREVIEW_LOG_PREFIX} Error during renderPage:`, err, err.stack);
       setError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
@@ -148,12 +163,22 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       setLoading(false);
       console.log(`${PPREVIEW_LOG_PREFIX} Loading set to false in finally block.`);
     }
-  }, [pdfDataUri, pageIndex, rotation, targetHeight]);
+  }, [pdfDataUri, pageIndex, rotation, targetHeight]); // canvasRef is stable, so not needed in deps
 
   useEffect(() => {
     const PPREVIEW_LOG_PREFIX = `PdfPagePreview(page:${pageIndex}, rot:${rotation}, file:${pdfDataUri ? pdfDataUri.substring(0,40) + '...' : 'N/A'}):`;
-    console.log(`${PPREVIEW_LOG_PREFIX} useEffect triggered, calling renderPage.`);
-    renderPage();
+    console.log(`${PPREVIEW_LOG_PREFIX} useEffect triggered due to change in 'renderPage' identity or mount.`);
+    if (pdfDataUri && canvasRef.current) { // Ensure data and canvas are ready before calling
+        console.log(`${PPREVIEW_LOG_PREFIX} Calling renderPage.`);
+        renderPage();
+    } else {
+        console.log(`${PPREVIEW_LOG_PREFIX} Not calling renderPage. pdfDataUri: ${!!pdfDataUri}, canvasRef.current: ${!!canvasRef.current}`);
+        if (!pdfDataUri) {
+            setLoading(false); // If no data URI, not loading.
+            setError("No PDF data available to render.");
+        }
+        // If canvasRef is not ready, useEffect will run again when it is.
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [renderPage]); // renderPage is memoized by useCallback. Dependencies: [pdfDataUri, pageIndex, rotation, targetHeight]
 
@@ -214,3 +239,4 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
+
