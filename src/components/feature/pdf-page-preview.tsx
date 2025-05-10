@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { VersionResponses } from 'pdfjs-dist';
@@ -11,22 +10,13 @@ import { cn } from '@/lib/utils';
 
 // Configure pdf.js worker
 if (typeof window !== 'undefined') {
-  try {
-    // Using `new URL` with `import.meta.url` is the recommended approach for Next.js App Router (v13+).
-    // This constructs a URL to the worker file within the `pdfjs-dist` package.
-    // Next.js's bundler should handle making this file accessible.
-    // We use `pdf.worker.min.js` as it's a bundled and minified version, generally more robust.
-    const workerSrcUrl = new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url).toString();
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrcUrl;
-    console.log('Successfully set pdf.js workerSrc using import.meta.url:', workerSrcUrl);
-  } catch (error) {
-    console.error("Failed to set pdf.js workerSrc using new URL with import.meta.url, falling back to CDN. Error:", error);
-    // Fallback to CDN if the above method fails (e.g., if import.meta.url is not available or resolution fails)
-    const pdfjsVersion = (pdfjsLib as any).version || '4.4.168'; // Use installed or a recent fallback
-    const cdnWorkerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.js`;
-    pdfjsLib.GlobalWorkerOptions.workerSrc = cdnWorkerSrc;
-    console.log('Using CDN fallback for pdf.js workerSrc:', cdnWorkerSrc);
-  }
+  // Consistently use CDN for pdf.js worker to avoid path resolution issues.
+  // The previous new URL('pdfjs-dist/build/pdf.worker.min.js', import.meta.url) approach
+  // could lead to incorrect file:/// paths for assets within node_modules.
+  const pdfjsVersion = (pdfjsLib as any).version || '4.4.168'; // Use installed or a recent fallback
+  const cdnWorkerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.js`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = cdnWorkerSrc;
+  console.log('Using CDN for pdf.js workerSrc:', cdnWorkerSrc);
 }
 
 
