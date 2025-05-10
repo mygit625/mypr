@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/layout/navbar';
 import { Toaster } from '@/components/ui/toaster';
-import ClientFooterYear from '@/components/layout/client-footer-year';
+import Footer from '@/components/layout/footer'; // Import the new Footer
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'DocuEase - Your PDF Toolkit',
-  description: 'Easily merge, split, and summarize your PDF documents.',
+  description: 'Easily merge, split, summarize, convert, and manage your PDF documents.',
 };
 
 export default function RootLayout({
@@ -27,15 +27,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background`}>
         <Navbar />
-        <main className="flex-grow container mx-auto px-4 py-8">
+        {/* Adjusted padding for main content area to give more space if needed */}
+        <main className="flex-grow container mx-auto px-4 py-6 md:py-10">
           {children}
         </main>
         <Toaster />
-        <footer className="bg-card border-t py-6 text-center text-sm text-muted-foreground">
-          © <ClientFooterYear /> DocuEase. All rights reserved.
-        </footer>
+        <Footer /> {/* Use the new Footer component */}
       </body>
     </html>
   );

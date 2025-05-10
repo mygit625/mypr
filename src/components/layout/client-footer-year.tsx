@@ -3,11 +3,18 @@
 import { useState, useEffect } from 'react';
 
 export default function ClientFooterYear() {
-  const [year, setYear] = useState<number | string>("..."); // Initial placeholder
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   useEffect(() => {
-    setYear(new Date().getFullYear());
-  }, []); // Empty dependency array ensures this runs once on mount (client-side)
+    setCurrentYear(new Date().getFullYear());
+  }, []);
 
-  return <>{year}</>;
+  if (currentYear === null) {
+    // Return null or a placeholder during server render / initial client render before hydration
+    // Using new Date().getFullYear() directly in SSR for the fallback is generally okay for the year
+    // as it changes infrequently, but null is safer to ensure client takes over.
+    return null; 
+  }
+
+  return <>{currentYear}</>;
 }

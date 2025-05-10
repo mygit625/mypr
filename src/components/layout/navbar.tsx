@@ -1,36 +1,27 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { Logo } from '@/components/icons/logo';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu } from 'lucide-react';
+import { Menu, LayoutGrid } from 'lucide-react'; // Added LayoutGrid for "All PDF Tools"
 
 const navItems = [
-  { href: '/', label: 'Home' },
-  { href: '/merge', label: 'Merge PDF' },
-  { href: '/split', label: 'Split PDF' },
-  { href: '/summarize', label: 'Summarize PDF' },
+  { href: '/', label: 'All PDF Tools', Icon: LayoutGrid },
 ];
 
-export default function Navbar() {
-  const pathname = usePathname();
+// Placeholder for auth status, replace with actual auth logic
+const isAuthenticated = false; 
 
+export default function Navbar() {
   const renderNavLinks = (isMobile = false) =>
     navItems.map((item) => (
-      <Link
-        key={item.href}
-        href={item.href}
-        className={cn(
-          "text-sm font-medium transition-colors hover:text-primary",
-          pathname === item.href ? "text-primary" : "text-foreground/80",
-          isMobile && "block py-2 px-4 text-base"
-        )}
-      >
-        {item.label}
-      </Link>
+      <Button variant={isMobile ? "ghost" : "ghost"} asChild key={item.href} className={cn(isMobile && "w-full justify-start text-base py-2 px-4")}>
+        <Link href={item.href} className="flex items-center gap-2">
+          <item.Icon className="h-4 w-4" />
+          {item.label}
+        </Link>
+      </Button>
     ));
 
   return (
@@ -39,9 +30,23 @@ export default function Navbar() {
         <Link href="/" aria-label="Go to homepage">
           <Logo />
         </Link>
-        <nav className="hidden items-center space-x-6 md:flex">
+        
+        <div className="hidden items-center space-x-2 md:flex">
           {renderNavLinks()}
-        </nav>
+          {isAuthenticated ? (
+            <Button variant="outline">Account</Button> 
+          ) : (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="#">Log in</Link>
+              </Button>
+              <Button variant="default" asChild>
+                <Link href="#">Sign up</Link>
+              </Button>
+            </>
+          )}
+        </div>
+
         <div className="md:hidden">
           <Sheet>
             <SheetTrigger asChild>
@@ -50,9 +55,22 @@ export default function Navbar() {
                 <span className="sr-only">Open navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right">
-              <div className="mt-8 flex flex-col space-y-4">
+            <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+              <div className="mt-8 flex flex-col space-y-2">
                 {renderNavLinks(true)}
+                <hr className="my-2"/>
+                {isAuthenticated ? (
+                  <Button variant="outline" className="w-full justify-start text-base py-2 px-4">Account</Button>
+                ) : (
+                  <>
+                    <Button variant="ghost" asChild className="w-full justify-start text-base py-2 px-4">
+                      <Link href="#">Log in</Link>
+                    </Button>
+                    <Button variant="default" asChild className="w-full justify-start text-base py-2 px-4">
+                      <Link href="#">Sign up</Link>
+                    </Button>
+                  </>
+                )}
               </div>
             </SheetContent>
           </Sheet>
@@ -60,4 +78,8 @@ export default function Navbar() {
       </div>
     </header>
   );
+}
+
+function cn(...inputs: Array<string | undefined | null | false>): string {
+  return inputs.filter(Boolean).join(' ');
 }

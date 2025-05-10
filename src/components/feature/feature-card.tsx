@@ -1,36 +1,35 @@
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowRight } from 'lucide-react';
 
 interface FeatureCardProps {
   title: string;
   description: string;
   href: string;
   Icon: LucideIcon;
+  iconColor?: string; // Optional prop for icon color class e.g. text-red-500
 }
 
-export function FeatureCard({ title, description, href, Icon }: FeatureCardProps) {
+export function FeatureCard({ title, description, href, Icon, iconColor = 'text-primary' }: FeatureCardProps) {
   return (
-    <Card className="flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300">
-      <CardHeader className="flex flex-row items-center gap-4 pb-4">
-        <Icon className="h-10 w-10 text-primary" />
-        <div>
-          <CardTitle className="text-xl">{title}</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-grow">
-        <CardDescription>{description}</CardDescription>
-      </CardContent>
-      <CardContent className="pt-0">
-        <Button asChild variant="default" className="w-full group">
-          <Link href={href}>
-            Go to {title}
-            <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
+    <Link href={href} passHref legacyBehavior>
+      <a className="block hover:no-underline">
+        <Card className="flex flex-col h-full shadow-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer overflow-hidden group">
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center gap-3">
+              <Icon className={`h-8 w-8 ${iconColor} transition-colors group-hover:text-accent`} />
+              <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
+                {title}
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="flex-grow px-5 pb-5">
+            <CardDescription className="text-sm text-muted-foreground leading-relaxed">
+              {description}
+            </CardDescription>
+          </CardContent>
+        </Card>
+      </a>
+    </Link>
   );
 }
