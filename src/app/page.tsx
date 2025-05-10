@@ -28,7 +28,7 @@ const featuresByCategory: FeatureCategory[] = [
       { title: 'Split PDF', description: 'Separate one page or a whole set for easy conversion into independent PDF files.', href: '/split', Icon: Split, iconColor: 'text-red-500' },
       { title: 'Compress PDF', description: 'Reduce file size while optimizing for maximal PDF quality.', href: '/compress', Icon: Minimize2, iconColor: 'text-green-500' },
       { title: 'Organize PDF', description: 'Sort, add, and delete PDF pages. You can also merge multiple PDFs.', href: '/organize', Icon: LayoutGrid, iconColor: 'text-purple-500' },
-      { title: 'Rotate PDF', description: 'Rotate your PDFs the way you need them. Rotate multiple PDFs at once!', href: '#', Icon: RotateCcw, iconColor: 'text-gray-500' },
+      { title: 'Rotate PDF', description: 'Rotate your PDFs the way you need them. Rotate multiple PDFs at once!', href: '/rotate', Icon: RotateCcw, iconColor: 'text-gray-500' },
       { title: 'Remove PDF Pages', description: 'Delete one or several pages from your PDF document.', href: '#', Icon: FileMinus2, iconColor: 'text-rose-500' },
       { title: 'Add PDF Pages', description: 'Insert new pages into an existing PDF document easily.', href: '#', Icon: FilePlus2, iconColor: 'text-lime-500' },
     ],
@@ -127,4 +127,3 @@ export default function HomePage() {
     </div>
   );
 }
-
