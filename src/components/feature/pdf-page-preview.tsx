@@ -7,9 +7,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FileWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Ensure workerSrc is set correctly
+// Ensure workerSrc is set correctly for pdfjs-dist
 if (typeof window !== 'undefined') {
-  // Match this with your pdfjs-dist version from package.json
+  // Match this with your pdfjs-dist version from package.json (e.g., "4.4.168")
   const PDF_JS_VERSION = "4.4.168"; 
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
 }
@@ -17,7 +17,7 @@ if (typeof window !== 'undefined') {
 interface PdfPagePreviewProps {
   pdfDataUri: string;
   pageIndex: number; // 0-indexed
-  rotation?: number; // Additional rotation: 0, 90, 180, 270
+  rotation?: number; // Additional dynamic rotation: 0, 90, 180, 270
   targetHeight: number; // Target height for the preview canvas
   className?: string;
 }
@@ -35,101 +35,114 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
 
   const renderPage = useCallback(async () => {
-    console.log(`PdfPagePreview: Render attempt for pageIndex ${pageIndex}. pdfDataUri present: ${!!pdfDataUri}, canvasRef present: ${!!canvasRef.current}`);
+    const PPREVIEW_LOG_PREFIX = `PdfPagePreview(page:${pageIndex}, rot:${rotation}):`;
+    console.log(`${PPREVIEW_LOG_PREFIX} Render attempt. pdfDataUri: ${!!pdfDataUri}, canvasRef: ${!!canvasRef.current}`);
     
-    const canvas = canvasRef.current; // Capture canvasRef.current early
+    const canvas = canvasRef.current;
 
     if (!pdfDataUri || !canvas) {
-        console.log(`PdfPagePreview: Bailing early for pageIndex ${pageIndex} - no pdfDataUri (${!!pdfDataUri}) or canvasRef (${!!canvas}).`);
-        // If bailing early, ensure loading reflects this. If pdfDataUri is missing, it's not truly "loading" the PDF.
-        // If canvas is missing, it's a lifecycle issue, useEffect might rerun.
-        // Setting loading to false here if pdfDataUri is absent might be appropriate if it's not expected to arrive.
-        // However, parent controls pdfDataUri, so this component should reflect loading until data is ready.
-        // If canvas is null but pdfDataUri is present, it's a genuine loading/setup phase.
-        if (!pdfDataUri) setLoading(false); // Stop loading if no data URI to process
-        return;
+      console.warn(`${PPREVIEW_LOG_PREFIX} Bailing early - no pdfDataUri or canvasRef.`);
+      if (!pdfDataUri) {
+          setLoading(false); // Not loading if no data
+          setError("No PDF data provided.");
+      }
+      return;
     }
 
     setLoading(true);
     setError(null);
     setDimensions(null); 
-    console.log(`PdfPagePreview: Set loading=true for pageIndex ${pageIndex}`);
+    console.log(`${PPREVIEW_LOG_PREFIX} State reset, loading started.`);
 
     try {
       if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-          console.error("PdfPagePreview: pdf.js workerSrc not set prior to rendering attempt!");
-          setError("PDF worker not configured. Please refresh.");
-          return; 
+        console.error(`${PPREVIEW_LOG_PREFIX} pdf.js workerSrc not set!`);
+        throw new Error("PDF worker not configured.");
       }
       
       const base64Marker = ';base64,';
       const base64Index = pdfDataUri.indexOf(base64Marker);
 
       if (base64Index === -1) {
-          console.error(`PdfPagePreview: Invalid PDF data URI for pageIndex ${pageIndex} - missing 'base64,' marker.`);
-          throw new Error("Invalid PDF data URI format.");
+        console.error(`${PPREVIEW_LOG_PREFIX} Invalid PDF data URI format.`);
+        throw new Error("Invalid PDF data URI format.");
       }
       const pdfData = atob(pdfDataUri.substring(base64Index + base64Marker.length));
       
+      console.log(`${PPREVIEW_LOG_PREFIX} Getting document...`);
       const loadingTask = pdfjsLib.getDocument({ data: pdfData });
       const pdf: PDFDocumentProxy = await loadingTask.promise;
+      console.log(`${PPREVIEW_LOG_PREFIX} Document loaded. Total pages: ${pdf.numPages}`);
       
       if (pageIndex >= pdf.numPages) {
-        console.error(`PdfPagePreview: Page index ${pageIndex} out of bounds for PDF with ${pdf.numPages} pages.`);
-        setError(`Page index ${pageIndex + 1} out of bounds (Total: ${pdf.numPages}).`);
-        return; 
+        console.error(`${PPREVIEW_LOG_PREFIX} Page index ${pageIndex} out of bounds (Total: ${pdf.numPages}).`);
+        throw new Error(`Page index ${pageIndex + 1} is out of bounds.`);
       }
       const page: PDFPageProxy = await pdf.getPage(pageIndex + 1); // pdf.js pages are 1-indexed
+      console.log(`${PPREVIEW_LOG_PREFIX} Page ${pageIndex + 1} loaded. Original rotation: ${page.rotate}`);
 
-      const totalRotation = (page.rotate + rotation) % 360;
-      const viewportUnscaled = page.getViewport({ scale: 1, rotation: page.rotate }); 
+      // Calculate total rotation (PDF's inherent rotation + dynamic rotation)
+      // Normalize to ensure it's one of 0, 90, 180, 270
+      const normalizedDynamicRotation = rotation % 360;
+      const totalRotation = (page.rotate + normalizedDynamicRotation + 360) % 360;
+      console.log(`${PPREVIEW_LOG_PREFIX} Dynamic rotation: ${normalizedDynamicRotation}, Total effective rotation: ${totalRotation}`);
       
-      let scale: number;
-      if (totalRotation === 90 || totalRotation === 270) { 
-        scale = targetHeight / viewportUnscaled.width;
-      } else { 
-        scale = targetHeight / viewportUnscaled.height;
+      // Get viewport at scale 1 with the total rotation to determine aspect ratio
+      const viewportAtScale1 = page.getViewport({ scale: 1, rotation: totalRotation });
+      console.log(`${PPREVIEW_LOG_PREFIX} Viewport at scale 1 & totalRotation ${totalRotation}: W=${viewportAtScale1.width.toFixed(2)}, H=${viewportAtScale1.height.toFixed(2)}`);
+
+      if (viewportAtScale1.height <= 0 || viewportAtScale1.width <= 0) {
+        console.error(`${PPREVIEW_LOG_PREFIX} Viewport at scale 1 has invalid dimensions.`);
+        throw new Error("Page has zero or negative dimension at scale 1.");
       }
-      
+
+      const scale = targetHeight / viewportAtScale1.height;
+      console.log(`${PPREVIEW_LOG_PREFIX} Calculated scale: ${scale.toFixed(4)} (targetHeight: ${targetHeight} / vpScale1.height: ${viewportAtScale1.height.toFixed(2)})`);
+
+      if (!Number.isFinite(scale) || scale <= 0) {
+        console.error(`${PPREVIEW_LOG_PREFIX} Invalid scale calculated: ${scale}.`);
+        throw new Error("Invalid scale for rendering.");
+      }
+
       const viewport = page.getViewport({ scale, rotation: totalRotation });
-      
-      if (viewport.width <= 0 || viewport.height <= 0 || !Number.isFinite(viewport.width) || !Number.isFinite(viewport.height) || !Number.isFinite(scale)) {
-        console.error(`PdfPagePreview: Invalid viewport dimensions for pageIndex ${pageIndex}. W=${viewport.width}, H=${viewport.height}, Scale=${scale}. Original Page Rot: ${page.rotate}, Added Rot: ${rotation}`);
-        setError(`Page ${pageIndex + 1}: Invalid calculated size.`);
-        return;
+      console.log(`${PPREVIEW_LOG_PREFIX} Final viewport: W=${viewport.width.toFixed(2)}, H=${viewport.height.toFixed(2)}, Scale=${viewport.scale.toFixed(4)}, Rot=${viewport.rotation}`);
+
+      if (viewport.width <= 0 || viewport.height <= 0) {
+        console.error(`${PPREVIEW_LOG_PREFIX} Final viewport dimensions are invalid.`);
+        throw new Error("Calculated viewport for rendering has invalid dimensions.");
       }
-      console.log(`PdfPagePreview: Viewport calculated for pageIndex ${pageIndex}. Scale: ${scale.toFixed(2)}, Rot: ${totalRotation}, W: ${viewport.width.toFixed(0)}, H: ${viewport.height.toFixed(0)}`);
 
       const context = canvas.getContext('2d');
       if (!context) {
-        console.error(`PdfPagePreview: Could not get canvas 2D context for pageIndex ${pageIndex}.`);
-        setError('Could not get canvas context.');
-        return;
+        console.error(`${PPREVIEW_LOG_PREFIX} Could not get canvas 2D context.`);
+        throw new Error('Could not get canvas context.');
       }
 
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-      setDimensions({ width: viewport.width, height: viewport.height });
-      console.log(`PdfPagePreview: Canvas dimensions set for pageIndex ${pageIndex}: ${viewport.width.toFixed(0)}x${viewport.height.toFixed(0)}`);
+      canvas.height = Math.round(viewport.height); // Use Math.round to avoid fractional pixels
+      canvas.width = Math.round(viewport.width);
+      setDimensions({ width: canvas.width, height: canvas.height });
+      console.log(`${PPREVIEW_LOG_PREFIX} Canvas dimensions set: W=${canvas.width}, H=${canvas.height}`);
 
       const renderContext: RenderParameters = {
         canvasContext: context,
         viewport: viewport,
       };
-      console.log(`PdfPagePreview: Starting page.render for pageIndex ${pageIndex}`);
+      console.log(`${PPREVIEW_LOG_PREFIX} Starting page.render()...`);
       await page.render(renderContext).promise;
-      console.log(`PdfPagePreview: page.render completed successfully for pageIndex ${pageIndex}`);
+      console.log(`${PPREVIEW_LOG_PREFIX} page.render() completed successfully.`);
 
     } catch (err: any) {
-      console.error(`PdfPagePreview: Error during renderPage for pageIndex ${pageIndex}:`, err);
+      console.error(`${PPREVIEW_LOG_PREFIX} Error during renderPage:`, err);
       setError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
     } finally {
       setLoading(false);
-      console.log(`PdfPagePreview: Set loading=false for pageIndex ${pageIndex} in finally block.`);
+      console.log(`${PPREVIEW_LOG_PREFIX} Loading set to false in finally block.`);
     }
   }, [pdfDataUri, pageIndex, rotation, targetHeight]);
 
   useEffect(() => {
+    // This effect runs when renderPage (and its dependencies) change.
+    // renderPage itself is memoized by useCallback.
     renderPage();
   }, [renderPage]);
 
@@ -153,13 +166,14 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         title={error}
       >
         <FileWarning className="h-5 w-5 mb-1" />
-        <p className="leading-tight line-clamp-3">Page {pageIndex + 1}: {error}</p>
+        <p className="leading-tight line-clamp-3">Page {pageIndex + 1}: Error</p>
+        {/* <p className="leading-tight line-clamp-3">{error}</p> More detailed error for debugging */}
       </div>
     );
   }
-
+  
+  // If dimensions are not set, or width/height is 0 after loading (and no error), show placeholder
   if (!dimensions || dimensions.width <= 0 || dimensions.height <= 0) {
-    console.warn(`PdfPagePreview: Rendering placeholder for pageIndex ${pageIndex} because dimensions are invalid/missing post-load. Dimensions:`, dimensions);
     const approxWidth = targetHeight * (210/297);
     return (
         <div 
@@ -178,12 +192,13 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     <canvas
       ref={canvasRef}
       className={cn("border border-muted shadow-sm rounded-md bg-white", className)}
+      // HTML attributes width/height are set by canvas.width/height in renderPage
+      // Style attributes are for CSS layout, but canvas intrinsic size is set by its width/height attributes
       style={{ 
-        // width and height style attributes are now set based on valid dimensions
+        display: 'block', // Ensure canvas is treated as a block for layout
         width: `${dimensions.width}px`, 
         height: `${dimensions.height}px`
       }}
-      // HTML attributes width/height are set by canvas.width/height in renderPage
       role="img"
       aria-label={`Preview of PDF page ${pageIndex + 1}`}
     />
