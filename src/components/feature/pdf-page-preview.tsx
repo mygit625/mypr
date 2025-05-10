@@ -12,12 +12,24 @@ import { cn } from '@/lib/utils';
 // Configure pdf.js worker
 if (typeof window !== 'undefined') {
   // Dynamically import and set workerSrc only on the client side
-  import('pdfjs-dist/build/pdf.worker.mjs').then(worker => {
-     pdfjsLib.GlobalWorkerOptions.workerSrc = worker.PDFWorker.workerSrc;
+  import('pdfjs-dist/build/pdf.worker.mjs').then(workerModule => {
+     // Attempt to use the default export of the worker module.
+     // This is a common pattern if the module's main export is the worker constructor or path.
+     if (workerModule.default) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
+     } else {
+        // If default is not available, this will likely cause an error later or pdf.js won't find the worker.
+        // The catch block below will then handle it by falling back to CDN.
+        console.warn("pdf.worker.mjs module or its default export is not in the expected format. Falling back to CDN might occur if this path fails.");
+        // As a last resort before CDN, if workerModule itself is the src (e.g. a string path from bundler)
+        // This is less likely for an object module without a clear string path.
+        // Forcing it to fallback to CDN if default is not what's expected might be safer.
+        throw new Error("Worker module default export not found.");
+     }
   }).catch(error => {
-    console.error("Failed to load pdf.js worker dynamically, falling back to CDN", error);
-    // Fallback CDN path if dynamic import fails or for simplicity in some environments
-    // Ensure the version matches your installed pdfjs-dist version for compatibility
+    console.error("Failed to load or set pdf.js worker dynamically, falling back to CDN:", error);
+    // Fallback CDN path if dynamic import fails or if the module structure isn't as expected.
+    // Ensure the version matches your installed pdfjs-dist version for compatibility.
      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${(pdfjsLib as any).version}/pdf.worker.min.js`;
   });
 }
@@ -118,7 +130,25 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
     };
 
-    renderPage();
+    // Ensure worker is configured before rendering.
+    // If workerSrc is not set or is pending, pdfjsLib.getDocument might fail or hang.
+    // A simple check like this doesn't guarantee worker is ready, but it's a start.
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc || typeof window === 'undefined') {
+        renderPage();
+    } else {
+        // Wait a bit for workerSrc to be set by the dynamic import, then try rendering
+        // This is a bit of a hack; a more robust solution would use a state/promise for worker readiness.
+        const timer = setTimeout(() => {
+            if (pdfjsLib.GlobalWorkerOptions.workerSrc) {
+                renderPage();
+            } else {
+                console.warn("PDF.js workerSrc still not set after delay. Rendering might fail or use fallback.");
+                setError("PDF.js worker setup timed out. Try reloading.");
+                setIsLoading(false);
+            }
+        }, 1000); // Wait 1 second for worker setup
+        return () => clearTimeout(timer);
+    }
     
     // Cleanup function to cancel rendering if component unmounts or dependencies change
     return () => {
