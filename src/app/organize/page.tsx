@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useCallback } from 'react';
@@ -11,6 +12,7 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { getInitialPageDataAction, organizePdfAction, type PageData, type PageOperation } from './actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import PdfPagePreview from '@/components/feature/pdf-page-preview'; // Import the new component
 
 // Helper to ensure rotation stays within 0, 90, 180, 270
 const normalizeRotation = (angle: number): number => {
@@ -37,6 +39,7 @@ export default function OrganizePage() {
   const [isProcessing, setIsProcessing] = useState(false); // For final organization
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const PREVIEW_TARGET_HEIGHT = 100; // Define target height for previews in organize page
 
   const handleFileSelected = async (selectedFiles: File[]) => {
     if (selectedFiles.length > 0) {
@@ -199,7 +202,7 @@ export default function OrganizePage() {
         </Alert>
       )}
 
-      {pages.length > 0 && !isLoading && (
+      {pdfDataUri && pages.length > 0 && !isLoading && (
         <>
           <Card>
             <CardHeader>
@@ -207,41 +210,55 @@ export default function OrganizePage() {
               <CardDescription>Drag and drop to reorder, or use controls for rotation and deletion. Changes are applied when you click "Apply & Download".</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[500px] p-1 border rounded-md">
+              <ScrollArea className="h-[600px] p-1 border rounded-md">
                 <div className="space-y-3">
                 {pages.map((page, index) => (
-                  <Card key={page.id} className={`transition-opacity ${page.isDeleted ? 'opacity-50 bg-muted/30' : 'bg-card'}`}>
-                    <CardHeader className="py-3 px-4">
-                       <CardTitle className="text-md flex justify-between items-center">
-                        <span>
-                            {page.isDeleted ? 'Page (Deleted)' : `Page ${getDisplayedPageIndex(index)}`} (Original: {page.originalIndex + 1})
-                        </span>
-                         <Button variant="ghost" size="sm" onClick={() => handleDeleteToggle(index)} title={page.isDeleted ? "Restore Page" : "Delete Page"}>
-                            {page.isDeleted ? <RefreshCcw className="h-4 w-4 text-green-600" /> : <Trash2 className="h-4 w-4 text-destructive" />}
-                         </Button>
-                       </CardTitle>
-                    </CardHeader>
-                    <CardContent className="py-2 px-4 text-sm text-muted-foreground">
-                        Dimensions: {page.width.toFixed(0)}pt x {page.height.toFixed(0)}pt | Rotation: {page.rotation}°
-                    </CardContent>
-                    <CardFooter className="py-2 px-4 flex justify-between items-center">
-                      <div className="flex gap-1">
-                        <Button variant="outline" size="sm" onClick={() => handleRotate(index, 'ccw')} disabled={page.isDeleted} title="Rotate Counter-Clockwise">
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleRotate(index, 'cw')} disabled={page.isDeleted} title="Rotate Clockwise">
-                          <RotateCw className="h-4 w-4" />
-                        </Button>
+                  <Card key={`${page.id}-${page.originalIndex}`} className={`transition-opacity ${page.isDeleted ? 'opacity-50 bg-muted/30' : 'bg-card'}`}>
+                    <div className="flex items-start p-3">
+                      {pdfDataUri && (
+                        <div className="flex-shrink-0 mr-3 mt-1">
+                           <PdfPagePreview
+                             pdfDataUri={pdfDataUri}
+                             pageIndex={page.originalIndex}
+                             rotation={page.rotation}
+                             targetHeight={PREVIEW_TARGET_HEIGHT}
+                           />
+                        </div>
+                      )}
+                      <div className="flex-grow">
+                        <CardHeader className="py-0 px-0">
+                           <CardTitle className="text-md flex justify-between items-center">
+                            <span>
+                                {page.isDeleted ? 'Page (Deleted)' : `Page ${getDisplayedPageIndex(index)}`} (Original: {page.originalIndex + 1})
+                            </span>
+                             <Button variant="ghost" size="sm" onClick={() => handleDeleteToggle(index)} title={page.isDeleted ? "Restore Page" : "Delete Page"}>
+                                {page.isDeleted ? <RefreshCcw className="h-4 w-4 text-green-600" /> : <Trash2 className="h-4 w-4 text-destructive" />}
+                             </Button>
+                           </CardTitle>
+                        </CardHeader>
+                        <CardContent className="py-1 px-0 text-xs text-muted-foreground">
+                            Dimensions: {page.width.toFixed(0)}pt x {page.height.toFixed(0)}pt | Rotation: {page.rotation}°
+                        </CardContent>
+                        <CardFooter className="py-1 px-0 flex justify-between items-center">
+                          <div className="flex gap-1">
+                            <Button variant="outline" size="xs" onClick={() => handleRotate(index, 'ccw')} disabled={page.isDeleted} title="Rotate Counter-Clockwise">
+                              <RotateCcw className="h-3 w-3" />
+                            </Button>
+                            <Button variant="outline" size="xs" onClick={() => handleRotate(index, 'cw')} disabled={page.isDeleted} title="Rotate Clockwise">
+                              <RotateCw className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button variant="outline" size="xs" onClick={() => handleMovePage(index, 'up')} disabled={index === 0 || page.isDeleted} title="Move Up">
+                              <ArrowUp className="h-3 w-3" />
+                            </Button>
+                            <Button variant="outline" size="xs" onClick={() => handleMovePage(index, 'down')} disabled={index === pages.length - 1 || page.isDeleted} title="Move Down">
+                              <ArrowDown className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </CardFooter>
                       </div>
-                      <div className="flex gap-1">
-                        <Button variant="outline" size="sm" onClick={() => handleMovePage(index, 'up')} disabled={index === 0 || page.isDeleted} title="Move Up">
-                          <ArrowUp className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleMovePage(index, 'down')} disabled={index === pages.length - 1 || page.isDeleted} title="Move Down">
-                          <ArrowDown className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardFooter>
+                    </div>
                   </Card>
                 ))}
                 </div>
@@ -266,3 +283,4 @@ export default function OrganizePage() {
     </div>
   );
 }
+

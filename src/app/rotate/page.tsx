@@ -6,12 +6,13 @@ import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { RotateCcw, RotateCw, Loader2, Info, Download, RefreshCcw, FileText } from 'lucide-react'; // Added FileText
+import { RotateCcw, RotateCw, Loader2, Info, Download, RefreshCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { getInitialPageDataAction, organizePdfAction, type PageData, type PageOperation } from '../organize/actions'; // Reusing actions from organize
 import { ScrollArea } from '@/components/ui/scroll-area';
+import PdfPagePreview from '@/components/feature/pdf-page-preview'; // Import the new component
 
 // Helper to ensure rotation stays within 0, 90, 180, 270
 const normalizeRotation = (angle: number): number => {
@@ -35,6 +36,7 @@ export default function RotatePage() {
   const [isProcessing, setIsProcessing] = useState(false); 
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const PREVIEW_TARGET_HEIGHT = 150; // Define target height for previews
 
   const handleFileSelected = async (selectedFiles: File[]) => {
     if (selectedFiles.length > 0) {
@@ -170,7 +172,7 @@ export default function RotatePage() {
         </Alert>
       )}
 
-      {pages.length > 0 && !isLoading && (
+      {pdfDataUri && pages.length > 0 && !isLoading && (
         <>
           <Card>
             <CardHeader>
@@ -195,26 +197,21 @@ export default function RotatePage() {
                         <span>Page {page.originalIndex + 1}</span>
                        </CardTitle>
                     </CardHeader>
-                    <CardContent className="py-2 px-4 text-sm text-muted-foreground flex-grow">
-                        Dimensions: {page.width.toFixed(0)}pt x {page.height.toFixed(0)}pt
-                        <br />
-                        Current Rotation: {page.rotation}°
-                        <div
-                            className="mt-2 bg-background flex items-center justify-center rounded border-2 border-dashed border-border text-muted-foreground overflow-hidden"
-                            style={{
-                                height: '120px',
-                                maxWidth: '100%',
-                                aspectRatio: page.width && page.height && page.height !== 0 ? `${page.width} / ${page.height}` : '1 / 1.414',
-                                transform: `rotate(${page.rotation}deg)`,
-                                margin: '0 auto'
-                            }}
-                            data-ai-hint="document page"
-                        >
-                           <div style={{ transform: `rotate(${-page.rotation}deg)` }} className="flex flex-col items-center justify-center text-xs p-1 text-center">
-                                <FileText className="h-6 w-6 mb-1" />
-                                <span>Page {page.originalIndex + 1}</span>
-                            </div>
+                    <CardContent className="py-2 px-4 text-sm text-muted-foreground flex-grow flex flex-col items-center justify-center">
+                        <div className='mb-1 w-full text-xs'>
+                            Dimensions: {page.width.toFixed(0)}pt x {page.height.toFixed(0)}pt
+                            <br />
+                            Current Rotation: {page.rotation}°
                         </div>
+                        {pdfDataUri && (
+                           <PdfPagePreview
+                             pdfDataUri={pdfDataUri}
+                             pageIndex={page.originalIndex}
+                             rotation={page.rotation}
+                             targetHeight={PREVIEW_TARGET_HEIGHT}
+                             className="mt-1"
+                           />
+                        )}
                     </CardContent>
                     <CardFooter className="py-3 px-4 flex justify-center gap-2 items-center border-t">
                         <Button variant="outline" size="sm" onClick={() => handleRotatePage(index, 'ccw')} title="Rotate Counter-Clockwise">
