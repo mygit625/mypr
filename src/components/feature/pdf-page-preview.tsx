@@ -8,9 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FileWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Initialize workerSrc once on the client side when the module loads.
-// Ensure this version matches the installed pdfjs-dist version in package.json
-const PDF_JS_VERSION = "4.4.168";
+const PDF_JS_VERSION = "4.4.168"; // Ensure this matches your installed pdfjs-dist version
 
 if (typeof window !== 'undefined') {
   const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
@@ -39,18 +37,16 @@ async function renderPdfPageToCanvas(
   pageIndex: number,
   rotation: number,
   targetHeight: number,
-  logPrefix: string // Changed to currentLogPrefix in useEffect, ensuring it's passed here
+  logPrefix: string
 ): Promise<RenderOutput> {
-  console.log(`${logPrefix} renderPdfPageToCanvas: Starting for page ${pageIndex + 1}, targetHeight: ${targetHeight}`);
+  console.log(`${logPrefix} renderPdfPageToCanvas: Starting for page ${pageIndex + 1}, targetH: ${targetHeight}, rotation: ${rotation}`);
 
   const base64Marker = ';base64,';
   const base64Index = pdfDataUri.indexOf(base64Marker);
-  if (base64Index === -1) {
-    throw new Error(`${logPrefix} Invalid PDF data URI format.`);
-  }
+  if (base64Index === -1) throw new Error(`${logPrefix} Invalid PDF data URI format.`);
 
   const pdfBase64Data = pdfDataUri.substring(base64Index + base64Marker.length);
-  let pdfBinaryData;
+  let pdfBinaryData: string;
   try {
     pdfBinaryData = atob(pdfBase64Data);
   } catch (e) {
@@ -63,57 +59,56 @@ async function renderPdfPageToCanvas(
   }
 
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      throw new Error(`${logPrefix} PDF.js workerSrc not configured. This should have been set at module load.`);
+    console.error(`${logPrefix} PDF.js workerSrc not configured! This is a critical error.`);
+    throw new Error(`${logPrefix} PDF.js workerSrc not configured.`);
   }
 
   console.log(`${logPrefix} Calling pdfjsLib.getDocument() for page ${pageIndex + 1}`);
   const loadingTask = pdfjsLib.getDocument({ data: pdfDataArray });
-
   let pdf: PDFDocumentProxy | null = null;
+
   try {
     pdf = await loadingTask.promise;
     console.log(`${logPrefix} PDF loaded. Total pages: ${pdf.numPages}. Target page: ${pageIndex + 1}`);
 
     if (pageIndex < 0 || pageIndex >= pdf.numPages) {
-      throw new Error(`${logPrefix} Page index ${pageIndex + 1} is out of bounds (Total: ${pdf.numPages}).`);
+      throw new Error(`${logPrefix} Page index ${pageIndex + 1} out of bounds (Total: ${pdf.numPages}).`);
     }
 
     const page: PDFPageProxy = await pdf.getPage(pageIndex + 1);
-    console.log(`${logPrefix} Page ${pageIndex + 1} obtained. Original rotation: ${page.rotate}`);
-
-    const normalizedDynamicRotation = (rotation || 0) % 360;
-    const totalRotation = (page.rotate + normalizedDynamicRotation + 360) % 360;
-    console.log(`${logPrefix} Total rotation for viewport: ${totalRotation} (Page intrinsic: ${page.rotate}, Dynamic: ${normalizedDynamicRotation})`);
-
-    const viewportAtScale1 = page.getViewport({ scale: 1, rotation: totalRotation });
+    console.log(`${logPrefix} Page ${pageIndex + 1} obtained. Intrinsic rotation: ${page.rotate}`);
+    
+    const dynamicRotation = (rotation || 0); // Use dynamic rotation directly
+    const totalRotationForViewport = (page.rotate + dynamicRotation + 360) % 360;
+    console.log(`${logPrefix} Total rotation for viewport: ${totalRotationForViewport} (Intrinsic: ${page.rotate}, Dynamic: ${dynamicRotation})`);
+    
+    const viewportAtScale1 = page.getViewport({ scale: 1, rotation: totalRotationForViewport });
     if (viewportAtScale1.height <= 0 || viewportAtScale1.width <= 0) {
-      throw new Error(`${logPrefix} Page viewport at scale 1 has invalid dimensions (H:${viewportAtScale1.height} W:${viewportAtScale1.width}).`);
+      throw new Error(`${logPrefix} Page viewport@1 has invalid dimensions (H:${viewportAtScale1.height} W:${viewportAtScale1.width}).`);
     }
 
     const scale = targetHeight / viewportAtScale1.height;
     if (!Number.isFinite(scale) || scale <= 0) {
-      throw new Error(`${logPrefix} Invalid scale: ${scale.toFixed(4)}. TargetH: ${targetHeight}, ViewportH: ${viewportAtScale1.height}`);
+      throw new Error(`${logPrefix} Invalid scale: ${scale.toFixed(4)}. TargetH: ${targetHeight}, ViewportH@1: ${viewportAtScale1.height}`);
     }
-    console.log(`${logPrefix} Calculated scale: ${scale} for page ${pageIndex + 1}`);
+    console.log(`${logPrefix} Calculated scale: ${scale.toFixed(4)} for page ${pageIndex + 1}`);
 
-    const viewport = page.getViewport({ scale, rotation: totalRotation });
+    const viewport = page.getViewport({ scale, rotation: totalRotationForViewport });
     if (viewport.width <= 0 || viewport.height <= 0) {
-      throw new Error(`${logPrefix} Calculated viewport for rendering has invalid dimensions (W:${viewport.width} H:${viewport.height}).`);
+      throw new Error(`${logPrefix} Final viewport has invalid dimensions (W:${viewport.width.toFixed(2)} H:${viewport.height.toFixed(2)}).`);
     }
-    console.log(`${logPrefix} Viewport calculated: W=${viewport.width.toFixed(2)}, H=${viewport.height.toFixed(2)} for page ${pageIndex + 1}`);
-
+    console.log(`${logPrefix} Viewport for render: W=${viewport.width.toFixed(2)}, H=${viewport.height.toFixed(2)} for page ${pageIndex + 1}`);
+    
     const context = canvas.getContext('2d');
     if (!context) throw new Error(`${logPrefix} Could not get canvas 2D context for page ${pageIndex + 1}.`);
 
     const newCanvasWidth = Math.max(1, Math.round(viewport.width));
     const newCanvasHeight = Math.max(1, Math.round(viewport.height));
-
     canvas.height = newCanvasHeight;
     canvas.width = newCanvasWidth;
-
     console.log(`${logPrefix} Canvas attributes set: W=${canvas.width}, H=${canvas.height} for page ${pageIndex + 1}.`);
 
-    const RENDER_TIMEOUT = 15000; // 15 seconds
+    const RENDER_TIMEOUT = 15000;
     const renderContext: RenderParameters = { canvasContext: context, viewport: viewport };
     const renderTask = page.render(renderContext);
 
@@ -125,28 +120,19 @@ async function renderPdfPageToCanvas(
     await Promise.race([renderTask.promise, timeoutPromise]);
     console.log(`${logPrefix} page.render() COMPLETED SUCCESSFULLY for page ${pageIndex + 1}.`);
 
-    try {
-      page.cleanup();
-    } catch (cleanupError) {
-      console.warn(`${logPrefix} Error during page cleanup for page ${pageIndex + 1}:`, cleanupError);
-    }
+    try { page.cleanup(); } catch (cleanupError) { console.warn(`${logPrefix} Error during page cleanup for page ${pageIndex + 1}:`, cleanupError); }
     return { width: newCanvasWidth, height: newCanvasHeight };
 
   } finally {
     if (pdf && typeof (pdf as any).destroy === 'function') {
       console.log(`${logPrefix} Destroying PDF document object.`);
-      try {
-        await (pdf as any).destroy();
-      } catch (destroyError) {
-        console.warn(`${logPrefix} Error destroying PDF document:`, destroyError);
-      }
+      try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix} Error destroying PDF doc:`, destroyError); }
     } else if (loadingTask && typeof (loadingTask as any).destroy === 'function') {
-      console.log(`${logPrefix} Destroying loading task.`);
+      console.log(`${logPrefix} Destroying loading task if PDF object was not created.`);
       (loadingTask as any).destroy();
     }
   }
 }
-
 
 const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   pdfDataUri,
@@ -156,91 +142,76 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   className,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Start in loading state
   const [error, setError] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
-
-  // Instance-specific prefix for logs, helps differentiate between multiple previews
   const instanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 5)}`).current;
 
   useEffect(() => {
     let isActive = true;
     const currentCanvas = canvasRef.current;
-    // Render-attempt-specific prefix for more granular logging within a single preview instance's lifecycle
-    const renderAttemptLogPrefix = `${instanceLogPrefix}-render-${Math.random().toString(36).substring(2, 7)}`;
+    const renderAttemptLogPrefix = `${instanceLogPrefix}-try-${Math.random().toString(36).substring(2, 7)}`;
 
-    console.log(`${renderAttemptLogPrefix} useEffect triggered. pdfDataUri: ${pdfDataUri ? 'present' : 'null'}. Canvas available: ${!!currentCanvas}. Rotation: ${rotation}, TargetHeight: ${targetHeight}`);
-
-    // Reset state for this render attempt
-    setError(null);
-    setDimensions(null);
+    console.log(`${renderAttemptLogPrefix} useEffect triggered. PageIdx: ${pageIndex}, pdfDataUri: ${pdfDataUri ? 'present' : 'null'}, Canvas available: ${!!currentCanvas}, Rotation: ${rotation}, TargetHeight: ${targetHeight}`);
 
     if (!pdfDataUri) {
-      console.log(`${renderAttemptLogPrefix} No pdfDataUri provided.`);
+      console.log(`${renderAttemptLogPrefix} No pdfDataUri. Clearing state.`);
       if (isActive) {
         setError("No PDF data provided.");
-        setLoading(false); // Ensure loading is false if no data
-      }
-      if (currentCanvas) { // Clear canvas if it exists
-        const context = currentCanvas.getContext('2d');
-        if (context) context.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
+        setLoading(false);
+        setDimensions(null);
       }
       return;
     }
 
     if (!currentCanvas) {
-      console.log(`${renderAttemptLogPrefix} Canvas ref not current. Will show loading. Effect might re-run if canvas becomes available.`);
-      if (isActive) {
-        setLoading(true); // Show loading skeleton if canvas isn't ready
-      }
+      console.log(`${renderAttemptLogPrefix} Canvas ref not current. Current loading state: ${loading}. Component will wait for ref.`);
+      // Ensure loading is true if canvas is not ready, parent might re-render.
+      // If not already loading, set it to true to show skeleton.
+      if (isActive && !loading) setLoading(true); 
       return;
     }
-
-    // If we have URI and canvas, start the loading process for rendering.
-    if (isActive) {
-      setLoading(true);
+    
+    // If we have pdfDataUri and currentCanvas, proceed to render.
+    // Reset error/dimensions from previous attempts for this instance if URI/params change.
+    if(isActive) {
+        setError(null);
+        setDimensions(null);
+        if (!loading) setLoading(true); // Ensure loading is true before async operation
     }
-    console.log(`${renderAttemptLogPrefix} Conditions met (pdfDataUri, currentCanvas), calling initRender.`);
 
     const initRender = async () => {
-      console.log(`${renderAttemptLogPrefix} initRender started.`);
+      console.log(`${renderAttemptLogPrefix} initRender: Starting actual render logic.`);
       try {
-        // Explicitly clear canvas before rendering to prevent old content flashing
         const context = currentCanvas.getContext('2d');
         if (context) {
-            context.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
-            console.log(`${renderAttemptLogPrefix} Canvas cleared before rendering.`);
+          context.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
+          console.log(`${renderAttemptLogPrefix} Canvas cleared before rendering.`);
         }
 
         const resultDimensions = await renderPdfPageToCanvas(
-            currentCanvas,
-            pdfDataUri!, // Known to be non-null here
-            pageIndex,
-            rotation,
-            targetHeight,
-            renderAttemptLogPrefix // Pass the render-attempt-specific log prefix
+          currentCanvas,
+          pdfDataUri,
+          pageIndex,
+          rotation,
+          targetHeight,
+          renderAttemptLogPrefix
         );
         if (isActive) {
-            console.log(`${renderAttemptLogPrefix} Render successful. Setting dimensions:`, resultDimensions);
-            setDimensions(resultDimensions);
-            setError(null); // Clear any previous error
-        } else {
-            console.log(`${renderAttemptLogPrefix} Render successful but component no longer active.`);
+          console.log(`${renderAttemptLogPrefix} Render successful. Dimensions:`, resultDimensions);
+          setDimensions(resultDimensions);
+          setError(null);
         }
       } catch (err: any) {
-        console.error(`${renderAttemptLogPrefix} Error during renderPdfPageToCanvas:`, err.message, err.stack ? err.stack.substring(0,300) : '');
+        console.error(`${renderAttemptLogPrefix} Error in initRender/renderPdfPageToCanvas:`, err.message, err.stack ? err.stack.substring(0,300) : '');
         if (isActive) {
-            setError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
-            setDimensions(null); // Clear dimensions on error
-        } else {
-            console.log(`${renderAttemptLogPrefix} Error occurred during render, but component no longer active.`);
+          setError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
+          setDimensions(null);
         }
       } finally {
         if (isActive) {
-            console.log(`${renderAttemptLogPrefix} initRender finished. Setting loading=false.`);
-            setLoading(false);
-        } else {
-            console.log(`${renderAttemptLogPrefix} initRender finished, but component no longer active, loading state not changed.`);
+          console.log(`${renderAttemptLogPrefix} initRender finished. Setting loading=false.`);
+          setLoading(false);
         }
       }
     };
@@ -248,16 +219,13 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     initRender();
 
     return () => {
-      console.log(`${renderAttemptLogPrefix} useEffect cleanup: setting isActive=false.`);
+      console.log(`${renderAttemptLogPrefix} useEffect cleanup for pageIdx ${pageIndex}. isActive=false.`);
       isActive = false;
-      // Consider cancelling any ongoing PDF.js render task if the library supports it
-      // For now, the isActive flag prevents state updates on an unmounted component
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, instanceLogPrefix]); // instanceLogPrefix is stable for the component instance
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, instanceLogPrefix, loading]); // Added loading to dep array cautiously.
 
   const currentDisplayHeight = targetHeight;
-  // Estimate width for skeleton based on common A4 portrait aspect ratio if actual dimensions aren't available yet
-  const estimatedWidth = dimensions ? dimensions.width : Math.max(50, targetHeight * (210 / 297));
+  const estimatedWidth = dimensions ? dimensions.width : Math.max(50, targetHeight * (210 / 297)); // A4 aspect ratio
 
   if (loading) {
     return (
@@ -276,7 +244,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           "flex flex-col items-center justify-center bg-destructive/10 border border-destructive text-destructive-foreground rounded-md p-2 text-xs text-center overflow-hidden transition-all",
           className
         )}
-        style={{ height: `${currentDisplayHeight}px`, width: `${Math.max(80, estimatedWidth)}px` }} // Ensure a minimum width for error
+        style={{ height: `${currentDisplayHeight}px`, width: `${Math.max(80, estimatedWidth)}px` }}
         title={error}
       >
         <FileWarning className="h-5 w-5 mb-1 flex-shrink-0" />
@@ -285,9 +253,8 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       </div>
     );
   }
-
+  
   if (!dimensions || dimensions.width <= 0 || dimensions.height <= 0) {
-    // This case might occur if rendering finished but produced invalid dimensions, or if error is null but dimensions are also null.
     return (
       <div
         className={cn(
@@ -319,3 +286,5 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
+
+    
