@@ -8,23 +8,28 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FileWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Log the imported pdfjsLib version for diagnostics
+// CRITICAL DIAGNOSTIC LOG: Please check your browser console for this message and report the version.
 console.log('[PdfPagePreview] Imported pdfjsLib.version:', pdfjsLib.version);
 console.log('[PdfPagePreview] pdfjsLib object:', pdfjsLib);
 
 
 const PDF_JS_VERSION = "4.4.168"; // This MUST match your installed pdfjs-dist version from package.json
+let pdfJsWorkerInitialized = false;
 
-if (typeof window !== 'undefined') {
-  const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
-  if (pdfjsLib.GlobalWorkerOptions.workerSrc !== cdnPath) {
-    console.log(`[PdfPagePreview] Setting pdfjsLib.GlobalWorkerOptions.workerSrc to: ${cdnPath} (derived from PDF_JS_VERSION constant: ${PDF_JS_VERSION})`);
+if (typeof window !== 'undefined' && !pdfJsWorkerInitialized) {
+  try {
+    const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
+    console.log(`[PdfPagePreview] Attempting to set pdfjsLib.GlobalWorkerOptions.workerSrc to: ${cdnPath} (using PDF_JS_VERSION: ${PDF_JS_VERSION})`);
     pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
-  } else {
-    console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc already set to: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+    pdfJsWorkerInitialized = true;
+    console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc is now: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+  } catch (e) {
+    console.error("[PdfPagePreview] Error setting workerSrc:", e);
   }
+} else if (typeof window !== 'undefined' && pdfJsWorkerInitialized) {
+    console.log('[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already initialized.');
 } else {
-    console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment).');
+    console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment or already initialized).');
 }
 
 interface PdfPagePreviewProps {
@@ -49,6 +54,8 @@ async function renderPdfPageToCanvas(
   logPrefix: string
 ): Promise<RenderOutput> {
   console.log(`${logPrefix} renderPdfPageToCanvas: Starting for page ${pageIndex + 1}, targetH: ${targetHeight}, rotation: ${rotation}`);
+  console.log(`${logPrefix} CURRENT CHECK: pdfjsLib.version: ${pdfjsLib.version}, PDF_JS_VERSION_CONSTANT: ${PDF_JS_VERSION}, GlobalWorkerOptions.workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+
 
   const base64Marker = ';base64,';
   const base64Index = pdfDataUri.indexOf(base64Marker);
@@ -69,19 +76,26 @@ async function renderPdfPageToCanvas(
 
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
     console.error(`${logPrefix} PDF.js workerSrc not configured! This is a critical error. Current workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
-    throw new Error(`${logPrefix} PDF.js workerSrc not configured.`);
+    // Attempt to re-set it if it's somehow missing, though the module-level init should handle this.
+    if (typeof window !== 'undefined') {
+        const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
+        console.warn(`${logPrefix} Re-attempting to set workerSrc as it was not found.`);
+        pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
+    }
+    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) { // Check again
+        throw new Error(`${logPrefix} PDF.js workerSrc still not configured after re-attempt.`);
+    }
   } else {
-     console.log(`${logPrefix} PDF.js workerSrc is configured to: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+     console.log(`${logPrefix} PDF.js workerSrc is confirmed configured to: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
   }
 
-  console.log(`${logPrefix} Calling pdfjsLib.getDocument() for page ${pageIndex + 1}`);
+  console.log(`${logPrefix} Calling pdfjsLib.getDocument() for page ${pageIndex + 1}. Imported API version: ${pdfjsLib.version}`);
   const loadingTask = pdfjsLib.getDocument({ data: pdfDataArray });
   let pdf: PDFDocumentProxy | null = null;
 
   try {
     pdf = await loadingTask.promise;
-    console.log(`${logPrefix} PDF loaded. Total pages: ${pdf.numPages}. Target page: ${pageIndex + 1}. PDF.js version (reported by doc): ${pdf.transport?.commonObjs?.get('doc_version') || 'N/A'}`);
-
+    console.log(`${logPrefix} PDF loaded. Total pages: ${pdf.numPages}. Target page: ${pageIndex + 1}.`);
 
     if (pageIndex < 0 || pageIndex >= pdf.numPages) {
       throw new Error(`${logPrefix} Page index ${pageIndex + 1} out of bounds (Total: ${pdf.numPages}).`);
@@ -117,13 +131,13 @@ async function renderPdfPageToCanvas(
     const newCanvasWidth = Math.max(1, Math.round(viewport.width));
     const newCanvasHeight = Math.max(1, Math.round(viewport.height));
     
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.clearRect(0, 0, canvas.width, canvas.height); // Clear before resizing
 
     canvas.height = newCanvasHeight;
     canvas.width = newCanvasWidth;
     console.log(`${logPrefix} Canvas attributes set: W=${canvas.width}, H=${canvas.height} for page ${pageIndex + 1}.`);
 
-    const RENDER_TIMEOUT = 15000;
+    const RENDER_TIMEOUT = 15000; // 15 seconds
     const renderContext: RenderParameters = { canvasContext: context, viewport: viewport };
     const renderTask = page.render(renderContext);
 
@@ -142,9 +156,7 @@ async function renderPdfPageToCanvas(
     if (pdf && typeof (pdf as any).destroy === 'function') {
       console.log(`${logPrefix} Destroying PDF document object.`);
       try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix} Error destroying PDF doc:`, destroyError); }
-    } else if (loadingTask && typeof (loadingTask as any).destroy === 'function') {
-      // This branch might not be reachable if `await loadingTask.promise` resolves or rejects.
-      // If `loadingTask.promise` itself fails before `pdf` is assigned, this could be relevant.
+    } else if (loadingTask && typeof (loadingTask as any).destroy === 'function' && !pdf) {
       console.log(`${logPrefix} Destroying loading task because PDF object was not created or promise rejected early.`);
       (loadingTask as any).destroy();
     }
@@ -159,8 +171,9 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   className,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
   const [renderError, setRenderError] = useState<string | null>(null);
+  // Stable prefix for logging related to this specific component instance
   const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
 
   useEffect(() => {
@@ -181,14 +194,15 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
     if (!canvasElement) {
       console.log(`${logPrefix} Canvas element not available yet. Current loading: ${isLoading}. Will wait for ref.`);
-      if (isActive && !isLoading) setIsLoading(true); // Ensure loading is true if canvas isn't ready
+      // Ensure loading is true if canvas isn't ready, might already be true from initial state.
+      if (isActive && !isLoading) setIsLoading(true); 
       return;
     }
     
     // At this point, pdfDataUri and canvasElement are available. Start loading process.
     if (isActive) {
-      setIsLoading(true);
-      setRenderError(null);
+      setIsLoading(true); // Ensure loading is true before async operation
+      setRenderError(null); // Clear previous errors
     }
 
     renderPdfPageToCanvas(
@@ -201,8 +215,8 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       )
       .then((outputDimensions) => {
         if (isActive) {
-          console.log(`${logPrefix} Render successful. Output dimensions:`, outputDimensions);
-          setRenderError(null);
+          console.log(`${logPrefix} Render successful for page ${pageIndex + 1}. Output dimensions:`, outputDimensions);
+          setRenderError(null); // Clear error on success
         }
       })
       .catch(err => {
@@ -222,57 +236,71 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       isActive = false;
       console.log(`${logPrefix} useEffect cleanup for pageIdx ${pageIndex}.`);
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]);
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // Removed canvasRef from deps as it's stable, added stableInstanceLogPrefix
 
-  const estimatedWidth = targetHeight * (210 / 297); // A4 aspect ratio
+  const estimatedWidth = targetHeight * (210 / 297); // A4 aspect ratio (approx)
 
   return (
     <div 
       className={cn("relative bg-transparent overflow-hidden flex items-center justify-center", className)}
       style={{ 
         height: `${targetHeight}px`, 
-        width: `${Math.max(50, estimatedWidth)}px` 
+        // Ensure a minimum width, but allow canvas to dictate its own aspect ratio once rendered.
+        width: `auto`, // Let canvas determine width based on its content and targetHeight
+        minWidth: `${Math.max(50, estimatedWidth / 2)}px`, // Minimum sensible width
+        maxWidth: `${Math.max(100, estimatedWidth * 1.5)}px` // Max sensible width
       }}
     >
-      {/* Canvas is always rendered to ensure ref is attached, visibility controlled by opacity/overlays */}
+      {/* Canvas is always rendered to ensure ref is attached. Visibility controlled by opacity/overlays. */}
       <canvas
         ref={canvasRef}
         className={cn("border border-muted shadow-sm rounded-md bg-white transition-opacity duration-300", {
-          'opacity-0': isLoading || renderError,
+          'opacity-0': isLoading || renderError, // Hide canvas if loading or error
           'opacity-100': !isLoading && !renderError,
         })}
         style={{
-          display: 'block',
-          maxWidth: '100%',
+          display: 'block', // Important for layout
+          // The width/height attributes of canvas are set by renderPdfPageToCanvas
+          // These styles help it fit within the container before it has explicit dimensions
+          maxWidth: '100%', 
           maxHeight: '100%',
-          // Actual width/height attributes are set by renderPdfPageToCanvas,
-          // these styles ensure it fits within container.
+          objectFit: 'contain', // Ensure aspect ratio is maintained if canvas itself has dimensions
         }}
         role="img"
         aria-label={`Preview of PDF page ${pageIndex + 1}`}
       />
+      
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <Skeleton
                 className="rounded-md bg-muted/50"
-                style={{ height: 'calc(100% - 2px)', width: 'calc(100% - 2px)' }} // Slightly smaller for border
+                style={{ 
+                  height: `calc(100% - 2px)`, // Respect border
+                  width: `calc(100% - 2px)`   // Respect border
+                }}
                 aria-label={`Loading preview for page ${pageIndex + 1}`}
             />
         </div>
       )}
+
       {renderError && !isLoading && (
         <div
-          className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 border border-destructive/50 text-destructive-foreground rounded-md p-1 text-xs text-center"
+          className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 border border-destructive/50 text-destructive-foreground rounded-md p-1 text-xs text-center pointer-events-none"
           title={renderError}
         >
           <FileWarning className="h-4 w-4 mb-0.5 flex-shrink-0" />
           <p className="leading-tight text-[10px]">Page {pageIndex + 1}: Error</p>
+          {/* <p className="leading-tight text-[9px] opacity-70 truncate overflow-hidden max-w-full px-1">{renderError}</p> */}
         </div>
       )}
-       {!pdfDataUri && !isLoading && !renderError && ( // Placeholder if no PDF data is even available
+
+       {!pdfDataUri && !isLoading && !renderError && ( // Fallback if no PDF URI was ever provided
          <Skeleton
             className={cn("rounded-md bg-muted/30 border border-dashed", className)}
-            style={{ height: 'calc(100% - 2px)', width: 'calc(100% - 2px)' }}
+            style={{ 
+                height: `calc(100% - 2px)`,
+                width: `calc(100% - 2px)`
+            }}
             aria-label={`No PDF loaded for page ${pageIndex + 1} preview`}
         />
        )}
@@ -281,5 +309,3 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
-
-    
