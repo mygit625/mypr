@@ -17,41 +17,47 @@ console.log('[PdfPagePreview] Imported pdfjsLibOriginal object:', pdfjsLibOrigin
 console.log('[PdfPagePreview] Original imported pdfjsLib.version (from pdfjsLibOriginal.version):', originalImportedVersion);
 console.log('[PdfPagePreview] Initial pdfjsLib.version (from mutable copy):', pdfjsLib.version);
 
+
 const PDF_JS_VERSION = "4.4.168"; // This MUST match your installed pdfjs-dist version from package.json
 let hackAttempted = false;
 let hackSuccessfulForProperty = false;
 
-// --- ATTEMPT HACK FOR VERSION MISMATCH ---
-if (typeof window !== 'undefined') {
-  hackAttempted = true;
+// --- ATTEMPT HACK FOR VERSION MISMATCH (runs once at module load) ---
+if (typeof window !== 'undefined' && !hackAttempted) {
+  hackAttempted = true; // Mark that we are attempting/have attempted the hack.
   if (pdfjsLib.version !== PDF_JS_VERSION) {
-    console.warn(`[PdfPagePreview] HACK: Detected version mismatch. Attempting to override pdfjsLib.version. Original: ${pdfjsLib.version}, Target: ${PDF_JS_VERSION}`);
+    console.warn(`[PdfPagePreview] HACK ATTEMPT: Detected version mismatch. Original API version: ${pdfjsLib.version}, Target Worker/Package version: ${PDF_JS_VERSION}. Attempting to override API version property.`);
     try {
       Object.defineProperty(pdfjsLib, 'version', {
         value: PDF_JS_VERSION,
         writable: true,
         configurable: true,
       });
-      console.log(`[PdfPagePreview] HACK: After attempting override, pdfjsLib.version is now: ${pdfjsLib.version}`);
+      
       if (pdfjsLib.version === PDF_JS_VERSION) {
         hackSuccessfulForProperty = true;
-        console.log(`[PdfPagePreview] HACK: Override SUCCEEDED for the 'version' property itself.`);
+        console.log(`[PdfPagePreview] HACK SUCCEEDED: pdfjsLib.version property is now reported as: ${pdfjsLib.version}.`);
       } else {
-        console.error(`[PdfPagePreview] HACK: Override FAILED. Version property still ${pdfjsLib.version}. It might not be configurable or writable in a way that affects internal checks.`);
+        hackSuccessfulForProperty = false;
+        console.error(`[PdfPagePreview] HACK FAILED: pdfjsLib.version property is still ${pdfjsLib.version} after override attempt. Internal checks by PDF.js might still use the original version or the property is not fully overwritable for its needs.`);
       }
     } catch (e) {
-      console.error(`[PdfPagePreview] HACK: Error during pdfjsLib.version override attempt:`, e);
+      hackSuccessfulForProperty = false;
+      console.error(`[PdfPagePreview] HACK ERROR: Error during pdfjsLib.version override attempt:`, e);
     }
   } else {
-    console.log(`[PdfPagePreview] Versions match, no hack needed initially. pdfjsLib.version: ${pdfjsLib.version}`);
+    console.log(`[PdfPagePreview] PDF.js versions initially match (API: ${pdfjsLib.version}, Target: ${PDF_JS_VERSION}) or hack already processed. No override attempt needed for property now.`);
   }
-  // --- END HACK ---
+}
+// --- END HACK ---
 
-  // Setup workerSrc
+
+// Setup workerSrc
+if (typeof window !== 'undefined') {
   try {
     const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
     if (pdfjsLib.GlobalWorkerOptions.workerSrc !== cdnPath) {
-        console.log(`[PdfPagePreview] Attempting to set pdfjsLib.GlobalWorkerOptions.workerSrc to: ${cdnPath} (using PDF_JS_VERSION: ${PDF_JS_VERSION})`);
+        console.log(`[PdfPagePreview] Setting pdfjsLib.GlobalWorkerOptions.workerSrc to: ${cdnPath} (using PDF_JS_VERSION: ${PDF_JS_VERSION})`);
         pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
     } else {
         console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already correctly set to: ${cdnPath}`);
@@ -61,7 +67,7 @@ if (typeof window !== 'undefined') {
     console.error("[PdfPagePreview] Error during workerSrc setup:", e);
   }
 } else {
-    console.log('[PdfPagePreview] Skipping workerSrc setup and hack (not in browser environment).');
+    console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment).');
 }
 
 
@@ -109,7 +115,6 @@ async function renderPdfPageToCanvas(
 
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc && typeof window !== 'undefined') {
     console.error(`${logPrefix} PDF.js workerSrc not configured! This is a critical error. Current workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
-    // Re-attempt just in case, though it should be set by module load.
      const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
      console.warn(`${logPrefix} Re-attempting to set workerSrc as it was not found during render.`);
      pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
@@ -191,27 +196,18 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [renderError, setRenderError] = useState<string | null>(null);
-  const [currentImportedVersion, setCurrentImportedVersion] = useState<string>(originalImportedVersion);
-  
+  // Use a stable, unique ID for logging this component instance
   const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
-
-  useEffect(() => {
-    // This effect primarily updates the displayed imported version if it changes (e.g. due to hack)
-    // However, the hack itself is outside React's lifecycle, at module load.
-     if (pdfjsLib.version !== currentImportedVersion) {
-        setCurrentImportedVersion(pdfjsLib.version);
-     }
-  }, [currentImportedVersion]);
-
 
   useEffect(() => {
     let isActive = true;
     const canvasElement = canvasRef.current;
     const logPrefix = `${stableInstanceLogPrefix}-eff`;
 
-    async function initRender() {
+    const initRender = async () => {
       if (!pdfDataUri) {
         if (isActive) {
+          console.log(`${logPrefix} No PDF data URI provided for page ${pageIndex + 1}.`);
           setRenderError("No PDF data provided.");
           setIsLoading(false);
         }
@@ -219,14 +215,16 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
 
       if (!canvasElement) {
-        console.log(`${logPrefix} Canvas ref not current yet for page ${pageIndex + 1}. Waiting.`);
-        if (isActive && !isLoading) setIsLoading(true); // Ensure loading is true if we are waiting for canvas
-        return; 
+        console.log(`${logPrefix} Canvas ref not current for page ${pageIndex + 1}. Will show loading. Effect might re-run if canvas becomes available.`);
+        if (isActive && !isLoading) setIsLoading(true);
+        return;
       }
       
       console.log(`${logPrefix} Attempting render for page ${pageIndex + 1}. URI starts: ${pdfDataUri.substring(0,30)}..., Canvas available: ${!!canvasElement}`);
-      if (isActive && !isLoading) setIsLoading(true); 
-      if (isActive && renderError) setRenderError(null);
+      if (isActive) {
+         setIsLoading(true); 
+         setRenderError(null);
+      }
 
       try {
         const outputDimensions = await renderPdfPageToCanvas(
@@ -250,38 +248,40 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           setIsLoading(false);
         }
       }
-    }
-
+    };
+    
     // Delay initRender slightly to give canvas ref a chance to attach if it's a timing issue.
     const timerId = setTimeout(() => {
         if (isActive) initRender();
-    }, 50);
-
+    }, 100); // Increased delay slightly
 
     return () => {
       isActive = false;
       clearTimeout(timerId);
       console.log(`${logPrefix} Cleanup for page ${pageIndex + 1}.`);
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); 
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix, isLoading]); // Added isLoading to re-check if canvas becomes available
 
   const estimatedWidth = targetHeight * (210 / 297); 
 
   let specificErrorDisplay = null;
   if (renderError) {
     if (renderError.includes("The API version") && renderError.includes("does not match the Worker version")) {
-      const hackStatus = hackAttempted 
-        ? (hackSuccessfulForProperty ? `Override to v${PDF_JS_VERSION} for property succeeded.` : `Override to v${PDF_JS_VERSION} for property FAILED or was ineffective for internal checks.`)
-        : "Version override hack was not attempted (e.g., server-side or versions matched initially).";
-
+      // This specific error is due to version mismatch.
+      const currentApiVersionAfterHack = pdfjsLib.version; // Get the version after any hack attempt
       specificErrorDisplay = (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/20 border border-destructive text-destructive-foreground rounded-md p-2 text-xs text-center pointer-events-none">
           <FileWarning className="h-5 w-5 mb-1 flex-shrink-0" />
           <p className="font-semibold">PDF Library Version Mismatch!</p>
-          <p className="mt-1 text-[10px]">Imported API originally: v{originalImportedVersion}</p>
-          <p className="text-[10px]">Worker (expected): v{PDF_JS_VERSION}</p>
-          <p className="mt-1 text-[9px] opacity-90">Hack status: {hackStatus}</p>
-          <p className="mt-1 text-[9px] opacity-80">This indicates an environment issue where an incorrect core PDF library is loaded, and runtime fixes are insufficient.</p>
+          <p className="mt-1 text-[10px]">Imported API (original): v{originalImportedVersion}</p>
+          <p className="text-[10px]">Current API (after hack): v{currentApiVersionAfterHack}</p>
+          <p className="text-[10px]">Worker (expected/package): v{PDF_JS_VERSION}</p>
+          <p className="mt-1 text-[9px] opacity-90">
+            Runtime Fix Attempt: {hackAttempted ? (hackSuccessfulForProperty ? `Succeeded (API version property set to ${PDF_JS_VERSION})` : `Failed or Ineffective (API property still ${currentApiVersionAfterHack} or check uses original)`) : "Not Attempted (or versions matched initially)"}
+          </p>
+          <p className="mt-1 text-[9px] opacity-80">
+            This indicates an environment issue: an incorrect core PDF library (v{originalImportedVersion}) is being loaded. Runtime fixes are insufficient.
+          </p>
         </div>
       );
     } else {
@@ -350,5 +350,3 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
-
-    
