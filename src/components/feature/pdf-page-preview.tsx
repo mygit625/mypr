@@ -54,6 +54,7 @@ async function renderPdfPageToCanvas(
   logPrefix: string
 ): Promise<RenderOutput> {
   console.log(`${logPrefix} renderPdfPageToCanvas: Starting for page ${pageIndex + 1}, targetH: ${targetHeight}, rotation: ${rotation}`);
+  // ADDED DIAGNOSTIC LOGS:
   console.log(`${logPrefix} CURRENT CHECK: pdfjsLib.version: ${pdfjsLib.version}, PDF_JS_VERSION_CONSTANT: ${PDF_JS_VERSION}, GlobalWorkerOptions.workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
 
 
@@ -236,7 +237,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       isActive = false;
       console.log(`${logPrefix} useEffect cleanup for pageIdx ${pageIndex}.`);
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // Removed canvasRef from deps as it's stable, added stableInstanceLogPrefix
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); 
 
   const estimatedWidth = targetHeight * (210 / 297); // A4 aspect ratio (approx)
 
@@ -245,26 +246,22 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       className={cn("relative bg-transparent overflow-hidden flex items-center justify-center", className)}
       style={{ 
         height: `${targetHeight}px`, 
-        // Ensure a minimum width, but allow canvas to dictate its own aspect ratio once rendered.
-        width: `auto`, // Let canvas determine width based on its content and targetHeight
-        minWidth: `${Math.max(50, estimatedWidth / 2)}px`, // Minimum sensible width
-        maxWidth: `${Math.max(100, estimatedWidth * 1.5)}px` // Max sensible width
+        width: `auto`, 
+        minWidth: `${Math.max(50, estimatedWidth / 2)}px`, 
+        maxWidth: `${Math.max(100, estimatedWidth * 1.5)}px` 
       }}
     >
-      {/* Canvas is always rendered to ensure ref is attached. Visibility controlled by opacity/overlays. */}
       <canvas
         ref={canvasRef}
         className={cn("border border-muted shadow-sm rounded-md bg-white transition-opacity duration-300", {
-          'opacity-0': isLoading || renderError, // Hide canvas if loading or error
+          'opacity-0': isLoading || renderError, 
           'opacity-100': !isLoading && !renderError,
         })}
         style={{
-          display: 'block', // Important for layout
-          // The width/height attributes of canvas are set by renderPdfPageToCanvas
-          // These styles help it fit within the container before it has explicit dimensions
+          display: 'block', 
           maxWidth: '100%', 
           maxHeight: '100%',
-          objectFit: 'contain', // Ensure aspect ratio is maintained if canvas itself has dimensions
+          objectFit: 'contain', 
         }}
         role="img"
         aria-label={`Preview of PDF page ${pageIndex + 1}`}
@@ -275,8 +272,8 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
             <Skeleton
                 className="rounded-md bg-muted/50"
                 style={{ 
-                  height: `calc(100% - 2px)`, // Respect border
-                  width: `calc(100% - 2px)`   // Respect border
+                  height: `calc(100% - 2px)`, 
+                  width: `calc(100% - 2px)`   
                 }}
                 aria-label={`Loading preview for page ${pageIndex + 1}`}
             />
@@ -290,11 +287,10 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         >
           <FileWarning className="h-4 w-4 mb-0.5 flex-shrink-0" />
           <p className="leading-tight text-[10px]">Page {pageIndex + 1}: Error</p>
-          {/* <p className="leading-tight text-[9px] opacity-70 truncate overflow-hidden max-w-full px-1">{renderError}</p> */}
         </div>
       )}
 
-       {!pdfDataUri && !isLoading && !renderError && ( // Fallback if no PDF URI was ever provided
+       {!pdfDataUri && !isLoading && !renderError && ( 
          <Skeleton
             className={cn("rounded-md bg-muted/30 border border-dashed", className)}
             style={{ 
