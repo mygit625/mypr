@@ -1,10 +1,12 @@
+
 "use client";
 
 import Link from 'next/link';
 import { Logo } from '@/components/icons/logo';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LayoutGrid } from 'lucide-react'; // Added LayoutGrid for "All PDF Tools"
+import { Menu, LayoutGrid } from 'lucide-react'; 
+import { cn } from '@/lib/utils'; // Added missing import
 
 const navItems = [
   { href: '/', label: 'All PDF Tools', Icon: LayoutGrid },
@@ -80,6 +82,4 @@ export default function Navbar() {
   );
 }
 
-function cn(...inputs: Array<string | undefined | null | false>): string {
-  return inputs.filter(Boolean).join(' ');
-}
+    

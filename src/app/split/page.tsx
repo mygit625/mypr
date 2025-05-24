@@ -13,8 +13,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { getInitialPageDataAction, type PageData } from '../organize/actions'; // Reusing from organize
 import {
-  SplitSquareHorizontal, Loader2, Info, CheckCircle,
-  GalleryThumbnails, Files, Scaling, PlusCircle, XCircle, ArrowRightCircle
+  SplitSquareHorizontal, Loader2, Info,
+  GalleryThumbnails, Files, Scaling, PlusCircle, XCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
@@ -22,7 +22,7 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { splitPdfAction, type CustomRange } from './actions';
 import { cn } from '@/lib/utils';
 
-const PREVIEW_TARGET_HEIGHT = 150;
+const PREVIEW_TARGET_HEIGHT_SPLIT = 200; // Increased height for better visibility
 
 type SplitMode = 'range' | 'pages' | 'size';
 type RangeMode = 'custom' | 'fixed';
@@ -43,7 +43,6 @@ export default function SplitPage() {
   const [customRanges, setCustomRanges] = useState<CustomRange[]>([{ from: 1, to: 1 }]);
 
   useEffect(() => {
-    // When PDF is loaded, update the default range to cover all pages or first page
     if (totalPages > 0 && customRanges.length === 1 && customRanges[0].from === 1 && customRanges[0].to === 1) {
       setCustomRanges([{ from: 1, to: totalPages > 0 ? totalPages : 1 }]);
     }
@@ -62,7 +61,7 @@ export default function SplitPage() {
       setIsLoadingPdf(true);
       try {
         const dataUri = await readFileAsDataURL(selectedFile);
-        setPdfDataUri(dataUri);
+        setPdfDataUri(dataUri); // Set URI first
         const result = await getInitialPageDataAction({ pdfDataUri: dataUri });
         if (result.error) {
           setError(result.error);
@@ -72,7 +71,6 @@ export default function SplitPage() {
         } else if (result.pages) {
           setPages(result.pages);
           setTotalPages(result.pages.length);
-           // Update default range once total pages are known
           if (result.pages.length > 0) {
             setCustomRanges([{ from: 1, to: result.pages.length }]);
           } else {
@@ -109,8 +107,6 @@ export default function SplitPage() {
     const newRanges = [...customRanges];
     if (!isNaN(numValue) && numValue >=1 && numValue <= totalPages) {
         newRanges[index] = { ...newRanges[index], [field]: numValue };
-
-        // Basic validation: ensure 'to' is not less than 'from'
         if (field === 'from' && numValue > newRanges[index].to) {
             newRanges[index].to = numValue;
         }
@@ -118,8 +114,8 @@ export default function SplitPage() {
             newRanges[index].from = numValue;
         }
         setCustomRanges(newRanges);
-    } else if (value === '') { // Allow clearing the input
-        newRanges[index] = { ...newRanges[index], [field]: 1 }; // Reset to 1 or handle as empty
+    } else if (value === '') { 
+        newRanges[index] = { ...newRanges[index], [field]: 1 }; 
         setCustomRanges(newRanges);
     }
   };
@@ -130,7 +126,12 @@ export default function SplitPage() {
       return;
     }
     if (splitMode === 'range' && rangeMode === 'custom') {
-      if (customRanges.some(r => r.from > r.to || r.from < 1 || r.to > totalPages)) {
+      const validRanges = customRanges.filter(r => r.from >= 1 && r.to >= r.from && r.to <= totalPages);
+      if (validRanges.length === 0 || validRanges.length !== customRanges.length) {
+        toast({ title: "Invalid Range", description: "One or more ranges are invalid or out of bounds. Please check page numbers.", variant: "destructive"});
+        return;
+      }
+       if (customRanges.some(r => r.from > r.to || r.from < 1 || r.to > totalPages)) {
         toast({ title: "Invalid Range", description: "One or more ranges are invalid. Please check page numbers.", variant: "destructive"});
         return;
       }
@@ -142,9 +143,16 @@ export default function SplitPage() {
     try {
       let result;
       if (splitMode === 'range' && rangeMode === 'custom') {
-        result = await splitPdfAction({ pdfDataUri, splitType: 'ranges', ranges: customRanges });
+        // Filter out potentially empty or invalid ranges again before sending to action
+        const validRangesForAction = customRanges.filter(r => r.from >=1 && r.to >= r.from && r.to <= totalPages);
+        if (validRangesForAction.length === 0) {
+             toast({ title: "No Valid Ranges", description: "Please define at least one valid range.", variant: "destructive"});
+             setIsSplitting(false);
+             return;
+        }
+        result = await splitPdfAction({ pdfDataUri, splitType: 'ranges', ranges: validRangesForAction });
       } else {
-        // Fallback to splitting all pages if other modes not implemented
+        // Default to splitting all pages if 'range' 'custom' is not the mode (though UI limits this now)
         result = await splitPdfAction({ pdfDataUri, splitType: 'allPages' });
       }
 
@@ -154,8 +162,6 @@ export default function SplitPage() {
       } else if (result.zipDataUri) {
         downloadDataUri(result.zipDataUri, `${file.name.replace(/\.pdf$/i, '')}_split.zip`);
         toast({ title: "Split Successful!", description: "Your PDF has been split and download has started." });
-        // Optionally reset file selection:
-        // setFile(null); setPdfDataUri(null); setPages([]); setTotalPages(0); setCustomRanges([{ from: 1, to: 1 }]);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during split.";
@@ -168,7 +174,7 @@ export default function SplitPage() {
 
   const currentSplitActionLabel = () => {
     if (splitMode === 'range' && rangeMode === 'custom') return "Split by Custom Ranges";
-    return "Split PDF";
+    return "Split PDF"; // Default or fallback label
   }
 
   return (
@@ -177,12 +183,11 @@ export default function SplitPage() {
         <SplitSquareHorizontal className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Split PDF File</h1>
         <p className="text-muted-foreground mt-2">
-          Divide your PDF into multiple documents by specifying page ranges.
+          Divide your PDF into multiple documents by specifying page ranges or extracting all pages.
         </p>
       </header>
 
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left Panel: File Upload and Previews */}
         <div className="flex-grow lg:w-2/3 space-y-6">
           <Card>
             <CardHeader>
@@ -207,20 +212,18 @@ export default function SplitPage() {
                 <CardTitle>Page Previews ({totalPages} Pages)</CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[600px] border rounded-md p-2 bg-muted/30">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {pages.map((page, index) => (
-                      <div key={`preview-${page.originalIndex}`} className="flex flex-col items-center">
-                         <div className="w-full aspect-[210/297] bg-white border rounded-sm overflow-hidden flex items-center justify-center">
-                            <PdfPagePreview
-                                pdfDataUri={pdfDataUri}
-                                pageIndex={page.originalIndex}
-                                rotation={0} // No rotation in split preview generally
-                                targetHeight={PREVIEW_TARGET_HEIGHT}
-                                className="max-w-full max-h-full object-contain"
-                            />
-                        </div>
-                        <span className="text-xs mt-1 text-muted-foreground">Page {page.originalIndex + 1}</span>
+                <ScrollArea className="h-[600px] border rounded-md p-2 bg-muted/20">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 p-3">
+                    {pages.map((page) => (
+                      <div key={`preview-${page.originalIndex}-${page.id}`} className="flex flex-col items-center p-2 border rounded-md bg-card shadow-sm">
+                        <PdfPagePreview
+                            pdfDataUri={pdfDataUri}
+                            pageIndex={page.originalIndex}
+                            rotation={0} 
+                            targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT}
+                            className="my-1"
+                        />
+                        <span className="text-xs mt-2 text-muted-foreground">Page {page.originalIndex + 1}</span>
                       </div>
                     ))}
                   </div>
@@ -228,45 +231,53 @@ export default function SplitPage() {
               </CardContent>
             </Card>
           )}
+           {pdfDataUri && pages.length === 0 && !isLoadingPdf && !error &&(
+             <Alert variant="default">
+                <Info className="h-4 w-4"/>
+                <AlertTitle>No Pages Found</AlertTitle>
+                <AlertDescription>The uploaded PDF appears to have no pages or could not be processed for page previews.</AlertDescription>
+             </Alert>
+           )}
         </div>
 
-        {/* Right Panel: Split Options */}
         <div className="lg:w-1/3 space-y-6 lg:sticky lg:top-20 self-start">
           <Card className="shadow-lg">
             <CardHeader className="text-center pb-4">
               <CardTitle className="text-2xl font-semibold">Split Options</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Tabs value={splitMode} onValueChange={(val) => setSplitMode(val as SplitMode)} className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="range" className="text-xs sm:text-sm"><GalleryThumbnails className="mr-1 h-4 w-4" />Range</TabsTrigger>
-                  <TabsTrigger value="pages" disabled><Files className="mr-1 h-4 w-4" />Pages</TabsTrigger>
-                  <TabsTrigger value="size" disabled><Scaling className="mr-1 h-4 w-4" />Size</TabsTrigger>
+              <Tabs defaultValue="range" value={splitMode} onValueChange={(val) => setSplitMode(val as SplitMode)} className="w-full">
+                <TabsList className="grid w-full grid-cols-1"> {/* Simplified to one active option for now */}
+                  <TabsTrigger value="range" className="text-xs sm:text-sm"><GalleryThumbnails className="mr-1 h-4 w-4" />By Range</TabsTrigger>
+                  {/* <TabsTrigger value="pages" disabled><Files className="mr-1 h-4 w-4" />Extract Pages</TabsTrigger>
+                  <TabsTrigger value="size" disabled><Scaling className="mr-1 h-4 w-4" />By Size</TabsTrigger> */}
                 </TabsList>
                 <TabsContent value="range" className="pt-4">
-                  <Label className="text-sm font-medium">Range mode:</Label>
-                  <div className="flex gap-2 mt-1 mb-4">
-                    <Button
-                      variant={rangeMode === 'custom' ? 'default' : 'outline'}
-                      onClick={() => setRangeMode('custom')}
-                      className="flex-1"
-                    >
-                      Custom ranges
-                    </Button>
-                    <Button
-                      variant={rangeMode === 'fixed' ? 'default' : 'outline'}
-                      onClick={() => setRangeMode('fixed')}
-                      disabled
-                      className="flex-1"
-                    >
-                      Fixed ranges
-                    </Button>
-                  </div>
+                   <div className="mb-4">
+                     <Label className="text-sm font-medium block mb-2">Mode:</Label>
+                      <Button
+                        variant={rangeMode === 'custom' ? 'default' : 'outline'}
+                        onClick={() => setRangeMode('custom')}
+                        className="w-full"
+                        disabled={!file || totalPages === 0}
+                      >
+                        Define Custom Ranges
+                      </Button>
+                      {/* Button for "Split All Pages" could be added here if needed outside "custom ranges" */}
+                   </div>
+
 
                   {rangeMode === 'custom' && (
                     <div className="space-y-3">
+                      <Alert variant="default" className="text-sm">
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          Define one or more page ranges. Each range will be saved as a separate PDF.
+                          Example: From 1 to 5, From 8 to 10.
+                        </AlertDescription>
+                      </Alert>
                       {customRanges.map((range, idx) => (
-                        <Card key={idx} className="p-3 bg-muted/30">
+                        <Card key={idx} className="p-3 bg-muted/25">
                           <div className="flex justify-between items-center mb-2">
                             <Label htmlFor={`from-${idx}`} className="text-sm font-medium">Range {idx + 1}</Label>
                             {customRanges.length > 1 && (
@@ -287,10 +298,11 @@ export default function SplitPage() {
                                 max={totalPages}
                                 className="h-9"
                                 disabled={!file || totalPages === 0}
+                                placeholder="e.g. 1"
                               />
                             </div>
                             <div>
-                              <Label htmlFor={`to-${idx}`} className="text-xs">To</Label>
+                              <Label htmlFor={`to-${idx}`} className="text-xs">To page</Label>
                               <Input
                                 id={`to-${idx}`}
                                 type="number"
@@ -300,27 +312,58 @@ export default function SplitPage() {
                                 max={totalPages}
                                 className="h-9"
                                 disabled={!file || totalPages === 0}
+                                placeholder={`e.g. ${totalPages || 1}`}
                               />
                             </div>
                           </div>
                         </Card>
                       ))}
                       <Button variant="outline" onClick={handleAddRange} disabled={!file || totalPages === 0} className="w-full">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Range
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Another Range
                       </Button>
                     </div>
                   )}
+                  {/* Placeholder for 'fixed' range mode if implemented later */}
                 </TabsContent>
               </Tabs>
+               <Button
+                variant="secondary"
+                onClick={async () => { // Action for "Split All Pages"
+                    if (!file || !pdfDataUri) {
+                        toast({ title: "No file selected", variant: "destructive" });
+                        return;
+                    }
+                    setIsSplitting(true); setError(null);
+                    try {
+                        const result = await splitPdfAction({ pdfDataUri, splitType: 'allPages' });
+                        if (result.error) {
+                            setError(result.error);
+                            toast({ title: "Split Error", description: result.error, variant: "destructive" });
+                        } else if (result.zipDataUri) {
+                            downloadDataUri(result.zipDataUri, `${file.name.replace(/\.pdf$/i, '')}_all_pages.zip`);
+                            toast({ title: "Split Successful!", description: "All pages extracted and download started." });
+                        }
+                    } catch (e: any) {
+                        setError(e.message || "Error splitting all pages.");
+                        toast({ title: "Split Failed", description: e.message, variant: "destructive" });
+                    } finally {
+                        setIsSplitting(false);
+                    }
+                }}
+                disabled={!file || isSplitting || isLoadingPdf || totalPages === 0}
+                className="w-full mt-3"
+                >
+                <Files className="mr-2 h-4 w-4" /> Split All Pages Individually
+              </Button>
             </CardContent>
-            <CardFooter className="mt-4">
+            <CardFooter className="mt-4 border-t pt-4">
               <Button
                 onClick={handleSplit}
                 disabled={!file || isSplitting || isLoadingPdf || (splitMode === 'range' && rangeMode === 'custom' && customRanges.length === 0)}
                 className="w-full"
                 size="lg"
               >
-                {isSplitting ? (
+                {isSplitting && splitMode === 'range' ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <SplitSquareHorizontal className="mr-2 h-4 w-4" />
@@ -339,9 +382,8 @@ export default function SplitPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      
-      {/* Success message handled by toast */}
-
     </div>
   );
 }
+
+    
