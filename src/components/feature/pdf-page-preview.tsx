@@ -78,7 +78,7 @@ async function renderPdfPageToCanvas(
     const page: PDFPageProxy = await pdf.getPage(pageIndex + 1);
     console.log(`${logPrefix} Page ${pageIndex + 1} obtained. Intrinsic rotation: ${page.rotate}`);
     
-    const dynamicRotation = (rotation || 0); // Use dynamic rotation directly
+    const dynamicRotation = (rotation || 0); 
     const totalRotationForViewport = (page.rotate + dynamicRotation + 360) % 360;
     console.log(`${logPrefix} Total rotation for viewport: ${totalRotationForViewport} (Intrinsic: ${page.rotate}, Dynamic: ${dynamicRotation})`);
     
@@ -104,6 +104,10 @@ async function renderPdfPageToCanvas(
 
     const newCanvasWidth = Math.max(1, Math.round(viewport.width));
     const newCanvasHeight = Math.max(1, Math.round(viewport.height));
+    
+    // Clear canvas before drawing new content
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
     canvas.height = newCanvasHeight;
     canvas.width = newCanvasWidth;
     console.log(`${logPrefix} Canvas attributes set: W=${canvas.width}, H=${canvas.height} for page ${pageIndex + 1}.`);
@@ -142,149 +146,150 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   className,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [loading, setLoading] = useState(true); // Start in loading state
-  const [error, setError] = useState<string | null>(null);
-  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
-  const instanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 5)}`).current;
+  const [isLoading, setIsLoading] = useState(true);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  
+  // Stable log prefix for the lifetime of this component instance
+  const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
 
   useEffect(() => {
     let isActive = true;
-    const currentCanvas = canvasRef.current;
-    const renderAttemptLogPrefix = `${instanceLogPrefix}-try-${Math.random().toString(36).substring(2, 7)}`;
+    const canvasElement = canvasRef.current;
+    const logPrefix = `${stableInstanceLogPrefix}-eff`;
 
-    console.log(`${renderAttemptLogPrefix} useEffect triggered. PageIdx: ${pageIndex}, pdfDataUri: ${pdfDataUri ? 'present' : 'null'}, Canvas available: ${!!currentCanvas}, Rotation: ${rotation}, TargetHeight: ${targetHeight}`);
+    console.log(`${logPrefix} useEffect triggered. PageIdx: ${pageIndex}. CanvasEl: ${canvasElement ? 'yes' : 'no'}. PDF: ${pdfDataUri ? 'yes' : 'no'}. Current loading: ${isLoading}`);
 
     if (!pdfDataUri) {
-      console.log(`${renderAttemptLogPrefix} No pdfDataUri. Clearing state.`);
+      console.log(`${logPrefix} No pdfDataUri. Setting error state.`);
       if (isActive) {
-        setError("No PDF data provided.");
-        setLoading(false);
-        setDimensions(null);
+        setRenderError("No PDF data provided.");
+        setIsLoading(false);
       }
       return;
     }
 
-    if (!currentCanvas) {
-      console.log(`${renderAttemptLogPrefix} Canvas ref not current. Current loading state: ${loading}. Component will wait for ref.`);
-      // Ensure loading is true if canvas is not ready, parent might re-render.
-      // If not already loading, set it to true to show skeleton.
-      if (isActive && !loading) setLoading(true); 
+    if (!canvasElement) {
+      console.log(`${logPrefix} Canvas element not available yet. Current loading: ${isLoading}. Will wait for ref.`);
+      // If canvas is not ready, ensure we are in a loading state.
+      // The effect will re-run if its dependencies change.
+      // React guarantees refs are set before effects run, so this implies the canvas isn't in the DOM.
+      // This should be less frequent now that canvas is always rendered.
+      if (isActive && !isLoading) setIsLoading(true); 
       return;
     }
-    
-    // If we have pdfDataUri and currentCanvas, proceed to render.
-    // Reset error/dimensions from previous attempts for this instance if URI/params change.
-    if(isActive) {
-        setError(null);
-        setDimensions(null);
-        if (!loading) setLoading(true); // Ensure loading is true before async operation
+
+    console.log(`${logPrefix} PDF data and canvas element are ready. Proceeding with render.`);
+    if (isActive) {
+      // Only set loading to true if it's not already, to avoid potential loops if it's a dependency
+      if (!isLoading) setIsLoading(true);
+      setRenderError(null);
     }
 
-    const initRender = async () => {
-      console.log(`${renderAttemptLogPrefix} initRender: Starting actual render logic.`);
-      try {
-        const context = currentCanvas.getContext('2d');
-        if (context) {
-          context.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
-          console.log(`${renderAttemptLogPrefix} Canvas cleared before rendering.`);
-        }
-
-        const resultDimensions = await renderPdfPageToCanvas(
-          currentCanvas,
-          pdfDataUri,
-          pageIndex,
-          rotation,
-          targetHeight,
-          renderAttemptLogPrefix
-        );
+    renderPdfPageToCanvas(
+        canvasElement,
+        pdfDataUri,
+        pageIndex,
+        rotation,
+        targetHeight,
+        `${logPrefix}-render`
+      )
+      .then((outputDimensions) => {
         if (isActive) {
-          console.log(`${renderAttemptLogPrefix} Render successful. Dimensions:`, resultDimensions);
-          setDimensions(resultDimensions);
-          setError(null);
+          console.log(`${logPrefix} Render successful. Output dimensions:`, outputDimensions);
+          // Canvas width/height attributes are set by renderPdfPageToCanvas.
+          // Style adjustments might be needed if intrinsic canvas size affects layout.
+          setRenderError(null);
         }
-      } catch (err: any) {
-        console.error(`${renderAttemptLogPrefix} Error in initRender/renderPdfPageToCanvas:`, err.message, err.stack ? err.stack.substring(0,300) : '');
+      })
+      .catch(err => {
+        console.error(`${logPrefix} Error in renderPdfPageToCanvas for page ${pageIndex + 1}:`, err.message);
         if (isActive) {
-          setError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
-          setDimensions(null);
+          setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
         }
-      } finally {
+      })
+      .finally(() => {
         if (isActive) {
-          console.log(`${renderAttemptLogPrefix} initRender finished. Setting loading=false.`);
-          setLoading(false);
+          console.log(`${logPrefix} Render attempt finished. Setting isLoading=false for page ${pageIndex + 1}.`);
+          setIsLoading(false);
         }
-      }
-    };
-
-    initRender();
+      });
 
     return () => {
-      console.log(`${renderAttemptLogPrefix} useEffect cleanup for pageIdx ${pageIndex}. isActive=false.`);
       isActive = false;
+      console.log(`${logPrefix} useEffect cleanup for pageIdx ${pageIndex}.`);
+      // Optional: Clear canvas on cleanup if needed, though re-render should handle it.
+      // if (canvasElement && canvasElement.getContext('2d')) {
+      //   canvasElement.getContext('2d')!.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      // }
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, instanceLogPrefix, loading]); // Added loading to dep array cautiously.
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // Removed isLoading from deps
 
-  const currentDisplayHeight = targetHeight;
-  const estimatedWidth = dimensions ? dimensions.width : Math.max(50, targetHeight * (210 / 297)); // A4 aspect ratio
+  // Calculate an estimated width for skeleton and error states based on common PDF aspect ratio (A4)
+  const estimatedWidth = targetHeight * (210 / 297);
 
-  if (loading) {
+  if (!pdfDataUri && !isLoading) { // Show a clear placeholder if no PDF is loaded and not in initial load
     return (
-      <Skeleton
-        className={cn("rounded-md bg-muted/50 transition-all", className)}
-        style={{ height: `${currentDisplayHeight}px`, width: `${estimatedWidth}px` }}
-        aria-label={`Loading preview for page ${pageIndex + 1}`}
-      />
+         <Skeleton
+            className={cn("rounded-md bg-muted/30 border border-dashed", className)}
+            style={{ height: `${targetHeight}px`, width: `${Math.max(50, estimatedWidth)}px` }}
+            aria-label={`No PDF loaded for page ${pageIndex + 1} preview`}
+        />
     );
   }
 
-  if (error) {
-    return (
-      <div
-        className={cn(
-          "flex flex-col items-center justify-center bg-destructive/10 border border-destructive text-destructive-foreground rounded-md p-2 text-xs text-center overflow-hidden transition-all",
-          className
-        )}
-        style={{ height: `${currentDisplayHeight}px`, width: `${Math.max(80, estimatedWidth)}px` }}
-        title={error}
-      >
-        <FileWarning className="h-5 w-5 mb-1 flex-shrink-0" />
-        <p className="leading-tight">Page {pageIndex + 1}: Error</p>
-        <p className="leading-tight opacity-80 truncate hover:whitespace-normal hover:overflow-visible" style={{maxWidth: '100%'}}>{error}</p>
-      </div>
-    );
-  }
-  
-  if (!dimensions || dimensions.width <= 0 || dimensions.height <= 0) {
-    return (
-      <div
-        className={cn(
-            "flex flex-col items-center justify-center bg-muted/20 border border-border text-muted-foreground rounded-md p-2 text-xs text-center transition-all",
-            className
-        )}
-        style={{ height: `${currentDisplayHeight}px`, width: `${estimatedWidth}px` }}
-        aria-label={`Preview for page ${pageIndex + 1} is unavailable or has invalid dimensions`}
-      >
-        <FileWarning className="h-5 w-5 mb-1 flex-shrink-0" />
-        <p className="leading-tight">Page {pageIndex + 1}: Preview N/A</p>
-      </div>
-    );
-  }
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={cn("border border-muted shadow-sm rounded-md bg-white transition-all max-w-full max-h-full object-contain", className)}
-      style={{
-        display: 'block',
-        width: `${dimensions.width}px`,
-        height: `${dimensions.height}px`,
+    <div 
+      className={cn("relative bg-transparent overflow-hidden", className)} // Container ensures relative positioning for overlays
+      style={{ 
+        height: `${targetHeight}px`, 
+        width: `${targetHeight * (210/297)}px` // Approx A4 aspect ratio for container
       }}
-      role="img"
-      aria-label={`Preview of PDF page ${pageIndex + 1}`}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        className={cn("border border-muted shadow-sm rounded-md bg-white transition-opacity duration-300", {
+          'opacity-0': isLoading || renderError, // Hide canvas content when loading or error
+          'opacity-100': !isLoading && !renderError, // Show canvas content when ready
+        })}
+        style={{
+          display: 'block', // Prevents extra space below canvas
+          maxWidth: '100%',
+          maxHeight: '100%',
+          // The actual width/height attributes of canvas are set by renderPdfPageToCanvas
+          // The style here ensures it fits within its container.
+          // Aspect ratio is maintained by renderPdfPageToCanvas setting attributes.
+          // Centering the canvas if its aspect ratio doesn't match container
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+
+        }}
+        role="img"
+        aria-label={`Preview of PDF page ${pageIndex + 1}`}
+      />
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+            <Skeleton
+                className="rounded-md bg-muted/50"
+                style={{ height: '100%', width: '100%' }}
+                aria-label={`Loading preview for page ${pageIndex + 1}`}
+            />
+        </div>
+      )}
+      {renderError && !isLoading && (
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 border border-destructive/50 text-destructive-foreground rounded-md p-1 text-xs text-center"
+          title={renderError}
+        >
+          <FileWarning className="h-4 w-4 mb-0.5 flex-shrink-0" />
+          <p className="leading-tight text-[10px]">Page {pageIndex + 1}: Error</p>
+          {/* <p className="leading-tight opacity-70 text-[9px] truncate hover:whitespace-normal hover:overflow-visible" style={{maxWidth: '90%'}}>{renderError}</p> */}
+        </div>
+      )}
+    </div>
   );
 };
 
 export default PdfPagePreview;
-
-    
