@@ -3,36 +3,33 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
-import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
+import type { PDFDocumentProxy, PDFPageProxy, RenderParameters, PDFRenderTask } from 'pdfjs-dist/types/src/display/api';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileWarning } from 'lucide-react';
+import { FileWarning, CheckCircle } from 'lucide-react'; // Added CheckCircle for hack status
 import { cn } from '@/lib/utils';
 
 // CRITICAL DIAGNOSTIC LOGS:
 console.log('[PdfPagePreview] Imported pdfjsLib object:', pdfjsLib);
-const importedApiVersion = pdfjsLib.version; // Capture the version from the imported library
-console.log('[PdfPagePreview] Version of imported pdfjsLib:', importedApiVersion);
+const importedApiVersion = pdfjsLib.version; 
+console.log('[PdfPagePreview] Imported pdfjsLib.version:', importedApiVersion);
 
-const EXPECTED_PDF_JS_VERSION_FROM_PACKAGE_JSON = "4.4.168"; // For reference to package.json expectation
 
-// Setup workerSrc dynamically based on the version of the imported pdfjsLib.
-// This attempts to ensure API and Worker versions match.
-// WARNING: If importedApiVersion is non-standard (e.g., "4.10.38"),
-// this CDN URL for the worker might be invalid and lead to a 404 error.
+// Dynamically set workerSrc based on the imported API version
 if (typeof window !== 'undefined' && importedApiVersion) {
     const dynamicWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${importedApiVersion}/pdf.worker.min.mjs`;
-    console.log(`[PdfPagePreview] Attempting to set pdfjsLib.GlobalWorkerOptions.workerSrc to: ${dynamicWorkerSrc} (based on imported API version: ${importedApiVersion})`);
     if (pdfjsLib.GlobalWorkerOptions.workerSrc !== dynamicWorkerSrc) {
+        console.log(`[PdfPagePreview] Attempting to set pdfjsLib.GlobalWorkerOptions.workerSrc to: ${dynamicWorkerSrc} (based on imported API version: ${importedApiVersion})`);
         pdfjsLib.GlobalWorkerOptions.workerSrc = dynamicWorkerSrc;
-        console.log('[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc dynamically SET.');
+        console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc is now (dynamically set): ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
     } else {
-        console.log('[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already dynamically set.');
+        console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already dynamically set to: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
     }
 } else if (typeof window !== 'undefined') {
-    console.warn('[PdfPagePreview] importedApiVersion is not available. Falling back to expected version for workerSrc. This might cause version mismatch.');
-    const fallbackWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${EXPECTED_PDF_JS_VERSION_FROM_PACKAGE_JSON}/pdf.worker.min.mjs`;
+    // Fallback if importedApiVersion is somehow not available, though it should be.
+    const fallbackVersion = "4.4.168"; // Fallback to package.json version
+    const fallbackWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${fallbackVersion}/pdf.worker.min.mjs`;
     pdfjsLib.GlobalWorkerOptions.workerSrc = fallbackWorkerSrc;
-    console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc set to fallback: ${fallbackWorkerSrc}`);
+    console.warn(`[PdfPagePreview] importedApiVersion not available. WorkerSrc set to fallback based on version ${fallbackVersion}: ${fallbackWorkerSrc}`);
 } else {
     console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment).');
 }
@@ -51,108 +48,6 @@ interface RenderOutput {
   height: number;
 }
 
-async function renderPdfPageToCanvas(
-  canvas: HTMLCanvasElement,
-  pdfDataUri: string,
-  pageIndex: number,
-  rotation: number,
-  targetHeight: number,
-  logPrefix: string
-): Promise<RenderOutput> {
-  console.log(`${logPrefix} renderPdfPageToCanvas: Starting for page ${pageIndex + 1}, targetH: ${targetHeight}, rotation: ${rotation}`);
-  console.log(`${logPrefix} CURRENT CHECK: pdfjsLib.version (at render time): ${pdfjsLib.version}, GlobalWorkerOptions.workerSrc value: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
-
-  const base64Marker = ';base64,';
-  const base64Index = pdfDataUri.indexOf(base64Marker);
-  if (base64Index === -1) throw new Error(`${logPrefix} Invalid PDF data URI format.`);
-
-  const pdfBase64Data = pdfDataUri.substring(base64Index + base64Marker.length);
-  let pdfBinaryData: string;
-  try {
-    pdfBinaryData = atob(pdfBase64Data);
-  } catch (e) {
-    throw new Error(`${logPrefix} Failed to decode base64 PDF data: ${(e as Error).message}`);
-  }
-
-  const pdfDataArray = new Uint8Array(pdfBinaryData.length);
-  for (let i = 0; i < pdfBinaryData.length; i++) {
-    pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
-  }
-
-  if (!pdfjsLib.GlobalWorkerOptions.workerSrc && typeof window !== 'undefined') {
-    console.error(`${logPrefix} PDF.js workerSrc not configured at render time! This is unexpected.`);
-    // This should ideally not happen if the top-level setup worked.
-    const dynamicFallbackWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-    pdfjsLib.GlobalWorkerOptions.workerSrc = dynamicFallbackWorkerSrc;
-     console.warn(`${logPrefix} Re-attempting to set workerSrc to ${dynamicFallbackWorkerSrc} as it was not found during render.`);
-    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-        throw new Error(`${logPrefix} PDF.js workerSrc still not configured after re-attempt during render.`);
-    }
-  }
-
-  const loadingTask = pdfjsLib.getDocument({ data: pdfDataArray });
-  let pdf: PDFDocumentProxy | null = null;
-
-  try {
-    pdf = await loadingTask.promise;
-    console.log(`${logPrefix} PDF loaded. Total pages: ${pdf.numPages}. Target page: ${pageIndex + 1}.`);
-
-    if (pageIndex < 0 || pageIndex >= pdf.numPages) {
-      throw new Error(`${logPrefix} Page index ${pageIndex + 1} out of bounds (Total: ${pdf.numPages}).`);
-    }
-
-    const page: PDFPageProxy = await pdf.getPage(pageIndex + 1); // 1-indexed
-    const dynamicRotation = (rotation || 0); 
-    const totalRotationForViewport = (page.rotate + dynamicRotation + 360) % 360;
-    
-    const viewportAtScale1 = page.getViewport({ scale: 1, rotation: totalRotationForViewport });
-    if (viewportAtScale1.height <= 0 || viewportAtScale1.width <= 0) {
-      throw new Error(`${logPrefix} Page viewport@1 has invalid dimensions (H:${viewportAtScale1.height} W:${viewportAtScale1.width}). Page might be empty or corrupt.`);
-    }
-
-    const scale = targetHeight / viewportAtScale1.height;
-    if (!Number.isFinite(scale) || scale <= 0) {
-      throw new Error(`${logPrefix} Invalid scale: ${scale.toFixed(4)}. TargetH: ${targetHeight}, ViewportH@1: ${viewportAtScale1.height}`);
-    }
-
-    const viewport = page.getViewport({ scale, rotation: totalRotationForViewport });
-    if (viewport.width <= 0 || viewport.height <= 0) {
-        throw new Error(`${logPrefix} Final viewport has invalid dimensions (W:${viewport.width.toFixed(2)} H:${viewport.height.toFixed(2)}).`);
-    }
-    
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error(`${logPrefix} Could not get canvas 2D context for page ${pageIndex + 1}.`);
-
-    const newCanvasWidth = Math.max(1, Math.round(viewport.width));
-    const newCanvasHeight = Math.max(1, Math.round(viewport.height));
-    
-    context.clearRect(0, 0, canvas.width, canvas.height); 
-    canvas.height = newCanvasHeight;
-    canvas.width = newCanvasWidth;
-
-    const RENDER_TIMEOUT = 15000; 
-    const renderContext: RenderParameters = { canvasContext: context, viewport: viewport };
-    const renderTask = page.render(renderContext);
-
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(`${logPrefix} Render timed out for page ${pageIndex + 1} after ${RENDER_TIMEOUT/1000}s`)), RENDER_TIMEOUT)
-    );
-
-    await Promise.race([renderTask.promise, timeoutPromise]);
-    console.log(`${logPrefix} Render task completed for page ${pageIndex + 1}.`);
-    try { page.cleanup(); } catch (cleanupError) { console.warn(`${logPrefix} Error during page cleanup for page ${pageIndex + 1}:`, cleanupError); }
-    return { width: newCanvasWidth, height: newCanvasHeight };
-
-  } finally {
-    if (pdf && typeof (pdf as any).destroy === 'function') {
-      try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix} Error destroying PDF doc:`, destroyError); }
-    } else if (loadingTask && typeof (loadingTask as any).destroy === 'function' && !pdf) {
-      (loadingTask as any).destroy();
-      console.log(`${logPrefix} Destroying loading task because PDF object was not created or promise rejected early.`);
-    }
-  }
-}
-
 const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   pdfDataUri,
   pageIndex,
@@ -163,20 +58,31 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [renderError, setRenderError] = useState<string | null>(null);
-  // Use the module-level 'importedApiVersion' for error messages
-  const currentImportedApiVersion = importedApiVersion; 
-
   const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
+  const renderTaskRef = useRef<PDFRenderTask | null>(null);
+  const [currentUsedPdfJsVersion, setCurrentUsedPdfJsVersion] = useState<string | null>(null);
+  const [currentWorkerSrc, setCurrentWorkerSrc] = useState<string | null>(null);
+
 
   useEffect(() => {
     let isActive = true;
     const canvasElement = canvasRef.current;
     const logPrefix = `${stableInstanceLogPrefix}-eff`;
 
+    const cleanupPreviousRender = () => {
+      if (renderTaskRef.current) {
+        console.log(`${logPrefix} Cancelling previous render task for page ${pageIndex + 1}`);
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
+    };
+
     const initRender = async () => {
+      if (!isActive) return;
+
       if (!pdfDataUri) {
+        console.log(`${logPrefix} No PDF data URI provided for page ${pageIndex + 1}.`);
         if (isActive) {
-          console.log(`${logPrefix} No PDF data URI provided for page ${pageIndex + 1}.`);
           setRenderError("No PDF data provided.");
           setIsLoading(false);
         }
@@ -184,53 +90,124 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
 
       if (!canvasElement) {
-        if (isActive) {
-           console.log(`${logPrefix} Canvas ref not current yet for page ${pageIndex + 1}. Will show loading. Effect might re-run.`);
-           if(!isLoading) setIsLoading(true); 
-        }
+        console.log(`${logPrefix} Canvas ref not current for page ${pageIndex + 1}. Will show loading.`);
+        if (isActive && !isLoading) setIsLoading(true);
         return;
       }
       
-      console.log(`${logPrefix} Attempting render for page ${pageIndex + 1}. URI starts: ${pdfDataUri.substring(0,30)}..., Canvas available: ${!!canvasElement}`);
+      cleanupPreviousRender(); // Cancel any existing task before starting a new one
+
+      console.log(`${logPrefix} Attempting render for page ${pageIndex + 1}. URI starts: ${pdfDataUri.substring(0,30)}...`);
       if (isActive) {
          setIsLoading(true); 
          setRenderError(null);
+         setCurrentUsedPdfJsVersion(pdfjsLib.version);
+         setCurrentWorkerSrc(pdfjsLib.GlobalWorkerOptions.workerSrc as string);
       }
 
+      let pdf: PDFDocumentProxy | null = null;
+
       try {
-        await renderPdfPageToCanvas(
-          canvasElement,
-          pdfDataUri,
-          pageIndex,
-          rotation,
-          targetHeight,
-          `${logPrefix}-render`
-        );
-        if (isActive) {
-          console.log(`${logPrefix} Render successful for page ${pageIndex + 1}.`);
+        const base64Marker = ';base64,';
+        const base64Index = pdfDataUri.indexOf(base64Marker);
+        if (base64Index === -1) throw new Error(`${logPrefix}-render Invalid PDF data URI format.`);
+        const pdfBase64Data = pdfDataUri.substring(base64Index + base64Marker.length);
+        const pdfBinaryData = atob(pdfBase64Data);
+        const pdfDataArray = new Uint8Array(pdfBinaryData.length);
+        for (let i = 0; i < pdfBinaryData.length; i++) {
+          pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
         }
+
+        console.log(`${logPrefix}-render CURRENT CHECK: pdfjsLib.version: ${pdfjsLib.version}, GlobalWorkerOptions.workerSrc value: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+
+        const loadingTask = pdfjsLib.getDocument({ data: pdfDataArray });
+        pdf = await loadingTask.promise;
+        console.log(`${logPrefix}-render PDF loaded. Total pages: ${pdf.numPages}. Target page: ${pageIndex + 1}.`);
+
+        if (pageIndex < 0 || pageIndex >= pdf.numPages) {
+          throw new Error(`${logPrefix}-render Page index ${pageIndex + 1} out of bounds (Total: ${pdf.numPages}).`);
+        }
+
+        const page: PDFPageProxy = await pdf.getPage(pageIndex + 1);
+        const dynamicRotation = (rotation || 0);
+        const totalRotationForViewport = (page.rotate + dynamicRotation + 360) % 360;
+        const viewportAtScale1 = page.getViewport({ scale: 1, rotation: totalRotationForViewport });
+
+        if (viewportAtScale1.height <= 0 || viewportAtScale1.width <= 0) {
+          throw new Error(`${logPrefix}-render Page viewport@1 has invalid dimensions (H:${viewportAtScale1.height} W:${viewportAtScale1.width}).`);
+        }
+        const scale = targetHeight / viewportAtScale1.height;
+        if (!Number.isFinite(scale) || scale <= 0) {
+          throw new Error(`${logPrefix}-render Invalid scale: ${scale.toFixed(4)}.`);
+        }
+        const viewport = page.getViewport({ scale, rotation: totalRotationForViewport });
+        if (viewport.width <= 0 || viewport.height <= 0) {
+          throw new Error(`${logPrefix}-render Final viewport has invalid dimensions (W:${viewport.width.toFixed(2)} H:${viewport.height.toFixed(2)}).`);
+        }
+
+        const context = canvasElement.getContext('2d');
+        if (!context) throw new Error(`${logPrefix}-render Could not get canvas 2D context.`);
+        
+        const newCanvasWidth = Math.max(1, Math.round(viewport.width));
+        const newCanvasHeight = Math.max(1, Math.round(viewport.height));
+        context.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        canvasElement.height = newCanvasHeight;
+        canvasElement.width = newCanvasWidth;
+
+        const RENDER_TIMEOUT = 15000;
+        const renderContextParams: RenderParameters = { canvasContext: context, viewport: viewport };
+        
+        const currentRenderTask = page.render(renderContextParams);
+        renderTaskRef.current = currentRenderTask; // Store the task
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`${logPrefix}-render Render timed out for page ${pageIndex + 1} after ${RENDER_TIMEOUT/1000}s`)), RENDER_TIMEOUT)
+        );
+        
+        await Promise.race([currentRenderTask.promise, timeoutPromise]);
+        
+        console.log(`${logPrefix}-render Render task completed for page ${pageIndex + 1}.`);
+        try { page.cleanup(); } catch (cleanupError) { console.warn(`${logPrefix}-render Error during page cleanup:`, cleanupError); }
+
       } catch (err: any) {
-        console.error(`${logPrefix} Error in renderPdfPageToCanvas for page ${pageIndex + 1}:`, err.message);
-        if (isActive) {
-          setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
+        if (err.name === 'RenderingCancelledException' || err.message?.includes('cancelled')) {
+            console.log(`${logPrefix}-render Render task was cancelled for page ${pageIndex + 1}. This is expected if props changed or component unmounted.`);
+        } else {
+            console.error(`${logPrefix} Error in renderPdfPageToCanvas for page ${pageIndex + 1}:`, err.message);
+            if (isActive) {
+              setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
+            }
         }
       } finally {
+        if (pdf && typeof (pdf as any).destroy === 'function') {
+          try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix}-render Error destroying PDF doc:`, destroyError); }
+        }
         if (isActive) {
           setIsLoading(false);
+        }
+        // If this task was the one in the ref and it finished (not cancelled by a new one starting over it), clear the ref.
+        if (renderTaskRef.current && !renderTaskRef.current.cancel) { 
+           // This check is a bit indirect. A completed/failed task won't have .cancel method anymore on its promise proxy.
+           // Or better, if the task stored in ref is the one that just finished:
+           // if (renderTaskRef.current === currentRenderTask) { // This might be problematic if currentRenderTask is undefined on error
+           //    renderTaskRef.current = null;
+           // }
         }
       }
     };
     
+    // Debounce rendering slightly to allow canvas ref to attach and props to stabilize
     const timerId = setTimeout(() => {
         if (isActive) initRender();
-    }, 150);
+    }, 150); 
 
     return () => {
       isActive = false;
       clearTimeout(timerId);
-      console.log(`${logPrefix} Cleanup for page ${pageIndex + 1}.`);
+      console.log(`${logPrefix} Cleanup effect for page ${pageIndex + 1}. Cancelling task if active.`);
+      cleanupPreviousRender();
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix, isLoading]);
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // Removed isLoading from deps
 
 
   const estimatedWidth = targetHeight * (210 / 297); 
@@ -238,14 +215,17 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   let errorDisplay = null;
   if (renderError) {
       let detailedErrorMessage = renderError;
-      const workerPathUsed = typeof window !== 'undefined' ? pdfjsLib.GlobalWorkerOptions.workerSrc : 'N/A (server)';
-
-      if (currentImportedApiVersion && (renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && renderError.includes("pdf.worker.min.mjs")) {
-          detailedErrorMessage = `Failed to load PDF.js worker from: ${workerPathUsed}. This URL was constructed using the imported PDF.js API version '${currentImportedApiVersion}'. This API version may be non-standard, or a worker for it may not exist at this CDN path. This often indicates an issue with the main PDF.js library version provided by the environment. (Expected version from package.json: ${EXPECTED_PDF_JS_VERSION_FROM_PACKAGE_JSON}).`;
-      } else if (renderError.includes("The API version") && renderError.includes("does not match the Worker version")) {
-          // This error message should ideally not appear now. If it does, it means the dynamic worker path was overridden or failed.
-          detailedErrorMessage = `PDF.js API/Worker version mismatch! Imported API: ${currentImportedApiVersion || 'unknown'}, Worker Path: ${workerPathUsed}. This indicates an internal inconsistency. (Expected from package.json: ${EXPECTED_PDF_JS_VERSION_FROM_PACKAGE_JSON}).`;
+      const apiV = currentUsedPdfJsVersion || 'N/A';
+      const workerSrcPath = currentWorkerSrc || 'N/A';
+      
+      if (renderError.includes("The API version") && renderError.includes("does not match the Worker version")) {
+          detailedErrorMessage = `PDF Library Mismatch! API: ${apiV}, Worker expected to match. Worker Path: ${workerSrcPath}. This is an environment setup issue.`;
+      } else if ((renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && renderError.includes("pdf.worker.min.mjs")) {
+          detailedErrorMessage = `Worker Load Fail! API: ${apiV}. Worker Path: ${workerSrcPath}. Check CDN or network.`;
+      } else if (renderError.includes("Cannot use the same canvas during multiple render() operations")) {
+          detailedErrorMessage = `Canvas render conflict for page ${pageIndex + 1}. Retrying or ensure tasks are cancelled.`;
       }
+
 
       errorDisplay = (
          <div
@@ -253,17 +233,19 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
             title={detailedErrorMessage}
           >
             <FileWarning className="h-4 w-4 mb-0.5 flex-shrink-0" />
-            <p className="leading-tight text-[10px]">
-                { (renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && renderError.includes("pdf.worker")
-                    ? `Worker Load Fail (API: ${currentImportedApiVersion || 'N/A'})`
-                    : (renderError.includes("version") && renderError.includes("match")) 
-                        ? `Version Mismatch (API: ${currentImportedApiVersion || 'N/A'})`
-                        : 'PDF Render Error'
+            <p className="leading-tight text-[10px] px-1">
+                { (renderError.includes("The API version") && renderError.includes("does not match"))
+                    ? `Lib Mismatch (API: ${apiV})`
+                    : (renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && renderError.includes("pdf.worker")
+                        ? `Worker Fail (API: ${apiV})`
+                        : renderError.includes("Cannot use the same canvas")
+                            ? `Canvas Conflict`
+                            : 'PDF Render Error'
                 }
             </p>
-            <p className="leading-tight text-[9px] opacity-80 mt-0.5 px-1">
-                Expected: ${EXPECTED_PDF_JS_VERSION_FROM_PACKAGE_JSON}
-            </p>
+            {(renderError.includes("The API version") && renderError.includes("does not match")) &&
+             <p className="leading-tight text-[9px] opacity-80 mt-0.5 px-1">Expected worker to match API.</p>
+            }
           </div>
       );
   }
@@ -285,7 +267,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           'opacity-100': !isLoading && !renderError && pdfDataUri,
         })}
         style={{
-          display: 'block', 
+          display: (!isLoading && !renderError && pdfDataUri) ? 'block' : 'none', // Hide canvas if loading/error
           maxWidth: '100%', 
           maxHeight: '100%',
           objectFit: 'contain', 
@@ -320,4 +302,3 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
-
