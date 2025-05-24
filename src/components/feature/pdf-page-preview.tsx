@@ -8,25 +8,27 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FileWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Import the worker as a module.
-// This ensures the worker version matches the API version if bundling is correct.
-import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs';
+// Import the worker entry point. This is typically what bundlers use to create a separate worker chunk.
+import pdfWorkerEntryPoint from 'pdfjs-dist/build/pdf.worker.entry.mjs';
 
 // CRITICAL DIAGNOSTIC LOGS:
 console.log('[PdfPagePreview] Imported pdfjsLib object:', pdfjsLib);
 const importedApiVersion = pdfjsLib.version;
 console.log('[PdfPagePreview] Imported pdfjsLib.version:', importedApiVersion);
+console.log('[PdfPagePreview] Imported pdfWorkerEntryPoint:', pdfWorkerEntryPoint);
+console.log('[PdfPagePreview] Type of pdfWorkerEntryPoint:', typeof pdfWorkerEntryPoint);
 
-// Setup workerSrc using the imported module.
+
+// Setup workerSrc using the imported entry point.
 // This should only run once in the browser.
 if (typeof window !== 'undefined') {
-    // Check if workerSrc is already set, to avoid issues if module re-evaluates (less likely with Next.js pages)
-    if (pdfjsLib.GlobalWorkerOptions.workerSrc !== (pdfjsWorker as any)) {
-        console.log('[PdfPagePreview] Setting pdfjsLib.GlobalWorkerOptions.workerSrc to imported pdfjsWorker module.');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker as any; // Cast as any if type is Module but expects string | Worker
-        console.log('[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc is now set.');
+    // Check if workerSrc is already set, to avoid issues if module re-evaluates
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc !== pdfWorkerEntryPoint) {
+        console.log('[PdfPagePreview] Setting pdfjsLib.GlobalWorkerOptions.workerSrc to imported pdf.worker.entry.mjs.');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerEntryPoint;
+        console.log('[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc is now set to:', pdfjsLib.GlobalWorkerOptions.workerSrc);
     } else {
-        console.log('[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already set to the imported worker module.');
+        console.log('[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already set to the imported worker entry point.');
     }
 } else {
     console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment).');
@@ -55,7 +57,7 @@ async function renderPdfPageToCanvas(
   logPrefix: string
 ): Promise<RenderOutput> {
   console.log(`${logPrefix} renderPdfPageToCanvas: Starting for page ${pageIndex + 1}, targetH: ${targetHeight}, rotation: ${rotation}`);
-  console.log(`${logPrefix} CURRENT CHECK: pdfjsLib.version (at render time): ${pdfjsLib.version}, GlobalWorkerOptions.workerSrc type: ${typeof pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+  console.log(`${logPrefix} CURRENT CHECK: pdfjsLib.version (at render time): ${pdfjsLib.version}, GlobalWorkerOptions.workerSrc type: ${typeof pdfjsLib.GlobalWorkerOptions.workerSrc}, value: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
 
 
   const base64Marker = ';base64,';
@@ -78,7 +80,7 @@ async function renderPdfPageToCanvas(
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc && typeof window !== 'undefined') {
     console.error(`${logPrefix} PDF.js workerSrc not configured! This is a critical error. Current workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
     console.warn(`${logPrefix} Re-attempting to set workerSrc using imported module as it was not found during render.`);
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker as any;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerEntryPoint; // Re-assign with the entry point
     if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
         throw new Error(`${logPrefix} PDF.js workerSrc still not configured after re-attempt during render.`);
     }
@@ -158,6 +160,11 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [renderError, setRenderError] = useState<string | null>(null);
   const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
+  const [originalImportedVersion, setOriginalImportedVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOriginalImportedVersion(importedApiVersion);
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -176,7 +183,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
       if (!canvasElement) {
         console.log(`${logPrefix} Canvas ref not current for page ${pageIndex + 1}. Will show loading. Effect might re-run if canvas becomes available.`);
-        if (isActive && !isLoading) setIsLoading(true);
+        if (isActive && !isLoading) setIsLoading(true); // Ensure loading is true if canvas isn't ready
         return;
       }
       
@@ -201,11 +208,10 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       } catch (err: any) {
         console.error(`${logPrefix} Error in renderPdfPageToCanvas for page ${pageIndex + 1}:`, err.message);
         if (isActive) {
-          // Check for the specific version mismatch error to provide a clearer message
           if (err.message && err.message.includes("The API version") && err.message.includes("does not match the Worker version")) {
-            const apiV = err.message.match(/API version "([^"]+)"/)?.[1] || importedApiVersion || "unknown";
-            const workerV = err.message.match(/Worker version "([^"]+)"/)?.[1] || "unknown";
-            setRenderError(`PDF Library Version Mismatch! API: v${apiV}, Worker: v${workerV}. This usually indicates an environment or bundling issue.`);
+            const apiV = err.message.match(/API version "([^"]+)"/)?.[1] || originalImportedVersion || "unknown";
+            const workerV = err.message.match(/Worker version "([^"]+)"/)?.[1] || (typeof pdfjsLib.GlobalWorkerOptions.workerSrc === 'string' && pdfjsLib.GlobalWorkerOptions.workerSrc.includes('/') ? pdfjsLib.GlobalWorkerOptions.workerSrc.split('/').find(s => s.match(/\d+\.\d+\.\d+/)) : "unknown_worker_setup");
+            setRenderError(`PDF Library Version Mismatch! App's PDF API: v${apiV}, Worker: v${workerV}. This usually indicates an environment setup issue if versions differ from package.json.`);
           } else {
             setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
           }
@@ -217,18 +223,19 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
     };
     
+    // Add a small delay to give the canvas ref a moment to attach, especially on initial load or complex UIs.
     const timerId = setTimeout(() => {
         if (isActive) initRender();
-    }, 100);
+    }, 150); // Slightly increased delay
 
     return () => {
       isActive = false;
       clearTimeout(timerId);
       console.log(`${logPrefix} Cleanup for page ${pageIndex + 1}.`);
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix, isLoading]);
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix, isLoading, originalImportedVersion]);
 
-  const estimatedWidth = targetHeight * (210 / 297); 
+  const estimatedWidth = targetHeight * (210 / 297); // A4 aspect ratio for placeholder
 
   let errorDisplay = null;
   if (renderError) {
@@ -238,12 +245,11 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
             title={renderError}
           >
             <FileWarning className="h-4 w-4 mb-0.5 flex-shrink-0" />
-            <p className="leading-tight text-[10px]">{renderError.startsWith("PDF Library Version Mismatch!") ? renderError : `Page ${pageIndex + 1}: Render Error`}</p>
+            <p className="leading-tight text-[10px]">{renderError}</p>
           </div>
       );
   }
   
-
   return (
     <div 
       className={cn("relative bg-transparent overflow-hidden flex items-center justify-center border border-dashed border-muted-foreground/30 rounded-md", className)}
@@ -296,3 +302,4 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
+
