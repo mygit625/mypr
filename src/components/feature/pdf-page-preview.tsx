@@ -8,28 +8,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FileWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// CRITICAL DIAGNOSTIC LOG: Please check your browser console for this message and report the version.
+// CRITICAL DIAGNOSTIC LOGS: Please check your browser console for these messages and report them.
+console.log('[PdfPagePreview] Imported pdfjsLib object:', pdfjsLib);
 console.log('[PdfPagePreview] Imported pdfjsLib.version:', pdfjsLib.version);
-console.log('[PdfPagePreview] pdfjsLib object:', pdfjsLib);
 
 
 const PDF_JS_VERSION = "4.4.168"; // This MUST match your installed pdfjs-dist version from package.json
-let pdfJsWorkerInitialized = false;
 
-if (typeof window !== 'undefined' && !pdfJsWorkerInitialized) {
+if (typeof window !== 'undefined') {
   try {
     const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
-    console.log(`[PdfPagePreview] Attempting to set pdfjsLib.GlobalWorkerOptions.workerSrc to: ${cdnPath} (using PDF_JS_VERSION: ${PDF_JS_VERSION})`);
-    pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
-    pdfJsWorkerInitialized = true;
+    // Only set workerSrc if it's not already set or differs, to avoid potential issues with HMR or multiple initializations.
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc !== cdnPath) {
+        console.log(`[PdfPagePreview] Attempting to set pdfjsLib.GlobalWorkerOptions.workerSrc to: ${cdnPath} (using PDF_JS_VERSION: ${PDF_JS_VERSION})`);
+        pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
+    } else {
+        console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already correctly set to: ${cdnPath}`);
+    }
     console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc is now: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
   } catch (e) {
-    console.error("[PdfPagePreview] Error setting workerSrc:", e);
+    console.error("[PdfPagePreview] Error during initial workerSrc setup:", e);
   }
-} else if (typeof window !== 'undefined' && pdfJsWorkerInitialized) {
-    console.log('[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already initialized.');
 } else {
-    console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment or already initialized).');
+    console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment).');
 }
 
 interface PdfPagePreviewProps {
@@ -78,11 +79,11 @@ async function renderPdfPageToCanvas(
     console.error(`${logPrefix} PDF.js workerSrc not configured! This is a critical error. Current workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
     if (typeof window !== 'undefined') {
         const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
-        console.warn(`${logPrefix} Re-attempting to set workerSrc as it was not found.`);
+        console.warn(`${logPrefix} Re-attempting to set workerSrc as it was not found during render.`);
         pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
     }
     if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-        throw new Error(`${logPrefix} PDF.js workerSrc still not configured after re-attempt.`);
+        throw new Error(`${logPrefix} PDF.js workerSrc still not configured after re-attempt during render.`);
     }
   }
 
@@ -157,14 +158,16 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   className,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isLoading, setIsLoading] = useState(true); // Start in loading state
+  const [isLoading, setIsLoading] = useState(true);
   const [renderError, setRenderError] = useState<string | null>(null);
+  // Use useRef for a truly stable prefix that doesn't change on re-renders
   const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
 
 
   useEffect(() => {
     let isActive = true;
     const canvasElement = canvasRef.current;
+    // Use the stable prefix from the ref
     const logPrefix = `${stableInstanceLogPrefix}-eff`;
 
     if (!pdfDataUri) {
@@ -174,18 +177,20 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
       return;
     }
+    
+    // Set loading to true at the start of an attempt if not already
+    if(isActive && !isLoading) setIsLoading(true);
+    // Clear previous error if we are attempting a new render with a valid URI
+    if(isActive && renderError && pdfDataUri) setRenderError(null);
+
 
     if (!canvasElement) {
        console.log(`${logPrefix} Canvas ref not current for page ${pageIndex +1}. Current isLoading: ${isLoading}. Will show loading or wait for ref.`);
-      // If canvas isn't ready, ensure we are in loading state. Effect will re-run.
+      // If canvas isn't ready, ensure we are in loading state. Effect will re-run when ref becomes available.
       if (isActive && !isLoading) setIsLoading(true); 
       return;
     }
     
-    // If we have data and canvas, ensure loading is true before starting the async operation
-    if(isActive && !isLoading) setIsLoading(true);
-    if(isActive && renderError) setRenderError(null); // Clear previous error on new attempt
-
     console.log(`${logPrefix} Attempting render for page ${pageIndex + 1}. URI starts: ${pdfDataUri.substring(0,30)}..., Canvas available: ${!!canvasElement}`);
 
     renderPdfPageToCanvas(
@@ -199,7 +204,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       .then((outputDimensions) => {
         if (isActive) {
           console.log(`${logPrefix} Render successful for page ${pageIndex + 1}. Output dimensions:`, outputDimensions);
-          // setRenderError(null); // Already cleared above
+          // setRenderError(null); // Already cleared before the call
         }
       })
       .catch(err => {
@@ -218,7 +223,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       isActive = false;
       console.log(`${logPrefix} Cleanup for page ${pageIndex + 1}.`);
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // stableInstanceLogPrefix is stable by being a ref
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // stableInstanceLogPrefix is from useRef, so it's stable
 
   const estimatedWidth = targetHeight * (210 / 297); // A4 aspect ratio for placeholder
 
@@ -302,4 +307,3 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
 export default PdfPagePreview;
 
-    
