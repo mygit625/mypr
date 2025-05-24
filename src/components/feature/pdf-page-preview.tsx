@@ -10,20 +10,29 @@ import { cn } from '@/lib/utils';
 
 // CRITICAL DIAGNOSTIC LOGS:
 console.log('[PdfPagePreview] Imported pdfjsLib object:', pdfjsLib);
-const importedApiVersion = pdfjsLib.version;
-console.log('[PdfPagePreview] Imported pdfjsLib.version:', importedApiVersion);
+const importedApiVersion = pdfjsLib.version; // Capture the version from the imported library
+console.log('[PdfPagePreview] Version of imported pdfjsLib:', importedApiVersion);
 
-const PDF_JS_VERSION = "4.4.168"; // Align with package.json
+const EXPECTED_PDF_JS_VERSION_FROM_PACKAGE_JSON = "4.4.168"; // For reference to package.json expectation
 
-// Setup workerSrc using CDN. This should only run once in the browser.
-if (typeof window !== 'undefined') {
-    const cdnWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
-    if (pdfjsLib.GlobalWorkerOptions.workerSrc !== cdnWorkerSrc) {
-        console.log(`[PdfPagePreview] Setting pdfjsLib.GlobalWorkerOptions.workerSrc to CDN: ${cdnWorkerSrc}`);
-        pdfjsLib.GlobalWorkerOptions.workerSrc = cdnWorkerSrc;
+// Setup workerSrc dynamically based on the version of the imported pdfjsLib.
+// This attempts to ensure API and Worker versions match.
+// WARNING: If importedApiVersion is non-standard (e.g., "4.10.38"),
+// this CDN URL for the worker might be invalid and lead to a 404 error.
+if (typeof window !== 'undefined' && importedApiVersion) {
+    const dynamicWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${importedApiVersion}/pdf.worker.min.mjs`;
+    console.log(`[PdfPagePreview] Attempting to set pdfjsLib.GlobalWorkerOptions.workerSrc to: ${dynamicWorkerSrc} (based on imported API version: ${importedApiVersion})`);
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc !== dynamicWorkerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = dynamicWorkerSrc;
+        console.log('[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc dynamically SET.');
     } else {
-        console.log('[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already set to the CDN path.');
+        console.log('[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already dynamically set.');
     }
+} else if (typeof window !== 'undefined') {
+    console.warn('[PdfPagePreview] importedApiVersion is not available. Falling back to expected version for workerSrc. This might cause version mismatch.');
+    const fallbackWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${EXPECTED_PDF_JS_VERSION_FROM_PACKAGE_JSON}/pdf.worker.min.mjs`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = fallbackWorkerSrc;
+    console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc set to fallback: ${fallbackWorkerSrc}`);
 } else {
     console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment).');
 }
@@ -51,7 +60,7 @@ async function renderPdfPageToCanvas(
   logPrefix: string
 ): Promise<RenderOutput> {
   console.log(`${logPrefix} renderPdfPageToCanvas: Starting for page ${pageIndex + 1}, targetH: ${targetHeight}, rotation: ${rotation}`);
-  console.log(`${logPrefix} CURRENT CHECK: pdfjsLib.version (at render time): ${pdfjsLib.version}, GlobalWorkerOptions.workerSrc type: ${typeof pdfjsLib.GlobalWorkerOptions.workerSrc}, value: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+  console.log(`${logPrefix} CURRENT CHECK: pdfjsLib.version (at render time): ${pdfjsLib.version}, GlobalWorkerOptions.workerSrc value: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
 
   const base64Marker = ';base64,';
   const base64Index = pdfDataUri.indexOf(base64Marker);
@@ -71,9 +80,11 @@ async function renderPdfPageToCanvas(
   }
 
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc && typeof window !== 'undefined') {
-    console.error(`${logPrefix} PDF.js workerSrc not configured! This is a critical error. Current workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
-    console.warn(`${logPrefix} Re-attempting to set workerSrc using CDN as it was not found during render.`);
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
+    console.error(`${logPrefix} PDF.js workerSrc not configured at render time! This is unexpected.`);
+    // This should ideally not happen if the top-level setup worked.
+    const dynamicFallbackWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = dynamicFallbackWorkerSrc;
+     console.warn(`${logPrefix} Re-attempting to set workerSrc to ${dynamicFallbackWorkerSrc} as it was not found during render.`);
     if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
         throw new Error(`${logPrefix} PDF.js workerSrc still not configured after re-attempt during render.`);
     }
@@ -152,14 +163,10 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [renderError, setRenderError] = useState<string | null>(null);
-  const [originalImportedVersion, setOriginalImportedVersion] = useState<string | null>(null);
+  // Use the module-level 'importedApiVersion' for error messages
+  const currentImportedApiVersion = importedApiVersion; 
 
   const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
-
-  useEffect(() => {
-    setOriginalImportedVersion(importedApiVersion); // Store the initially imported version
-  }, []);
-
 
   useEffect(() => {
     let isActive = true;
@@ -177,11 +184,9 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
 
       if (!canvasElement) {
-        // This state can happen briefly on initial mount.
-        // The effect will re-run once the canvas ref is attached.
-        if (isActive && !isLoading) {
-           console.log(`${logPrefix} Canvas ref not current yet for page ${pageIndex + 1}. Will show loading.`);
-           setIsLoading(true); 
+        if (isActive) {
+           console.log(`${logPrefix} Canvas ref not current yet for page ${pageIndex + 1}. Will show loading. Effect might re-run.`);
+           if(!isLoading) setIsLoading(true); 
         }
         return;
       }
@@ -193,7 +198,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
 
       try {
-        const outputDimensions = await renderPdfPageToCanvas(
+        await renderPdfPageToCanvas(
           canvasElement,
           pdfDataUri,
           pageIndex,
@@ -202,18 +207,12 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           `${logPrefix}-render`
         );
         if (isActive) {
-          console.log(`${logPrefix} Render successful for page ${pageIndex + 1}. Output dimensions:`, outputDimensions);
+          console.log(`${logPrefix} Render successful for page ${pageIndex + 1}.`);
         }
       } catch (err: any) {
         console.error(`${logPrefix} Error in renderPdfPageToCanvas for page ${pageIndex + 1}:`, err.message);
         if (isActive) {
-          if (err.message && err.message.includes("The API version") && err.message.includes("does not match the Worker version")) {
-            const apiV = err.message.match(/API version "([^"]+)"/)?.[1] || originalImportedVersion || "unknown_api";
-            const workerV = err.message.match(/Worker version "([^"]+)"/)?.[1] || PDF_JS_VERSION;
-            setRenderError(`PDF Lib Version Mismatch! App API: v${apiV}, Worker: v${workerV}. This indicates an environment setup issue with the main PDF.js library.`);
-          } else {
-            setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
-          }
+          setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
         }
       } finally {
         if (isActive) {
@@ -222,31 +221,49 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
     };
     
-    // Add a small delay to allow canvas ref to attach, especially on initial load or complex UIs
     const timerId = setTimeout(() => {
         if (isActive) initRender();
-    }, 150); // Increased delay slightly
+    }, 150);
 
     return () => {
       isActive = false;
       clearTimeout(timerId);
       console.log(`${logPrefix} Cleanup for page ${pageIndex + 1}.`);
     };
-  // Key dependencies that should trigger re-render
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix, originalImportedVersion]);
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix, isLoading]);
 
 
-  const estimatedWidth = targetHeight * (210 / 297); // A4 aspect ratio for placeholder
+  const estimatedWidth = targetHeight * (210 / 297); 
 
   let errorDisplay = null;
   if (renderError) {
+      let detailedErrorMessage = renderError;
+      const workerPathUsed = typeof window !== 'undefined' ? pdfjsLib.GlobalWorkerOptions.workerSrc : 'N/A (server)';
+
+      if (currentImportedApiVersion && (renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && renderError.includes("pdf.worker.min.mjs")) {
+          detailedErrorMessage = `Failed to load PDF.js worker from: ${workerPathUsed}. This URL was constructed using the imported PDF.js API version '${currentImportedApiVersion}'. This API version may be non-standard, or a worker for it may not exist at this CDN path. This often indicates an issue with the main PDF.js library version provided by the environment. (Expected version from package.json: ${EXPECTED_PDF_JS_VERSION_FROM_PACKAGE_JSON}).`;
+      } else if (renderError.includes("The API version") && renderError.includes("does not match the Worker version")) {
+          // This error message should ideally not appear now. If it does, it means the dynamic worker path was overridden or failed.
+          detailedErrorMessage = `PDF.js API/Worker version mismatch! Imported API: ${currentImportedApiVersion || 'unknown'}, Worker Path: ${workerPathUsed}. This indicates an internal inconsistency. (Expected from package.json: ${EXPECTED_PDF_JS_VERSION_FROM_PACKAGE_JSON}).`;
+      }
+
       errorDisplay = (
          <div
             className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 border border-destructive/50 text-destructive-foreground rounded-md p-1 text-xs text-center pointer-events-none"
-            title={renderError}
+            title={detailedErrorMessage}
           >
             <FileWarning className="h-4 w-4 mb-0.5 flex-shrink-0" />
-            <p className="leading-tight text-[10px]">{renderError}</p>
+            <p className="leading-tight text-[10px]">
+                { (renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && renderError.includes("pdf.worker")
+                    ? `Worker Load Fail (API: ${currentImportedApiVersion || 'N/A'})`
+                    : (renderError.includes("version") && renderError.includes("match")) 
+                        ? `Version Mismatch (API: ${currentImportedApiVersion || 'N/A'})`
+                        : 'PDF Render Error'
+                }
+            </p>
+            <p className="leading-tight text-[9px] opacity-80 mt-0.5 px-1">
+                Expected: ${EXPECTED_PDF_JS_VERSION_FROM_PACKAGE_JSON}
+            </p>
           </div>
       );
   }
@@ -261,7 +278,6 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         maxWidth: `${Math.max(100, Math.round(estimatedWidth * 2))}px` 
       }}
     >
-      {/* Canvas is always rendered so ref can attach */}
       <canvas
         ref={canvasRef}
         className={cn("border border-muted shadow-sm rounded-md bg-white transition-opacity duration-300", {
@@ -278,7 +294,6 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         aria-label={`Preview of PDF page ${pageIndex + 1}`}
       />
       
-      {/* Visual feedback for loading */}
       {isLoading && !renderError && pdfDataUri && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-background/30 backdrop-blur-sm">
             <Skeleton
@@ -292,10 +307,8 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         </div>
       )}
 
-      {/* Error display overlay */}
       {errorDisplay}
 
-       {/* Placeholder if no PDF data URI and not loading/erroring */}
        {(!pdfDataUri && !isLoading && !renderError) && ( 
          <Skeleton
             className={cn("rounded-md bg-muted/30 w-full h-full")}
@@ -307,3 +320,4 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
+
