@@ -18,7 +18,6 @@ const PDF_JS_VERSION = "4.4.168"; // This MUST match your installed pdfjs-dist v
 if (typeof window !== 'undefined') {
   try {
     const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
-    // Only set workerSrc if it's not already set or differs, to avoid potential issues with HMR or multiple initializations.
     if (pdfjsLib.GlobalWorkerOptions.workerSrc !== cdnPath) {
         console.log(`[PdfPagePreview] Attempting to set pdfjsLib.GlobalWorkerOptions.workerSrc to: ${cdnPath} (using PDF_JS_VERSION: ${PDF_JS_VERSION})`);
         pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
@@ -143,7 +142,6 @@ async function renderPdfPageToCanvas(
     if (pdf && typeof (pdf as any).destroy === 'function') {
       try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix} Error destroying PDF doc:`, destroyError); }
     } else if (loadingTask && typeof (loadingTask as any).destroy === 'function' && !pdf) {
-      // Ensure loadingTask is destroyed if pdf.getDocument().promise rejects or never resolves
       (loadingTask as any).destroy();
       console.log(`${logPrefix} Destroying loading task because PDF object was not created or promise rejected early.`);
     }
@@ -160,14 +158,17 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [renderError, setRenderError] = useState<string | null>(null);
-  // Use useRef for a truly stable prefix that doesn't change on re-renders
+  const [importedPdfJsVersion, setImportedPdfJsVersion] = useState<string | null>(null);
   const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
+
+  useEffect(() => {
+    setImportedPdfJsVersion(pdfjsLib.version);
+  }, []);
 
 
   useEffect(() => {
     let isActive = true;
     const canvasElement = canvasRef.current;
-    // Use the stable prefix from the ref
     const logPrefix = `${stableInstanceLogPrefix}-eff`;
 
     if (!pdfDataUri) {
@@ -178,15 +179,12 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       return;
     }
     
-    // Set loading to true at the start of an attempt if not already
     if(isActive && !isLoading) setIsLoading(true);
-    // Clear previous error if we are attempting a new render with a valid URI
     if(isActive && renderError && pdfDataUri) setRenderError(null);
 
 
     if (!canvasElement) {
        console.log(`${logPrefix} Canvas ref not current for page ${pageIndex +1}. Current isLoading: ${isLoading}. Will show loading or wait for ref.`);
-      // If canvas isn't ready, ensure we are in loading state. Effect will re-run when ref becomes available.
       if (isActive && !isLoading) setIsLoading(true); 
       return;
     }
@@ -204,7 +202,6 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       .then((outputDimensions) => {
         if (isActive) {
           console.log(`${logPrefix} Render successful for page ${pageIndex + 1}. Output dimensions:`, outputDimensions);
-          // setRenderError(null); // Already cleared before the call
         }
       })
       .catch(err => {
@@ -223,7 +220,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       isActive = false;
       console.log(`${logPrefix} Cleanup for page ${pageIndex + 1}.`);
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // stableInstanceLogPrefix is from useRef, so it's stable
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix, isLoading, renderError]); // Added isLoading & renderError to dependencies
 
   const estimatedWidth = targetHeight * (210 / 297); // A4 aspect ratio for placeholder
 
@@ -233,8 +230,8 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/20 border border-destructive text-destructive-foreground rounded-md p-2 text-xs text-center pointer-events-none">
         <FileWarning className="h-5 w-5 mb-1 flex-shrink-0" />
         <p className="font-semibold">PDF Library Mismatch!</p>
-        <p className="mt-1 text-[10px]">App's PDF library version is incompatible with its worker.</p>
-        <p className="mt-1 text-[9px] opacity-80">This is an environment setup issue.</p>
+        <p className="mt-1 text-[10px]">Imported PDF API (v{importedPdfJsVersion || 'unknown'}) vs Worker (v{PDF_JS_VERSION}).</p>
+        <p className="mt-1 text-[9px] opacity-80">This is an environment issue. Expected API v~{PDF_JS_VERSION.substring(0, PDF_JS_VERSION.lastIndexOf('.'))+'.x'}.</p>
       </div>
     );
   } else if (renderError) {
@@ -259,7 +256,6 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         maxWidth: `${Math.max(100, Math.round(estimatedWidth * 1.2))}px` 
       }}
     >
-      {/* Canvas is always rendered to ensure ref is attached, visibility controlled by opacity and overlays */}
       <canvas
         ref={canvasRef}
         className={cn("border border-muted shadow-sm rounded-md bg-white transition-opacity duration-300", {
@@ -276,25 +272,21 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         aria-label={`Preview of PDF page ${pageIndex + 1}`}
       />
       
-      {/* Overlay for loading state */}
       {isLoading && pdfDataUri && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-background/30 backdrop-blur-sm">
             <Skeleton
                 className="rounded-md bg-muted/50"
                 style={{ 
-                  height: `calc(100% - 4px)`, // Adjust for border
-                  width: `calc(100% - 4px)`   // Adjust for border
+                  height: `calc(100% - 4px)`, 
+                  width: `calc(100% - 4px)`   
                 }}
                 aria-label={`Loading preview for page ${pageIndex + 1}`}
             />
         </div>
       )}
 
-      {/* Overlay for error state */}
       {specificErrorDisplay}
 
-
-       {/* Placeholder if no PDF data URI is provided (e.g., before file upload) */}
        {(!pdfDataUri && !isLoading) && ( 
          <Skeleton
             className={cn("rounded-md bg-muted/30 w-full h-full")}
@@ -306,4 +298,3 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
-
