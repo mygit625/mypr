@@ -55,8 +55,7 @@ async function renderPdfPageToCanvas(
 ): Promise<RenderOutput> {
   console.log(`${logPrefix} renderPdfPageToCanvas: Starting for page ${pageIndex + 1}, targetH: ${targetHeight}, rotation: ${rotation}`);
   // This log confirms the version of pdfjsLib being used at the point of rendering.
-  // The error "API version X does not match Worker version Y" comes from an internal check within getDocument.
-  console.log(`${logPrefix} pdfjsLib.version at render time: ${pdfjsLib.version}, PDF_JS_VERSION_CONSTANT: ${PDF_JS_VERSION}, GlobalWorkerOptions.workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+  console.log(`${logPrefix} CURRENT CHECK: pdfjsLib.version: ${pdfjsLib.version}, PDF_JS_VERSION_CONSTANT: ${PDF_JS_VERSION}, GlobalWorkerOptions.workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
 
   const base64Marker = ';base64,';
   const base64Index = pdfDataUri.indexOf(base64Marker);
@@ -123,7 +122,7 @@ async function renderPdfPageToCanvas(
     const newCanvasWidth = Math.max(1, Math.round(viewport.width));
     const newCanvasHeight = Math.max(1, Math.round(viewport.height));
     
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.clearRect(0, 0, canvas.width, canvas.height); // Clear previous content
     canvas.height = newCanvasHeight;
     canvas.width = newCanvasWidth;
 
@@ -143,6 +142,7 @@ async function renderPdfPageToCanvas(
     if (pdf && typeof (pdf as any).destroy === 'function') {
       try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix} Error destroying PDF doc:`, destroyError); }
     } else if (loadingTask && typeof (loadingTask as any).destroy === 'function' && !pdf) {
+      // Ensure loadingTask is destroyed if pdf.getDocument().promise rejects or never resolves
       (loadingTask as any).destroy();
       console.log(`${logPrefix} Destroying loading task because PDF object was not created or promise rejected early.`);
     }
@@ -157,9 +157,10 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   className,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Start in loading state
   const [renderError, setRenderError] = useState<string | null>(null);
   const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
+
 
   useEffect(() => {
     let isActive = true;
@@ -175,15 +176,17 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     }
 
     if (!canvasElement) {
-       console.log(`${logPrefix} Canvas ref not current. Will show loading. Effect might re-run if canvas becomes available.`);
-      if (isActive && !isLoading) setIsLoading(true);
+       console.log(`${logPrefix} Canvas ref not current for page ${pageIndex +1}. Current isLoading: ${isLoading}. Will show loading or wait for ref.`);
+      // If canvas isn't ready, ensure we are in loading state. Effect will re-run.
+      if (isActive && !isLoading) setIsLoading(true); 
       return;
     }
     
-    if (isActive) {
-      setIsLoading(true);
-      setRenderError(null);
-    }
+    // If we have data and canvas, ensure loading is true before starting the async operation
+    if(isActive && !isLoading) setIsLoading(true);
+    if(isActive && renderError) setRenderError(null); // Clear previous error on new attempt
+
+    console.log(`${logPrefix} Attempting render for page ${pageIndex + 1}. URI starts: ${pdfDataUri.substring(0,30)}..., Canvas available: ${!!canvasElement}`);
 
     renderPdfPageToCanvas(
         canvasElement,
@@ -196,7 +199,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       .then((outputDimensions) => {
         if (isActive) {
           console.log(`${logPrefix} Render successful for page ${pageIndex + 1}. Output dimensions:`, outputDimensions);
-          setRenderError(null);
+          // setRenderError(null); // Already cleared above
         }
       })
       .catch(err => {
@@ -213,21 +216,45 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
     return () => {
       isActive = false;
+      console.log(`${logPrefix} Cleanup for page ${pageIndex + 1}.`);
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // stableInstanceLogPrefix is stable
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // stableInstanceLogPrefix is stable by being a ref
 
-  const estimatedWidth = targetHeight * (210 / 297);
+  const estimatedWidth = targetHeight * (210 / 297); // A4 aspect ratio for placeholder
+
+  let specificErrorDisplay = null;
+  if (renderError && renderError.includes("API version") && renderError.includes("does not match the Worker version")) {
+    specificErrorDisplay = (
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/20 border border-destructive text-destructive-foreground rounded-md p-2 text-xs text-center pointer-events-none">
+        <FileWarning className="h-5 w-5 mb-1 flex-shrink-0" />
+        <p className="font-semibold">PDF Library Mismatch!</p>
+        <p className="mt-1 text-[10px]">App's PDF library version is incompatible with its worker.</p>
+        <p className="mt-1 text-[9px] opacity-80">This is an environment setup issue.</p>
+      </div>
+    );
+  } else if (renderError) {
+    specificErrorDisplay = (
+       <div
+          className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 border border-destructive/50 text-destructive-foreground rounded-md p-1 text-xs text-center pointer-events-none"
+          title={renderError}
+        >
+          <FileWarning className="h-4 w-4 mb-0.5 flex-shrink-0" />
+          <p className="leading-tight text-[10px]">Page {pageIndex + 1}: Error</p>
+        </div>
+    );
+  }
 
   return (
     <div 
-      className={cn("relative bg-transparent overflow-hidden flex items-center justify-center", className)}
+      className={cn("relative bg-transparent overflow-hidden flex items-center justify-center border border-dashed border-muted-foreground/30 rounded-md", className)}
       style={{ 
         height: `${targetHeight}px`, 
         width: `auto`, 
-        minWidth: `${Math.max(50, estimatedWidth / 2)}px`, 
-        maxWidth: `${Math.max(100, estimatedWidth * 1.5)}px` 
+        minWidth: `${Math.max(50, Math.round(estimatedWidth * 0.8))}px`, 
+        maxWidth: `${Math.max(100, Math.round(estimatedWidth * 1.2))}px` 
       }}
     >
+      {/* Canvas is always rendered to ensure ref is attached, visibility controlled by opacity and overlays */}
       <canvas
         ref={canvasRef}
         className={cn("border border-muted shadow-sm rounded-md bg-white transition-opacity duration-300", {
@@ -244,32 +271,28 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         aria-label={`Preview of PDF page ${pageIndex + 1}`}
       />
       
+      {/* Overlay for loading state */}
       {isLoading && pdfDataUri && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-background/30 backdrop-blur-sm">
             <Skeleton
                 className="rounded-md bg-muted/50"
                 style={{ 
-                  height: `calc(100% - 2px)`, 
-                  width: `calc(100% - 2px)`   
+                  height: `calc(100% - 4px)`, // Adjust for border
+                  width: `calc(100% - 4px)`   // Adjust for border
                 }}
                 aria-label={`Loading preview for page ${pageIndex + 1}`}
             />
         </div>
       )}
 
-      {renderError && !isLoading && pdfDataUri && (
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 border border-destructive/50 text-destructive-foreground rounded-md p-1 text-xs text-center pointer-events-none"
-          title={renderError}
-        >
-          <FileWarning className="h-4 w-4 mb-0.5 flex-shrink-0" />
-          <p className="leading-tight text-[10px]">Page {pageIndex + 1}: Error</p>
-        </div>
-      )}
+      {/* Overlay for error state */}
+      {specificErrorDisplay}
 
+
+       {/* Placeholder if no PDF data URI is provided (e.g., before file upload) */}
        {(!pdfDataUri && !isLoading) && ( 
          <Skeleton
-            className={cn("rounded-md bg-muted/30 border border-dashed w-full h-full", className)}
+            className={cn("rounded-md bg-muted/30 w-full h-full")}
             aria-label={`No PDF loaded for page ${pageIndex + 1} preview`}
         />
        )}
@@ -278,3 +301,5 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
+
+    
