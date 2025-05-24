@@ -8,14 +8,23 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FileWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const PDF_JS_VERSION = "4.4.168"; // Ensure this matches your installed pdfjs-dist version
+// Log the imported pdfjsLib version for diagnostics
+console.log('[PdfPagePreview] Imported pdfjsLib.version:', pdfjsLib.version);
+console.log('[PdfPagePreview] pdfjsLib object:', pdfjsLib);
+
+
+const PDF_JS_VERSION = "4.4.168"; // This MUST match your installed pdfjs-dist version from package.json
 
 if (typeof window !== 'undefined') {
   const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
   if (pdfjsLib.GlobalWorkerOptions.workerSrc !== cdnPath) {
-    console.log(`PdfPagePreview: Setting pdfjsLib.GlobalWorkerOptions.workerSrc to ${cdnPath}`);
+    console.log(`[PdfPagePreview] Setting pdfjsLib.GlobalWorkerOptions.workerSrc to: ${cdnPath} (derived from PDF_JS_VERSION constant: ${PDF_JS_VERSION})`);
     pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
+  } else {
+    console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc already set to: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
   }
+} else {
+    console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment).');
 }
 
 interface PdfPagePreviewProps {
@@ -59,8 +68,10 @@ async function renderPdfPageToCanvas(
   }
 
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    console.error(`${logPrefix} PDF.js workerSrc not configured! This is a critical error.`);
+    console.error(`${logPrefix} PDF.js workerSrc not configured! This is a critical error. Current workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
     throw new Error(`${logPrefix} PDF.js workerSrc not configured.`);
+  } else {
+     console.log(`${logPrefix} PDF.js workerSrc is configured to: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
   }
 
   console.log(`${logPrefix} Calling pdfjsLib.getDocument() for page ${pageIndex + 1}`);
@@ -69,7 +80,8 @@ async function renderPdfPageToCanvas(
 
   try {
     pdf = await loadingTask.promise;
-    console.log(`${logPrefix} PDF loaded. Total pages: ${pdf.numPages}. Target page: ${pageIndex + 1}`);
+    console.log(`${logPrefix} PDF loaded. Total pages: ${pdf.numPages}. Target page: ${pageIndex + 1}. PDF.js version (reported by doc): ${pdf.transport?.commonObjs?.get('doc_version') || 'N/A'}`);
+
 
     if (pageIndex < 0 || pageIndex >= pdf.numPages) {
       throw new Error(`${logPrefix} Page index ${pageIndex + 1} out of bounds (Total: ${pdf.numPages}).`);
@@ -105,7 +117,6 @@ async function renderPdfPageToCanvas(
     const newCanvasWidth = Math.max(1, Math.round(viewport.width));
     const newCanvasHeight = Math.max(1, Math.round(viewport.height));
     
-    // Clear canvas before drawing new content
     context.clearRect(0, 0, canvas.width, canvas.height);
 
     canvas.height = newCanvasHeight;
@@ -132,7 +143,9 @@ async function renderPdfPageToCanvas(
       console.log(`${logPrefix} Destroying PDF document object.`);
       try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix} Error destroying PDF doc:`, destroyError); }
     } else if (loadingTask && typeof (loadingTask as any).destroy === 'function') {
-      console.log(`${logPrefix} Destroying loading task if PDF object was not created.`);
+      // This branch might not be reachable if `await loadingTask.promise` resolves or rejects.
+      // If `loadingTask.promise` itself fails before `pdf` is assigned, this could be relevant.
+      console.log(`${logPrefix} Destroying loading task because PDF object was not created or promise rejected early.`);
       (loadingTask as any).destroy();
     }
   }
@@ -148,8 +161,6 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [renderError, setRenderError] = useState<string | null>(null);
-  
-  // Stable log prefix for the lifetime of this component instance
   const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
 
   useEffect(() => {
@@ -160,7 +171,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     console.log(`${logPrefix} useEffect triggered. PageIdx: ${pageIndex}. CanvasEl: ${canvasElement ? 'yes' : 'no'}. PDF: ${pdfDataUri ? 'yes' : 'no'}. Current loading: ${isLoading}`);
 
     if (!pdfDataUri) {
-      console.log(`${logPrefix} No pdfDataUri. Setting error state.`);
+      console.log(`${logPrefix} No pdfDataUri. Setting error state and ensuring loading is false.`);
       if (isActive) {
         setRenderError("No PDF data provided.");
         setIsLoading(false);
@@ -170,18 +181,13 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
     if (!canvasElement) {
       console.log(`${logPrefix} Canvas element not available yet. Current loading: ${isLoading}. Will wait for ref.`);
-      // If canvas is not ready, ensure we are in a loading state.
-      // The effect will re-run if its dependencies change.
-      // React guarantees refs are set before effects run, so this implies the canvas isn't in the DOM.
-      // This should be less frequent now that canvas is always rendered.
-      if (isActive && !isLoading) setIsLoading(true); 
+      if (isActive && !isLoading) setIsLoading(true); // Ensure loading is true if canvas isn't ready
       return;
     }
-
-    console.log(`${logPrefix} PDF data and canvas element are ready. Proceeding with render.`);
+    
+    // At this point, pdfDataUri and canvasElement are available. Start loading process.
     if (isActive) {
-      // Only set loading to true if it's not already, to avoid potential loops if it's a dependency
-      if (!isLoading) setIsLoading(true);
+      setIsLoading(true);
       setRenderError(null);
     }
 
@@ -196,8 +202,6 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       .then((outputDimensions) => {
         if (isActive) {
           console.log(`${logPrefix} Render successful. Output dimensions:`, outputDimensions);
-          // Canvas width/height attributes are set by renderPdfPageToCanvas.
-          // Style adjustments might be needed if intrinsic canvas size affects layout.
           setRenderError(null);
         }
       })
@@ -209,7 +213,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       })
       .finally(() => {
         if (isActive) {
-          console.log(`${logPrefix} Render attempt finished. Setting isLoading=false for page ${pageIndex + 1}.`);
+          console.log(`${logPrefix} Render attempt finished for page ${pageIndex + 1}. Setting isLoading=false.`);
           setIsLoading(false);
         }
       });
@@ -217,54 +221,32 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     return () => {
       isActive = false;
       console.log(`${logPrefix} useEffect cleanup for pageIdx ${pageIndex}.`);
-      // Optional: Clear canvas on cleanup if needed, though re-render should handle it.
-      // if (canvasElement && canvasElement.getContext('2d')) {
-      //   canvasElement.getContext('2d')!.clearRect(0, 0, canvasElement.width, canvasElement.height);
-      // }
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // Removed isLoading from deps
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]);
 
-  // Calculate an estimated width for skeleton and error states based on common PDF aspect ratio (A4)
-  const estimatedWidth = targetHeight * (210 / 297);
-
-  if (!pdfDataUri && !isLoading) { // Show a clear placeholder if no PDF is loaded and not in initial load
-    return (
-         <Skeleton
-            className={cn("rounded-md bg-muted/30 border border-dashed", className)}
-            style={{ height: `${targetHeight}px`, width: `${Math.max(50, estimatedWidth)}px` }}
-            aria-label={`No PDF loaded for page ${pageIndex + 1} preview`}
-        />
-    );
-  }
-
+  const estimatedWidth = targetHeight * (210 / 297); // A4 aspect ratio
 
   return (
     <div 
-      className={cn("relative bg-transparent overflow-hidden", className)} // Container ensures relative positioning for overlays
+      className={cn("relative bg-transparent overflow-hidden flex items-center justify-center", className)}
       style={{ 
         height: `${targetHeight}px`, 
-        width: `${targetHeight * (210/297)}px` // Approx A4 aspect ratio for container
+        width: `${Math.max(50, estimatedWidth)}px` 
       }}
     >
+      {/* Canvas is always rendered to ensure ref is attached, visibility controlled by opacity/overlays */}
       <canvas
         ref={canvasRef}
         className={cn("border border-muted shadow-sm rounded-md bg-white transition-opacity duration-300", {
-          'opacity-0': isLoading || renderError, // Hide canvas content when loading or error
-          'opacity-100': !isLoading && !renderError, // Show canvas content when ready
+          'opacity-0': isLoading || renderError,
+          'opacity-100': !isLoading && !renderError,
         })}
         style={{
-          display: 'block', // Prevents extra space below canvas
+          display: 'block',
           maxWidth: '100%',
           maxHeight: '100%',
-          // The actual width/height attributes of canvas are set by renderPdfPageToCanvas
-          // The style here ensures it fits within its container.
-          // Aspect ratio is maintained by renderPdfPageToCanvas setting attributes.
-          // Centering the canvas if its aspect ratio doesn't match container
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-
+          // Actual width/height attributes are set by renderPdfPageToCanvas,
+          // these styles ensure it fits within container.
         }}
         role="img"
         aria-label={`Preview of PDF page ${pageIndex + 1}`}
@@ -273,7 +255,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         <div className="absolute inset-0 flex items-center justify-center">
             <Skeleton
                 className="rounded-md bg-muted/50"
-                style={{ height: '100%', width: '100%' }}
+                style={{ height: 'calc(100% - 2px)', width: 'calc(100% - 2px)' }} // Slightly smaller for border
                 aria-label={`Loading preview for page ${pageIndex + 1}`}
             />
         </div>
@@ -285,11 +267,19 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         >
           <FileWarning className="h-4 w-4 mb-0.5 flex-shrink-0" />
           <p className="leading-tight text-[10px]">Page {pageIndex + 1}: Error</p>
-          {/* <p className="leading-tight opacity-70 text-[9px] truncate hover:whitespace-normal hover:overflow-visible" style={{maxWidth: '90%'}}>{renderError}</p> */}
         </div>
       )}
+       {!pdfDataUri && !isLoading && !renderError && ( // Placeholder if no PDF data is even available
+         <Skeleton
+            className={cn("rounded-md bg-muted/30 border border-dashed", className)}
+            style={{ height: 'calc(100% - 2px)', width: 'calc(100% - 2px)' }}
+            aria-label={`No PDF loaded for page ${pageIndex + 1} preview`}
+        />
+       )}
     </div>
   );
 };
 
 export default PdfPagePreview;
+
+    
