@@ -12,7 +12,7 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { getInitialPageDataAction, organizePdfAction, type PageData, type PageOperation } from './actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import PdfPagePreview from '@/components/feature/pdf-page-preview'; 
+import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { cn } from '@/lib/utils';
 
 // Helper to ensure rotation stays within 0, 90, 180, 270
@@ -35,13 +35,13 @@ export default function OrganizePage() {
   const [file, setFile] = useState<File | null>(null);
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
   const [pages, setPages] = useState<PageData[]>([]);
-  const [originalPages, setOriginalPages] = useState<PageData[]>([]); 
-  
-  const [isLoading, setIsLoading] = useState(false); 
-  const [isProcessing, setIsProcessing] = useState(false); 
+  const [originalPages, setOriginalPages] = useState<PageData[]>([]);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const PREVIEW_TARGET_HEIGHT = 100; 
+  const PREVIEW_TARGET_HEIGHT = 100; // Target height for previews
 
   const handleFileSelected = async (selectedFiles: File[]) => {
     if (selectedFiles.length > 0) {
@@ -64,7 +64,7 @@ export default function OrganizePage() {
         } else if (result.pages) {
           const initialPages = result.pages.map(p => ({...p, rotation: normalizeRotation(p.rotation)}));
           setPages(initialPages);
-          setOriginalPages(JSON.parse(JSON.stringify(initialPages))); 
+          setOriginalPages(JSON.parse(JSON.stringify(initialPages)));
         }
       } catch (e: any) {
         setError(e.message || "Failed to read or process file.");
@@ -83,8 +83,8 @@ export default function OrganizePage() {
   };
 
   const handlePageUpdate = (index: number, updates: Partial<PageData>) => {
-    setPages(currentPages => 
-      currentPages.map((page, i) => 
+    setPages(currentPages =>
+      currentPages.map((page, i) =>
         i === index ? { ...page, ...updates } : page
       )
     );
@@ -111,7 +111,7 @@ export default function OrganizePage() {
       const pageToMove = newPages[index];
       newPages.splice(index, 1); // Remove page from current position
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      
+
       // Ensure targetIndex is within bounds
       if (targetIndex < 0 || targetIndex > newPages.length) {
         newPages.splice(index, 0, pageToMove); // Put it back if out of bounds
@@ -123,7 +123,7 @@ export default function OrganizePage() {
   };
 
   const handleResetChanges = () => {
-    setPages(JSON.parse(JSON.stringify(originalPages))); 
+    setPages(JSON.parse(JSON.stringify(originalPages)));
     toast({ title: "Changes Reset", description: "Page order, rotations, and deletions have been reset." });
   };
 
@@ -165,7 +165,7 @@ export default function OrganizePage() {
       setIsProcessing(false);
     }
   };
-  
+
   const getDisplayedPageIndex = (currentIndex: number): number => {
     let visibleCount = 0;
     for(let i = 0; i <= currentIndex; i++) {
@@ -225,7 +225,10 @@ export default function OrganizePage() {
                 {pages.map((page, index) => (
                   <Card key={`${page.id}-${page.originalIndex}-${index}`} className={cn(`transition-opacity shadow-sm bg-card`, page.isDeleted ? 'opacity-60 ring-2 ring-destructive/50' : '')}>
                     <div className="flex items-start p-3 gap-3">
-                       <div className="flex-shrink-0 mr-1 mt-1 flex items-center justify-center w-[80px] h-[${PREVIEW_TARGET_HEIGHT}px]">
+                       <div 
+                          className="flex-shrink-0 mr-1 mt-1 flex items-center justify-center overflow-hidden"
+                          style={{ minWidth: '80px', minHeight: `${PREVIEW_TARGET_HEIGHT}px`, width: 'auto', height: `${PREVIEW_TARGET_HEIGHT}px`}}
+                        >
                           {pdfDataUri && (
                              <PdfPagePreview
                                pdfDataUri={pdfDataUri}
@@ -239,7 +242,7 @@ export default function OrganizePage() {
                         <CardHeader className="p-0 mb-1">
                            <CardTitle className="text-md flex justify-between items-center">
                             <span className={cn(page.isDeleted && "line-through text-muted-foreground")}>
-                                {page.isDeleted ? 'Page (Kept, will be deleted)' : `Page ${getDisplayedPageIndex(index)}`} 
+                                {page.isDeleted ? 'Page (Marked for Deletion)' : `Page ${getDisplayedPageIndex(index)}`}
                                 <span className="text-xs text-muted-foreground ml-1">(Original: {page.originalIndex + 1})</span>
                             </span>
                              <Button variant="ghost" size="icon" onClick={() => handleDeleteToggle(index)} title={page.isDeleted ? "Restore Page" : "Delete Page"} className="h-7 w-7">
@@ -279,8 +282,8 @@ export default function OrganizePage() {
                 <Button variant="outline" onClick={handleResetChanges} disabled={isProcessing || isLoading}>
                     <RefreshCcw className="mr-2 h-4 w-4" /> Reset All Changes
                 </Button>
-                <Button 
-                  onClick={handleOrganizeAndDownload} 
+                <Button
+                  onClick={handleOrganizeAndDownload}
                   disabled={isProcessing || isLoading || !file || pages.filter(p => !p.isDeleted).length === 0}
                   size="lg"
                 >
