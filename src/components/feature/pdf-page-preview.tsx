@@ -8,36 +8,42 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FileWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const PDF_JS_VERSION = "4.4.168"; // This MUST match your installed pdfjs-dist version from package.json
-
 // Make a mutable copy for potential modification
 const pdfjsLib = { ...pdfjsLibOriginal };
+const originalImportedVersion = pdfjsLibOriginal.version; // Store original version
 
 // CRITICAL DIAGNOSTIC LOGS:
 console.log('[PdfPagePreview] Imported pdfjsLibOriginal object:', pdfjsLibOriginal);
-console.log('[PdfPagePreview] Initial pdfjsLib.version (from copy):', pdfjsLib.version);
+console.log('[PdfPagePreview] Original imported pdfjsLib.version (from pdfjsLibOriginal.version):', originalImportedVersion);
+console.log('[PdfPagePreview] Initial pdfjsLib.version (from mutable copy):', pdfjsLib.version);
+
+const PDF_JS_VERSION = "4.4.168"; // This MUST match your installed pdfjs-dist version from package.json
+let hackAttempted = false;
+let hackSuccessfulForProperty = false;
 
 // --- ATTEMPT HACK FOR VERSION MISMATCH ---
 if (typeof window !== 'undefined') {
+  hackAttempted = true;
   if (pdfjsLib.version !== PDF_JS_VERSION) {
     console.warn(`[PdfPagePreview] HACK: Detected version mismatch. Attempting to override pdfjsLib.version. Original: ${pdfjsLib.version}, Target: ${PDF_JS_VERSION}`);
     try {
       Object.defineProperty(pdfjsLib, 'version', {
         value: PDF_JS_VERSION,
-        writable: true, // Try to make it writable
-        configurable: true, // Try to make it configurable
+        writable: true,
+        configurable: true,
       });
       console.log(`[PdfPagePreview] HACK: After attempting override, pdfjsLib.version is now: ${pdfjsLib.version}`);
-      if (pdfjsLib.version !== PDF_JS_VERSION) {
-        console.error(`[PdfPagePreview] HACK: Override FAILED. Version is still ${pdfjsLib.version}. The version property might not be configurable.`);
+      if (pdfjsLib.version === PDF_JS_VERSION) {
+        hackSuccessfulForProperty = true;
+        console.log(`[PdfPagePreview] HACK: Override SUCCEEDED for the 'version' property itself.`);
       } else {
-        console.log(`[PdfPagePreview] HACK: Override SUCCEEDED. pdfjsLib.version is now ${pdfjsLib.version}.`);
+        console.error(`[PdfPagePreview] HACK: Override FAILED. Version property still ${pdfjsLib.version}. It might not be configurable or writable in a way that affects internal checks.`);
       }
     } catch (e) {
       console.error(`[PdfPagePreview] HACK: Error during pdfjsLib.version override attempt:`, e);
     }
   } else {
-    console.log(`[PdfPagePreview] Versions match, no hack needed. pdfjsLib.version: ${pdfjsLib.version}`);
+    console.log(`[PdfPagePreview] Versions match, no hack needed initially. pdfjsLib.version: ${pdfjsLib.version}`);
   }
   // --- END HACK ---
 
@@ -55,7 +61,7 @@ if (typeof window !== 'undefined') {
     console.error("[PdfPagePreview] Error during workerSrc setup:", e);
   }
 } else {
-    console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment).');
+    console.log('[PdfPagePreview] Skipping workerSrc setup and hack (not in browser environment).');
 }
 
 
@@ -81,7 +87,8 @@ async function renderPdfPageToCanvas(
   logPrefix: string
 ): Promise<RenderOutput> {
   console.log(`${logPrefix} renderPdfPageToCanvas: Starting for page ${pageIndex + 1}, targetH: ${targetHeight}, rotation: ${rotation}`);
-  console.log(`${logPrefix} CURRENT CHECK: pdfjsLib.version: ${pdfjsLib.version}, PDF_JS_VERSION_CONSTANT: ${PDF_JS_VERSION}, GlobalWorkerOptions.workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+  // Log versions right before the critical call
+  console.log(`${logPrefix} CURRENT CHECK: pdfjsLib.version (at render time): ${pdfjsLib.version}, PDF_JS_VERSION_CONSTANT (expected): ${PDF_JS_VERSION}, GlobalWorkerOptions.workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
 
   const base64Marker = ';base64,';
   const base64Index = pdfDataUri.indexOf(base64Marker);
@@ -100,13 +107,12 @@ async function renderPdfPageToCanvas(
     pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
   }
 
-  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+  if (!pdfjsLib.GlobalWorkerOptions.workerSrc && typeof window !== 'undefined') {
     console.error(`${logPrefix} PDF.js workerSrc not configured! This is a critical error. Current workerSrc: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
-    if (typeof window !== 'undefined') {
-        const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
-        console.warn(`${logPrefix} Re-attempting to set workerSrc as it was not found during render.`);
-        pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
-    }
+    // Re-attempt just in case, though it should be set by module load.
+     const cdnPath = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDF_JS_VERSION}/pdf.worker.min.mjs`;
+     console.warn(`${logPrefix} Re-attempting to set workerSrc as it was not found during render.`);
+     pdfjsLib.GlobalWorkerOptions.workerSrc = cdnPath;
     if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
         throw new Error(`${logPrefix} PDF.js workerSrc still not configured after re-attempt during render.`);
     }
@@ -124,14 +130,11 @@ async function renderPdfPageToCanvas(
     }
 
     const page: PDFPageProxy = await pdf.getPage(pageIndex + 1);
-    const dynamicRotation = (rotation || 0); // Default to 0 if undefined
-    // pdf.js rotates relative to the page's inherent rotation.
-    // The viewport rotation is cumulative.
+    const dynamicRotation = (rotation || 0); 
     const totalRotationForViewport = (page.rotate + dynamicRotation + 360) % 360;
     
     const viewportAtScale1 = page.getViewport({ scale: 1, rotation: totalRotationForViewport });
     if (viewportAtScale1.height <= 0 || viewportAtScale1.width <= 0) {
-      // This could happen for zero-byte pages or corrupt PDFs.
       throw new Error(`${logPrefix} Page viewport@1 has invalid dimensions (H:${viewportAtScale1.height} W:${viewportAtScale1.width}). Page might be empty or corrupt.`);
     }
 
@@ -148,15 +151,14 @@ async function renderPdfPageToCanvas(
     const context = canvas.getContext('2d');
     if (!context) throw new Error(`${logPrefix} Could not get canvas 2D context for page ${pageIndex + 1}.`);
 
-    // Ensure canvas dimensions are positive integers
     const newCanvasWidth = Math.max(1, Math.round(viewport.width));
     const newCanvasHeight = Math.max(1, Math.round(viewport.height));
     
-    context.clearRect(0, 0, canvas.width, canvas.height); // Clear previous content
+    context.clearRect(0, 0, canvas.width, canvas.height); 
     canvas.height = newCanvasHeight;
     canvas.width = newCanvasWidth;
 
-    const RENDER_TIMEOUT = 15000; // 15 seconds
+    const RENDER_TIMEOUT = 15000; 
     const renderContext: RenderParameters = { canvasContext: context, viewport: viewport };
     const renderTask = page.render(renderContext);
 
@@ -166,17 +168,13 @@ async function renderPdfPageToCanvas(
 
     await Promise.race([renderTask.promise, timeoutPromise]);
     console.log(`${logPrefix} Render task completed for page ${pageIndex + 1}.`);
-    // Page cleanup is important to free up resources.
     try { page.cleanup(); } catch (cleanupError) { console.warn(`${logPrefix} Error during page cleanup for page ${pageIndex + 1}:`, cleanupError); }
     return { width: newCanvasWidth, height: newCanvasHeight };
 
   } finally {
-    // Ensure PDF document is destroyed to free memory,
-    // but only if it was successfully loaded.
     if (pdf && typeof (pdf as any).destroy === 'function') {
       try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix} Error destroying PDF doc:`, destroyError); }
     } else if (loadingTask && typeof (loadingTask as any).destroy === 'function' && !pdf) {
-      // If pdf loading failed, but loadingTask exists, destroy it.
       (loadingTask as any).destroy();
       console.log(`${logPrefix} Destroying loading task because PDF object was not created or promise rejected early.`);
     }
@@ -193,14 +191,17 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [renderError, setRenderError] = useState<string | null>(null);
-  const [importedPdfJsVersion, setImportedPdfJsVersion] = useState<string | null>(null);
-  // Stable prefix for logging within this component instance
+  const [currentImportedVersion, setCurrentImportedVersion] = useState<string>(originalImportedVersion);
+  
   const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
 
   useEffect(() => {
-    // Capture the version of the pdfjsLib that was effectively imported/hacked for display
-    setImportedPdfJsVersion(pdfjsLib.version);
-  }, []);
+    // This effect primarily updates the displayed imported version if it changes (e.g. due to hack)
+    // However, the hack itself is outside React's lifecycle, at module load.
+     if (pdfjsLib.version !== currentImportedVersion) {
+        setCurrentImportedVersion(pdfjsLib.version);
+     }
+  }, [currentImportedVersion]);
 
 
   useEffect(() => {
@@ -218,14 +219,14 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
 
       if (!canvasElement) {
-        console.log(`${logPrefix} Canvas ref not current yet for page ${pageIndex + 1}. Waiting for ref.`);
-        // No need to setIsLoading(true) here, as it should be true from initial state or previous run
-        return; // Ref will be available on a subsequent render
+        console.log(`${logPrefix} Canvas ref not current yet for page ${pageIndex + 1}. Waiting.`);
+        if (isActive && !isLoading) setIsLoading(true); // Ensure loading is true if we are waiting for canvas
+        return; 
       }
       
       console.log(`${logPrefix} Attempting render for page ${pageIndex + 1}. URI starts: ${pdfDataUri.substring(0,30)}..., Canvas available: ${!!canvasElement}`);
-      if (isActive && !isLoading) setIsLoading(true); // Set loading true before async operation
-      if (isActive && renderError) setRenderError(null); // Clear previous error
+      if (isActive && !isLoading) setIsLoading(true); 
+      if (isActive && renderError) setRenderError(null);
 
       try {
         const outputDimensions = await renderPdfPageToCanvas(
@@ -251,34 +252,43 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
     }
 
-    initRender();
+    // Delay initRender slightly to give canvas ref a chance to attach if it's a timing issue.
+    const timerId = setTimeout(() => {
+        if (isActive) initRender();
+    }, 50);
+
 
     return () => {
       isActive = false;
+      clearTimeout(timerId);
       console.log(`${logPrefix} Cleanup for page ${pageIndex + 1}.`);
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // isLoading and renderError removed as they are managed internally
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); 
 
-  const estimatedWidth = targetHeight * (210 / 297); // A4 aspect ratio for placeholder
+  const estimatedWidth = targetHeight * (210 / 297); 
 
   let specificErrorDisplay = null;
   if (renderError) {
-    // Check for the specific version mismatch error text
     if (renderError.includes("The API version") && renderError.includes("does not match the Worker version")) {
+      const hackStatus = hackAttempted 
+        ? (hackSuccessfulForProperty ? `Override to v${PDF_JS_VERSION} for property succeeded.` : `Override to v${PDF_JS_VERSION} for property FAILED or was ineffective for internal checks.`)
+        : "Version override hack was not attempted (e.g., server-side or versions matched initially).";
+
       specificErrorDisplay = (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/20 border border-destructive text-destructive-foreground rounded-md p-2 text-xs text-center pointer-events-none">
           <FileWarning className="h-5 w-5 mb-1 flex-shrink-0" />
           <p className="font-semibold">PDF Library Version Mismatch!</p>
-          <p className="mt-1 text-[10px]">Imported API reports: v{importedPdfJsVersion || 'unknown (loading...)'}</p>
+          <p className="mt-1 text-[10px]">Imported API originally: v{originalImportedVersion}</p>
           <p className="text-[10px]">Worker (expected): v{PDF_JS_VERSION}</p>
-          <p className="mt-1 text-[9px] opacity-80">This is an environment setup issue. The core PDF library version is incorrect.</p>
+          <p className="mt-1 text-[9px] opacity-90">Hack status: {hackStatus}</p>
+          <p className="mt-1 text-[9px] opacity-80">This indicates an environment issue where an incorrect core PDF library is loaded, and runtime fixes are insufficient.</p>
         </div>
       );
     } else {
       specificErrorDisplay = (
          <div
             className="absolute inset-0 flex flex-col items-center justify-center bg-destructive/10 border border-destructive/50 text-destructive-foreground rounded-md p-1 text-xs text-center pointer-events-none"
-            title={renderError} // Show full error on hover
+            title={renderError}
           >
             <FileWarning className="h-4 w-4 mb-0.5 flex-shrink-0" />
             <p className="leading-tight text-[10px]">Page {pageIndex + 1}: Render Error</p>
@@ -293,16 +303,14 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       className={cn("relative bg-transparent overflow-hidden flex items-center justify-center border border-dashed border-muted-foreground/30 rounded-md", className)}
       style={{ 
         height: `${targetHeight}px`, 
-        width: `auto`, // Auto width based on canvas content
-        minWidth: `${Math.max(50, Math.round(estimatedWidth * 0.5))}px`, // Prevent overly squished placeholder
-        maxWidth: `${Math.max(100, Math.round(estimatedWidth * 2))}px` // Prevent overly wide placeholder
+        width: `auto`, 
+        minWidth: `${Math.max(50, Math.round(estimatedWidth * 0.5))}px`, 
+        maxWidth: `${Math.max(100, Math.round(estimatedWidth * 2))}px` 
       }}
     >
-      {/* Canvas is always rendered so ref can attach. Visibility controlled by opacity and overlays. */}
       <canvas
         ref={canvasRef}
         className={cn("border border-muted shadow-sm rounded-md bg-white transition-opacity duration-300", {
-          // Hide canvas if loading, error, or no data, otherwise show it
           'opacity-0': isLoading || !!renderError || !pdfDataUri, 
           'opacity-100': !isLoading && !renderError && pdfDataUri,
         })}
@@ -310,19 +318,17 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           display: 'block', 
           maxWidth: '100%', 
           maxHeight: '100%',
-          objectFit: 'contain', // Ensures canvas content scales within its bounds
+          objectFit: 'contain', 
         }}
         role="img"
         aria-label={`Preview of PDF page ${pageIndex + 1}`}
       />
       
-      {/* Loading Skeleton: Shown when isLoading is true AND there's no error */}
       {isLoading && !renderError && pdfDataUri && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-background/30 backdrop-blur-sm">
             <Skeleton
                 className="rounded-md bg-muted/50"
                 style={{ 
-                  // Make skeleton slightly smaller than container to show border
                   height: `calc(100% - 4px)`, 
                   width: `calc(100% - 4px)`   
                 }}
@@ -331,10 +337,8 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         </div>
       )}
 
-      {/* Error Display: Shown if renderError is set */}
       {specificErrorDisplay}
 
-       {/* Fallback for when no PDF data URI is provided (and not loading) */}
        {(!pdfDataUri && !isLoading && !renderError) && ( 
          <Skeleton
             className={cn("rounded-md bg-muted/30 w-full h-full")}
@@ -346,3 +350,5 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
+
+    
