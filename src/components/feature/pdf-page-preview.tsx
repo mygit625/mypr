@@ -3,18 +3,19 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
-import type { PDFDocumentProxy, PDFPageProxy, RenderParameters, PDFRenderTask } from 'pdfjs-dist/types/src/display/api';
+import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileWarning, CheckCircle } from 'lucide-react'; // Added CheckCircle for hack status
+import { FileWarning, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // CRITICAL DIAGNOSTIC LOGS:
 console.log('[PdfPagePreview] Imported pdfjsLib object:', pdfjsLib);
-const importedApiVersion = pdfjsLib.version; 
+const importedApiVersion = pdfjsLib.version;
 console.log('[PdfPagePreview] Imported pdfjsLib.version:', importedApiVersion);
 
-
-// Dynamically set workerSrc based on the imported API version
+// Dynamically set workerSrc based on the imported API version.
+// This aims to match the worker version to whatever the main API reports.
+// If importedApiVersion is unusual (e.g., "4.10.38"), this will likely result in a 404 for the worker.
 if (typeof window !== 'undefined' && importedApiVersion) {
     const dynamicWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${importedApiVersion}/pdf.worker.min.mjs`;
     if (pdfjsLib.GlobalWorkerOptions.workerSrc !== dynamicWorkerSrc) {
@@ -25,7 +26,7 @@ if (typeof window !== 'undefined' && importedApiVersion) {
         console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already dynamically set to: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
     }
 } else if (typeof window !== 'undefined') {
-    // Fallback if importedApiVersion is somehow not available, though it should be.
+    // Fallback if importedApiVersion is somehow not available. This shouldn't happen given the above log.
     const fallbackVersion = "4.4.168"; // Fallback to package.json version
     const fallbackWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${fallbackVersion}/pdf.worker.min.mjs`;
     pdfjsLib.GlobalWorkerOptions.workerSrc = fallbackWorkerSrc;
@@ -43,11 +44,6 @@ interface PdfPagePreviewProps {
   className?: string;
 }
 
-interface RenderOutput {
-  width: number;
-  height: number;
-}
-
 const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   pdfDataUri,
   pageIndex,
@@ -59,23 +55,13 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [renderError, setRenderError] = useState<string | null>(null);
   const stableInstanceLogPrefix = useRef(`pdf-pv-${pageIndex}-${Math.random().toString(36).substring(2, 7)}`).current;
-  const renderTaskRef = useRef<PDFRenderTask | null>(null);
-  const [currentUsedPdfJsVersion, setCurrentUsedPdfJsVersion] = useState<string | null>(null);
   const [currentWorkerSrc, setCurrentWorkerSrc] = useState<string | null>(null);
-
+  const [actualUsedApiVersion, setActualUsedApiVersion] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
     const canvasElement = canvasRef.current;
     const logPrefix = `${stableInstanceLogPrefix}-eff`;
-
-    const cleanupPreviousRender = () => {
-      if (renderTaskRef.current) {
-        console.log(`${logPrefix} Cancelling previous render task for page ${pageIndex + 1}`);
-        renderTaskRef.current.cancel();
-        renderTaskRef.current = null;
-      }
-    };
 
     const initRender = async () => {
       if (!isActive) return;
@@ -91,17 +77,18 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
       if (!canvasElement) {
         console.log(`${logPrefix} Canvas ref not current for page ${pageIndex + 1}. Will show loading.`);
-        if (isActive && !isLoading) setIsLoading(true);
-        return;
+        if (isActive) {
+            if(!isLoading) setIsLoading(true); // Ensure loading is true if canvas not ready
+            setRenderError(null); // Clear previous errors
+        }
+        return; // Wait for canvas ref
       }
       
-      cleanupPreviousRender(); // Cancel any existing task before starting a new one
-
       console.log(`${logPrefix} Attempting render for page ${pageIndex + 1}. URI starts: ${pdfDataUri.substring(0,30)}...`);
       if (isActive) {
-         setIsLoading(true); 
+         setIsLoading(true);
          setRenderError(null);
-         setCurrentUsedPdfJsVersion(pdfjsLib.version);
+         setActualUsedApiVersion(pdfjsLib.version); // Store the version actually used by getDocument
          setCurrentWorkerSrc(pdfjsLib.GlobalWorkerOptions.workerSrc as string);
       }
 
@@ -129,7 +116,8 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         }
 
         const page: PDFPageProxy = await pdf.getPage(pageIndex + 1);
-        const dynamicRotation = (rotation || 0);
+        const dynamicRotation = (rotation || 0); // Default to 0 if undefined
+        // Original page rotation + dynamic rotation from props
         const totalRotationForViewport = (page.rotate + dynamicRotation + 360) % 360;
         const viewportAtScale1 = page.getViewport({ scale: 1, rotation: totalRotationForViewport });
 
@@ -150,64 +138,48 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         
         const newCanvasWidth = Math.max(1, Math.round(viewport.width));
         const newCanvasHeight = Math.max(1, Math.round(viewport.height));
-        context.clearRect(0, 0, canvasElement.width, canvasElement.height);
-        canvasElement.height = newCanvasHeight;
+        
+        canvasElement.height = newCanvasHeight; 
         canvasElement.width = newCanvasWidth;
 
-        const RENDER_TIMEOUT = 15000;
+        const RENDER_TIMEOUT = 15000; 
         const renderContextParams: RenderParameters = { canvasContext: context, viewport: viewport };
         
-        const currentRenderTask = page.render(renderContextParams);
-        renderTaskRef.current = currentRenderTask; // Store the task
-
+        const renderTask = page.render(renderContextParams);
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error(`${logPrefix}-render Render timed out for page ${pageIndex + 1} after ${RENDER_TIMEOUT/1000}s`)), RENDER_TIMEOUT)
         );
         
-        await Promise.race([currentRenderTask.promise, timeoutPromise]);
+        await Promise.race([renderTask.promise, timeoutPromise]);
         
         console.log(`${logPrefix}-render Render task completed for page ${pageIndex + 1}.`);
+        if (isActive) setIsLoading(false); 
+
         try { page.cleanup(); } catch (cleanupError) { console.warn(`${logPrefix}-render Error during page cleanup:`, cleanupError); }
 
       } catch (err: any) {
-        if (err.name === 'RenderingCancelledException' || err.message?.includes('cancelled')) {
-            console.log(`${logPrefix}-render Render task was cancelled for page ${pageIndex + 1}. This is expected if props changed or component unmounted.`);
-        } else {
-            console.error(`${logPrefix} Error in renderPdfPageToCanvas for page ${pageIndex + 1}:`, err.message);
-            if (isActive) {
-              setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
-            }
+        console.error(`${logPrefix} Error in renderPdfPageToCanvas for page ${pageIndex + 1}:`, err.message);
+        if (isActive) {
+          setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
+          setIsLoading(false); 
         }
       } finally {
         if (pdf && typeof (pdf as any).destroy === 'function') {
           try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix}-render Error destroying PDF doc:`, destroyError); }
         }
-        if (isActive) {
-          setIsLoading(false);
-        }
-        // If this task was the one in the ref and it finished (not cancelled by a new one starting over it), clear the ref.
-        if (renderTaskRef.current && !renderTaskRef.current.cancel) { 
-           // This check is a bit indirect. A completed/failed task won't have .cancel method anymore on its promise proxy.
-           // Or better, if the task stored in ref is the one that just finished:
-           // if (renderTaskRef.current === currentRenderTask) { // This might be problematic if currentRenderTask is undefined on error
-           //    renderTaskRef.current = null;
-           // }
-        }
       }
     };
     
-    // Debounce rendering slightly to allow canvas ref to attach and props to stabilize
     const timerId = setTimeout(() => {
         if (isActive) initRender();
-    }, 150); 
+    }, 100); 
 
     return () => {
       isActive = false;
       clearTimeout(timerId);
-      console.log(`${logPrefix} Cleanup effect for page ${pageIndex + 1}. Cancelling task if active.`);
-      cleanupPreviousRender();
+      console.log(`${logPrefix} Cleanup effect for page ${pageIndex + 1}.`);
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // Removed isLoading from deps
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]);
 
 
   const estimatedWidth = targetHeight * (210 / 297); 
@@ -215,17 +187,16 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
   let errorDisplay = null;
   if (renderError) {
       let detailedErrorMessage = renderError;
-      const apiV = currentUsedPdfJsVersion || 'N/A';
+      const apiV = actualUsedApiVersion || importedApiVersion || 'N/A'; 
       const workerSrcPath = currentWorkerSrc || 'N/A';
       
       if (renderError.includes("The API version") && renderError.includes("does not match the Worker version")) {
-          detailedErrorMessage = `PDF Library Mismatch! API: ${apiV}, Worker expected to match. Worker Path: ${workerSrcPath}. This is an environment setup issue.`;
-      } else if ((renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && renderError.includes("pdf.worker.min.mjs")) {
-          detailedErrorMessage = `Worker Load Fail! API: ${apiV}. Worker Path: ${workerSrcPath}. Check CDN or network.`;
+          detailedErrorMessage = `PDF Library Mismatch! Imported API: ${apiV}, Worker expected to match. Worker Path: ${workerSrcPath}. This is an environment setup issue.`;
+      } else if ((renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && (workerSrcPath.includes(".worker.min.mjs") || workerSrcPath.includes(".worker.js"))) {
+          detailedErrorMessage = `Worker Load Fail! API: ${apiV}. Worker Path: ${workerSrcPath}. Check CDN or network. Version '${apiV}' may not exist on CDN.`;
       } else if (renderError.includes("Cannot use the same canvas during multiple render() operations")) {
-          detailedErrorMessage = `Canvas render conflict for page ${pageIndex + 1}. Retrying or ensure tasks are cancelled.`;
+          detailedErrorMessage = `Canvas render conflict for page ${pageIndex + 1}. This suggests overlapping render calls.`;
       }
-
 
       errorDisplay = (
          <div
@@ -236,7 +207,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
             <p className="leading-tight text-[10px] px-1">
                 { (renderError.includes("The API version") && renderError.includes("does not match"))
                     ? `Lib Mismatch (API: ${apiV})`
-                    : (renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && renderError.includes("pdf.worker")
+                    : (renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && (workerSrcPath.includes(".worker.min.mjs") || workerSrcPath.includes(".worker.js"))
                         ? `Worker Fail (API: ${apiV})`
                         : renderError.includes("Cannot use the same canvas")
                             ? `Canvas Conflict`
@@ -246,15 +217,18 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
             {(renderError.includes("The API version") && renderError.includes("does not match")) &&
              <p className="leading-tight text-[9px] opacity-80 mt-0.5 px-1">Expected worker to match API.</p>
             }
+            {((renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && (workerSrcPath.includes(".worker.min.mjs") || workerSrcPath.includes(".worker.js"))) &&
+             <p className="leading-tight text-[9px] opacity-80 mt-0.5 px-1">Worker for API '{apiV}' might be missing on CDN.</p>
+            }
           </div>
       );
   }
   
   return (
-    <div 
+    <div
       className={cn("relative bg-transparent overflow-hidden flex items-center justify-center border border-dashed border-muted-foreground/30 rounded-md", className)}
-      style={{ 
-        height: `${targetHeight}px`, 
+      style={{
+        height: `${targetHeight}px`,
         width: `auto`, 
         minWidth: `${Math.max(50, Math.round(estimatedWidth * 0.5))}px`, 
         maxWidth: `${Math.max(100, Math.round(estimatedWidth * 2))}px` 
@@ -267,8 +241,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           'opacity-100': !isLoading && !renderError && pdfDataUri,
         })}
         style={{
-          display: (!isLoading && !renderError && pdfDataUri) ? 'block' : 'none', // Hide canvas if loading/error
-          maxWidth: '100%', 
+          maxWidth: '100%',
           maxHeight: '100%',
           objectFit: 'contain', 
         }}
@@ -276,11 +249,11 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         aria-label={`Preview of PDF page ${pageIndex + 1}`}
       />
       
-      {isLoading && !renderError && pdfDataUri && (
+      {isLoading && !renderError && pdfDataUri && ( 
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-background/30 backdrop-blur-sm">
             <Skeleton
                 className="rounded-md bg-muted/50"
-                style={{ 
+                style={{
                   height: `calc(100% - 4px)`, 
                   width: `calc(100% - 4px)`   
                 }}
@@ -302,3 +275,5 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
+
+    
