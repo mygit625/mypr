@@ -6,8 +6,11 @@ import { PDFDocument } from 'pdf-lib';
 // Explicit import for type safety if using a specific Buffer type.
 import type { Buffer } from 'buffer'; 
 
+export type CompressionLevel = "extreme" | "recommended" | "less";
+
 export interface CompressPdfInput {
   pdfDataUri: string;
+  compressionLevel: CompressionLevel;
 }
 
 export interface CompressPdfOutput {
@@ -38,24 +41,23 @@ export async function compressPdfAction(input: CompressPdfInput): Promise<Compre
         ignoreEncryption: true,
     });
     
-    // pdf-lib automatically attempts to optimize the PDF structure on save.
-    // This step rebuilds the PDF, which can reduce size by optimizing object usage and structure.
-    // For more advanced compression (e.g., image re-compression), external libraries or tools would be needed.
+    // Note: pdf-lib primarily compresses by optimizing PDF structure (e.g., object streams).
+    // The 'compressionLevel' input is received but not directly used to alter pdf-lib's behavior
+    // in this iteration, as pdf-lib doesn't offer explicit quality/ratio settings for general compression.
+    // For example, useObjectStreams is generally beneficial and enabled by default in modern pdf-lib.
+    console.log(`Compression action called with level: ${input.compressionLevel}`);
+
     const compressedPdfBytes = await pdfDoc.save({
-        useObjectStreams: true, // This is default in recent pdf-lib versions and helps with size.
+        useObjectStreams: true, 
     });
     const compressedSize = compressedPdfBytes.length;
 
-    // Ensure the document is not empty before creating a data URI
     if (compressedSize === 0 && pdfDoc.getPageCount() > 0) {
-        // This might indicate an issue if an empty PDF is generated from a non-empty source
         console.warn("Compression resulted in an empty PDF document, but original had pages.");
     }
      if (pdfDoc.getPageCount() === 0 && originalSize > 0) {
         console.warn("Original PDF had no pages.");
-        // It might be valid to return an empty PDF if the original was empty or invalid
     }
-
 
     const compressedPdfDataUri = `data:application/pdf;base64,${Buffer.from(compressedPdfBytes).toString('base64')}`;
     
