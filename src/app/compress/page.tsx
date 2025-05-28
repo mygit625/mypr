@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { CheckCircle, Loader2, Info, ArrowDownToLine, Plus, ArrowRightCircle, Minimize2 } from 'lucide-react';
+import { CheckCircle, Loader2, Info, ArrowDownToLine, Plus, ArrowRightCircle, Minimize2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
@@ -38,12 +38,14 @@ export default function CompressPage() {
 
   const handleFileSelectedForUploadZone = (selectedFiles: File[]) => {
     if (selectedFiles.length > 0) {
+      // Compress tool handles one file at a time.
       handleNewFile(selectedFiles[0]);
     }
   };
   
   const handleFileChangeFromInput = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
+      // Compress tool handles one file at a time.
       handleNewFile(event.target.files[0]);
     }
   };
@@ -62,6 +64,18 @@ export default function CompressPage() {
       setPdfDataUri(null);
       setFile(null);
     }
+  };
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    setPdfDataUri(null);
+    setCompressionStats(null);
+    setCompressedPdfUri(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Reset file input value
+    }
+    toast({ description: "File removed." });
   };
 
   const formatBytes = (bytes: number, decimals = 2) => {
@@ -136,7 +150,7 @@ export default function CompressPage() {
         <Minimize2 className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-4xl font-bold tracking-tight">Compress PDF File</h1>
         <p className="text-muted-foreground mt-2 text-lg">
-          Reduce the file size of your PDF while maintaining quality.
+          Reduce the file size of your PDF while maintaining quality. This tool processes one PDF at a time.
         </p>
       </header>
 
@@ -145,7 +159,11 @@ export default function CompressPage() {
         <div className="lg:w-2/3 relative min-h-[400px] lg:min-h-[500px] flex flex-col items-center justify-center bg-card border rounded-lg shadow-md p-6">
           {!pdfDataUri && (
             <div className="w-full max-w-md">
-              <FileUploadZone onFilesSelected={handleFileSelectedForUploadZone} multiple={false} accept="application/pdf" />
+              <FileUploadZone 
+                onFilesSelected={handleFileSelectedForUploadZone} 
+                multiple={false} // Explicitly single file for compression tool
+                accept="application/pdf" 
+              />
             </div>
           )}
           {pdfDataUri && file && (
@@ -154,6 +172,15 @@ export default function CompressPage() {
                  <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={0} targetHeight={PREVIEW_TARGET_HEIGHT_COMPRESS} />
               </div>
               <p className="mt-3 text-sm text-muted-foreground truncate w-full text-center" title={file.name}>{file.name}</p>
+               <Button
+                variant="destructive"
+                size="icon"
+                className="absolute top-4 left-4 h-10 w-10 rounded-full shadow-lg hover:bg-destructive/90"
+                onClick={handleRemoveFile}
+                aria-label="Remove current PDF file"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </>
           )}
            <Button
@@ -170,7 +197,7 @@ export default function CompressPage() {
             ref={fileInputRef}
             onChange={handleFileChangeFromInput}
             accept="application/pdf"
-            className="hidden"
+            className="hidden" // Still single file selection here
           />
         </div>
 
@@ -181,13 +208,13 @@ export default function CompressPage() {
               <CardTitle>Compression level</CardTitle>
             </CardHeader>
             <CardContent>
-              <RadioGroup value={compressionLevel} onValueChange={(value) => setCompressionLevel(value as CompressionLevel)}>
+              <RadioGroup value={compressionLevel} onValueChange={(value) => setCompressionLevel(value as CompressionLevel)} className="space-y-2">
                 {compressionOptions.map((option) => (
                   <Label
                     key={option.value}
                     htmlFor={`comp-${option.value}`}
                     className={cn(
-                      "flex flex-col p-4 border rounded-lg cursor-pointer hover:border-primary transition-all",
+                      "flex flex-col p-3 border rounded-lg cursor-pointer hover:border-primary transition-all",
                       compressionLevel === option.value && "border-primary ring-2 ring-primary bg-primary/5"
                     )}
                   >
