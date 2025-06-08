@@ -6,7 +6,7 @@ import { Github, Twitter, Linkedin, Globe } from 'lucide-react';
 
 const footerSections = [
   {
-    title: 'DocuEase',
+    title: 'PDFBox',
     links: [
       { label: 'Home', href: '/' },
       { label: 'All PDF Tools', href: '/' },
@@ -80,7 +80,7 @@ export default function Footer() {
 
         <div className="border-t pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm text-muted-foreground mb-4 md:mb-0">
-            © <ClientFooterYear /> DocuEase. All rights reserved.
+            © <ClientFooterYear /> PDFBox. All rights reserved.
           </p>
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
