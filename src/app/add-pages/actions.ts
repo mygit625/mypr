@@ -4,6 +4,7 @@
 import { PDFDocument } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
+// Re-export types and wrapped action from organize/actions
 export type { GetInitialPageDataInput, GetInitialPageDataOutput, PageData } from '../organize/actions';
 import { getInitialPageDataAction as originalGetInitialPageDataAction } from '../organize/actions';
 
@@ -11,84 +12,57 @@ export async function getInitialPageDataAction(input: GetInitialPageDataInput): 
   return originalGetInitialPageDataAction(input);
 }
 
-export interface AddPagesToPdfInput {
-  targetPdfDataUri: string;
-  sourcePdfDataUris: string[];
-  insertionPageNumber?: number; // 1-indexed page number *before* which to insert
+export interface AssemblePdfInput {
+  orderedPdfDataUris: string[];
 }
 
-export interface AddPagesToPdfOutput {
-  modifiedPdfDataUri?: string;
+export interface AssemblePdfOutput {
+  assembledPdfDataUri?: string;
   error?: string;
 }
 
-export async function addPagesToPdfAction(input: AddPagesToPdfInput): Promise<AddPagesToPdfOutput> {
-  if (!input.targetPdfDataUri) {
-    return { error: "Target PDF not provided." };
-  }
-  if (!input.sourcePdfDataUris || input.sourcePdfDataUris.length === 0) {
-    return { error: "No source PDF(s) provided to add pages from." };
+export async function assemblePdfAction(input: AssemblePdfInput): Promise<AssemblePdfOutput> {
+  if (!input.orderedPdfDataUris || input.orderedPdfDataUris.length === 0) {
+    return { error: "No PDF segments provided to assemble." };
   }
 
   try {
-    // Validate target PDF
-    if (!input.targetPdfDataUri.startsWith('data:application/pdf;base64,')) {
-      console.error('Invalid data URI format for target PDF in addPages:', input.targetPdfDataUri.substring(0,100));
-      return { error: `Invalid Target PDF data format.` };
-    }
-    const targetPdfBytes = Buffer.from(input.targetPdfDataUri.split(',')[1], 'base64');
-    const targetPdfDoc = await PDFDocument.load(targetPdfBytes, { ignoreEncryption: true });
+    const finalPdfDoc = await PDFDocument.create();
 
-    let insertionIndex = input.insertionPageNumber ? input.insertionPageNumber - 1 : targetPdfDoc.getPageCount();
-    // Clamp insertionIndex to be within valid bounds (0 to targetPdfDoc.getPageCount())
-    insertionIndex = Math.max(0, Math.min(insertionIndex, targetPdfDoc.getPageCount()));
-
-    // Collect all pages from all source documents
-    const allSourcePagesToCopy: { doc: PDFDocumentProxy, indices: number[] }[] = [];
-
-    for (const sourceUri of input.sourcePdfDataUris) {
-      if (!sourceUri.startsWith('data:application/pdf;base64,')) {
-         console.warn('Invalid data URI format for a source PDF in addPages:', sourceUri.substring(0,100));
-         // Optionally skip this source or return an error
-         return { error: `Invalid Source PDF data format for one of the files.`};
+    for (const dataUri of input.orderedPdfDataUris) {
+      if (!dataUri.startsWith('data:application/pdf;base64,')) {
+        console.error('Invalid data URI format for a PDF segment:', dataUri.substring(0, 100));
+        return { error: `Invalid PDF data format for one of the segments. Please ensure all files are valid PDFs.` };
       }
-      const sourcePdfBytes = Buffer.from(sourceUri.split(',')[1], 'base64');
-      const sourcePdfDoc = await PDFDocument.load(sourcePdfBytes, { ignoreEncryption: true });
-      if (sourcePdfDoc.getPageCount() > 0) {
-        allSourcePagesToCopy.push({ doc: sourcePdfDoc, indices: sourcePdfDoc.getPageIndices() });
+      const pdfBytes = Buffer.from(dataUri.split(',')[1], 'base64');
+      // Set ignoreEncryption to true to attempt processing, but some encrypted files might still fail.
+      const segmentPdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+      
+      if (segmentPdfDoc.getPageCount() === 0) {
+        console.warn('A PDF segment with no pages was encountered and skipped.');
+        continue; // Skip empty PDFs
       }
-    }
-    
-    if (allSourcePagesToCopy.length === 0) {
-        return { error: "No pages found in the source PDF(s) to add." };
+
+      const copiedPages = await finalPdfDoc.copyPages(segmentPdfDoc, segmentPdfDoc.getPageIndices());
+      copiedPages.forEach((page) => {
+        finalPdfDoc.addPage(page);
+      });
     }
 
-    // Iterate through source documents and their pages to copy into the target
-    // Copying pages in reverse order of source documents and then inserting them at the same index
-    // effectively maintains the order of source documents and their internal page order.
-    for (let i = allSourcePagesToCopy.length - 1; i >= 0; i--) {
-        const source = allSourcePagesToCopy[i];
-        const copiedPages = await targetPdfDoc.copyPages(source.doc, source.indices);
-        // Insert pages in their original order from the source doc
-        for (let j = 0; j < copiedPages.length; j++) {
-            targetPdfDoc.insertPage(insertionIndex + j, copiedPages[j]);
-        }
+    if (finalPdfDoc.getPageCount() === 0) {
+        return { error: "The assembled PDF would be empty. No valid pages were found in the provided segments."}
     }
-    
-    const modifiedPdfBytes = await targetPdfDoc.save();
-    const modifiedPdfDataUri = `data:application/pdf;base64,${Buffer.from(modifiedPdfBytes).toString('base64')}`;
 
-    return { modifiedPdfDataUri };
+    const assembledPdfBytes = await finalPdfDoc.save();
+    const assembledPdfDataUri = `data:application/pdf;base64,${Buffer.from(assembledPdfBytes).toString('base64')}`;
+    
+    return { assembledPdfDataUri };
 
   } catch (error: any) {
-    console.error("Error adding pages to PDF:", error);
-    return { error: error.message || "An unexpected error occurred while adding pages." };
+    console.error("Error assembling PDF segments:", error);
+    if (error.message && error.message.toLowerCase().includes('encrypted') && !error.message.toLowerCase().includes('ignoreencryption')) {
+        return { error: "One of the PDF segments is encrypted with restrictions that prevent modification. Please provide decrypted PDFs."}
+    }
+    return { error: error.message || "An unexpected error occurred while assembling the PDF." };
   }
-}
-
-// Minimal type for PDFDocumentProxy for the action. Real one is complex.
-interface PDFDocumentProxy {
-  getPageCount(): number;
-  getPageIndices(): number[];
-  // other methods not needed for this simplified type
 }

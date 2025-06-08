@@ -1,299 +1,272 @@
 
 "use client";
 
-import { useState, useCallback, ChangeEvent } from 'react';
+import { useState, useRef, useCallback, ChangeEvent } from 'react';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { FilePlus2, Loader2, Info, Download, Trash2, FileIcon, CheckCircle, PlusCircle, XCircle } from 'lucide-react';
+import { FilePlus2, Loader2, Info, Download, Trash2, PlusCircle, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { getInitialPageDataAction, addPagesToPdfAction, type PageData } from './actions';
+import { getInitialPageDataAction, assemblePdfAction, type PageData } from './actions';
 import { cn } from '@/lib/utils';
 
-interface SourcePdfItem {
+interface PdfSegment {
   id: string;
-  file: File;
+  file?: File; // Original file, might be undefined if segment data is reloaded/passed around
   dataUri: string;
   name: string;
+  pages: PageData[];
+  pageCount: number;
 }
 
-const PREVIEW_TARGET_HEIGHT_TARGET = 150;
-const PREVIEW_TARGET_HEIGHT_SOURCE = 80;
+const PREVIEW_TARGET_HEIGHT = 100;
 
 export default function AddPagesPage() {
-  const [targetPdfFile, setTargetPdfFile] = useState<File | null>(null);
-  const [targetPdfDataUri, setTargetPdfDataUri] = useState<string | null>(null);
-  const [targetPdfPages, setTargetPdfPages] = useState<PageData[]>([]);
-  
-  const [sourcePdfItems, setSourcePdfItems] = useState<SourcePdfItem[]>([]);
-  const [insertionPageNumber, setInsertionPageNumber] = useState<string>('');
-
-  const [isLoadingTarget, setIsLoadingTarget] = useState(false);
-  const [isLoadingSources, setIsLoadingSources] = useState(false);
+  const [pdfSegments, setPdfSegments] = useState<PdfSegment[]>([]);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
+  const [isLoadingInsert, setIsLoadingInsert] = useState<{ active: boolean; index: number | null }>({ active: false, index: null });
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const insertionIndexRef = useRef<number>(0); // Store index for file input callback
 
-  const handleTargetFileSelected = async (selectedFiles: File[]) => {
-    if (selectedFiles.length > 0) {
-      const file = selectedFiles[0];
-      setTargetPdfFile(file);
-      setError(null);
-      setTargetPdfPages([]);
-      setIsLoadingTarget(true);
-      setTargetPdfDataUri(null);
-      try {
-        const dataUri = await readFileAsDataURL(file);
-        setTargetPdfDataUri(dataUri);
-        const result = await getInitialPageDataAction({ pdfDataUri: dataUri });
-        if (result.error) {
-          setError(result.error);
-          toast({ title: "Error loading target PDF", description: result.error, variant: "destructive" });
-          setTargetPdfFile(null); setTargetPdfDataUri(null);
-        } else if (result.pages) {
-          setTargetPdfPages(result.pages.map(p => ({ ...p, rotation: 0 /* Assuming default rotation */ })));
-        }
-      } catch (e: any) {
-        setError(e.message || "Failed to read or process target PDF.");
-        toast({ title: "Target PDF Error", description: e.message, variant: "destructive" });
-        setTargetPdfFile(null); setTargetPdfDataUri(null);
-      } finally {
-        setIsLoadingTarget(false);
-      }
-    } else {
-      setTargetPdfFile(null); setTargetPdfDataUri(null); setTargetPdfPages([]);
-    }
-  };
+  const processAndAddFiles = async (files: File[], insertionIndex: number) => {
+    if (files.length === 0) return;
 
-  const processSourceFiles = async (files: File[]): Promise<SourcePdfItem[]> => {
-    setIsLoadingSources(true);
-    const newItems: SourcePdfItem[] = [];
+    setIsLoadingInsert({ active: true, index: insertionIndex });
+    setError(null);
+
+    const newSegments: PdfSegment[] = [];
     for (const file of files) {
-      if (sourcePdfItems.find(item => item.name === file.name && item.file.size === file.size)) {
-        console.warn(`Skipping duplicate source file: ${file.name}`);
+      // Basic duplicate check against existing segments (name and size)
+      if (pdfSegments.some(seg => seg.name === file.name && seg.file?.size === file.size)) {
+        toast({ title: "Duplicate Skipped", description: `File ${file.name} seems to be a duplicate and was skipped.`, variant: "default" });
         continue;
       }
       try {
         const dataUri = await readFileAsDataURL(file);
-        newItems.push({ id: crypto.randomUUID(), file, dataUri, name: file.name });
+        const pageDataResult = await getInitialPageDataAction({ pdfDataUri: dataUri });
+        if (pageDataResult.error) {
+          throw new Error(pageDataResult.error);
+        }
+        if (pageDataResult.pages && pageDataResult.pages.length > 0) {
+          newSegments.push({
+            id: crypto.randomUUID(),
+            file,
+            dataUri,
+            name: file.name,
+            pages: pageDataResult.pages.map(p => ({ ...p, rotation: 0 /* Assuming default rotation */ })),
+            pageCount: pageDataResult.pages.length,
+          });
+        } else if (pageDataResult.pages && pageDataResult.pages.length === 0) {
+            toast({ title: "Empty PDF Skipped", description: `File ${file.name} has no pages and was skipped.`});
+        }
       } catch (e: any) {
-        console.error("Error reading source file:", file.name, e);
-        toast({ title: "Source File Read Error", description: `Could not read: ${file.name}. ${e.message}`, variant: "destructive" });
+        toast({ title: `Error processing ${file.name}`, description: e.message, variant: "destructive" });
+        setError(`Failed to process ${file.name}: ${e.message}`);
       }
     }
-    setIsLoadingSources(false);
-    return newItems;
-  };
 
-  const handleSourceFilesSelected = async (newFiles: File[]) => {
-    if (newFiles.length === 0) return;
-    const processedNewItems = await processSourceFiles(newFiles);
-    setSourcePdfItems((prevItems) => [...prevItems, ...processedNewItems]);
+    if (newSegments.length > 0) {
+      setPdfSegments(prevSegments => {
+        const updatedSegments = [...prevSegments];
+        updatedSegments.splice(insertionIndex, 0, ...newSegments);
+        return updatedSegments;
+      });
+    }
+    setIsLoadingInsert({ active: false, index: null });
   };
   
-  const handleRemoveSourceFile = (idToRemove: string) => {
-    setSourcePdfItems((prevItems) => prevItems.filter(item => item.id !== idToRemove));
+  const handleInitialFilesSelected = (selectedFiles: File[]) => {
+    setIsLoadingInitial(true);
+    setPdfSegments([]); // Clear existing segments for initial upload
+    processAndAddFiles(selectedFiles, 0).finally(() => setIsLoadingInitial(false));
   };
 
+  const handlePlusIconClick = (index: number) => {
+    insertionIndexRef.current = index;
+    fileInputRef.current?.click();
+  };
 
-  const handleAddPagesAndDownload = async () => {
-    if (!targetPdfDataUri || !targetPdfFile) {
-      toast({ title: "Target PDF Missing", description: "Please upload a target PDF.", variant: "destructive" });
-      return;
+  const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      processAndAddFiles(Array.from(event.target.files), insertionIndexRef.current);
+      event.target.value = ""; // Reset file input
     }
-    if (sourcePdfItems.length === 0) {
-      toast({ title: "Source PDFs Missing", description: "Please upload at least one source PDF.", variant: "destructive" });
+  };
+
+  const handleRemoveSegment = (segmentId: string) => {
+    setPdfSegments(prev => prev.filter(seg => seg.id !== segmentId));
+    toast({ description: "PDF segment removed." });
+  };
+
+  const handleAssembleAndDownload = async () => {
+    if (pdfSegments.length === 0) {
+      toast({ title: "No PDFs Added", description: "Please add at least one PDF document.", variant: "destructive" });
       return;
     }
 
     setIsProcessing(true);
     setError(null);
 
-    const insertionNum = insertionPageNumber.trim() === '' ? undefined : parseInt(insertionPageNumber, 10);
-    if (insertionPageNumber.trim() !== '' && (isNaN(insertionNum!) || insertionNum! <= 0)) {
-        toast({ title: "Invalid Page Number", description: "Insertion page number must be a positive number.", variant: "destructive"});
-        setIsProcessing(false);
-        return;
-    }
-
     try {
-      const sourceUris = sourcePdfItems.map(item => item.dataUri);
-      const result = await addPagesToPdfAction({ 
-        targetPdfDataUri, 
-        sourcePdfDataUris: sourceUris, 
-        insertionPageNumber: insertionNum 
-      });
+      const dataUris = pdfSegments.map(seg => seg.dataUri);
+      const result = await assemblePdfAction({ orderedPdfDataUris: dataUris });
 
       if (result.error) {
         setError(result.error);
-        toast({ title: "Processing Error", description: result.error, variant: "destructive" });
-      } else if (result.modifiedPdfDataUri) {
-        downloadDataUri(result.modifiedPdfDataUri, `modified_${targetPdfFile.name}`);
-        toast({ title: "Processing Successful!", description: "Pages added and download started." });
+        toast({ title: "Assembly Error", description: result.error, variant: "destructive" });
+      } else if (result.assembledPdfDataUri) {
+        downloadDataUri(result.assembledPdfDataUri, `assembled_document.pdf`);
+        toast({ title: "Assembly Successful!", description: "Your PDF has been assembled and download has started." });
         // Optionally reset state
-        // setTargetPdfFile(null); setTargetPdfDataUri(null); setTargetPdfPages([]);
-        // setSourcePdfItems([]); setInsertionPageNumber('');
+        // setPdfSegments([]);
       }
     } catch (e: any) {
-      setError(e.message || "An unexpected error occurred.");
-      toast({ title: "Processing Failed", description: e.message, variant: "destructive" });
+      setError(e.message || "An unexpected error occurred during assembly.");
+      toast({ title: "Assembly Failed", description: e.message, variant: "destructive" });
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const renderPlusButton = (index: number, isPrimaryCTA: boolean = false) => (
+    <div className={cn("flex justify-center items-center my-4", isPrimaryCTA && "py-10")}>
+      {isLoadingInsert.active && isLoadingInsert.index === index ? (
+        <div className="flex flex-col items-center text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+          <span>Adding PDFs...</span>
+        </div>
+      ) : (
+        <Button
+          variant={isPrimaryCTA ? "default" : "outline"}
+          size={isPrimaryCTA ? "lg" : "default"}
+          onClick={() => handlePlusIconClick(index)}
+          className={cn(isPrimaryCTA ? "text-lg py-8 px-10 rounded-full" : "rounded-full aspect-square p-0 h-12 w-12 sm:h-14 sm:w-14", "flex flex-col items-center justify-center group shadow-md hover:shadow-lg transition-all")}
+          aria-label={isPrimaryCTA ? "Add initial PDF document" : `Insert PDF documents here (position ${index + 1})`}
+        >
+          <PlusCircle className={cn("h-6 w-6 sm:h-7 sm:w-7 text-primary group-hover:scale-110 transition-transform", isPrimaryCTA && "h-8 w-8 sm:h-10 sm:w-10 mb-2")} />
+          {isPrimaryCTA && <span className="mt-1 font-semibold">Add PDF</span>}
+        </Button>
+      )}
+    </div>
+  );
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      <header className="text-center">
-        <FilePlus2 className="mx-auto h-16 w-16 text-primary mb-4" />
+    <div className="max-w-5xl mx-auto space-y-6 pb-12">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileInputChange}
+        multiple
+        accept="application/pdf"
+        className="hidden"
+      />
+      <header className="text-center py-6">
+        <FilePlus2 className="mx-auto h-14 w-14 text-primary mb-3" />
         <h1 className="text-3xl font-bold tracking-tight">Add Pages to PDF</h1>
-        <p className="text-muted-foreground mt-2">
-          Insert pages from one or more PDFs into another PDF document.
+        <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
+          Assemble a new PDF by adding documents in sequence. Click the <PlusCircle className="inline h-4 w-4 text-primary" /> icons to insert PDFs.
         </p>
       </header>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left Column: Target PDF & Previews */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle>1. Upload Target PDF</CardTitle>
-              <CardDescription>Select the main PDF document you want to add pages to.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FileUploadZone onFilesSelected={handleTargetFileSelected} multiple={false} accept="application/pdf" />
-            </CardContent>
-          </Card>
+      {pdfSegments.length === 0 && !isLoadingInitial && (
+        <Card className="shadow-lg border-2 border-dashed hover:border-primary transition-colors">
+          <CardContent className="p-6 text-center">
+            <FileUploadZone 
+                onFilesSelected={handleInitialFilesSelected} 
+                multiple 
+                accept="application/pdf"
+                maxFiles={10} // Allow multiple initial files which will become initial segments
+            />
+            <p className="text-xs text-muted-foreground mt-3">Or, use the plus button below to start.</p>
+             {renderPlusButton(0, true)}
+          </CardContent>
+        </Card>
+      )}
+       {isLoadingInitial && (
+          <div className="flex justify-center items-center py-10">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="ml-3 text-lg text-muted-foreground">Loading initial PDF(s)...</p>
+          </div>
+        )}
 
-          {isLoadingTarget && (
-            <div className="flex justify-center items-center py-6">
-              <Loader2 className="h-7 w-7 animate-spin text-primary" />
-              <p className="ml-2 text-muted-foreground">Loading target PDF...</p>
-            </div>
-          )}
 
-          {targetPdfDataUri && targetPdfPages.length > 0 && !isLoadingTarget && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Target PDF Preview ({targetPdfPages.length} Pages)</CardTitle>
-                <CardDescription>This is the document pages will be added to.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[400px] border rounded-md p-2 bg-muted/20">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-2">
-                    {targetPdfPages.map((page) => (
-                      <div key={`target-preview-${page.originalIndex}-${page.id}`} className="flex flex-col items-center p-1.5 border rounded-md bg-card shadow-sm">
-                        <PdfPagePreview
-                          pdfDataUri={targetPdfDataUri}
-                          pageIndex={page.originalIndex}
-                          rotation={0}
-                          targetHeight={PREVIEW_TARGET_HEIGHT_TARGET}
-                          className="my-1"
-                        />
-                        <span className="text-xs mt-1 text-muted-foreground">Page {page.originalIndex + 1}</span>
-                      </div>
-                    ))}
+      {pdfSegments.length > 0 && (
+        <>
+          {renderPlusButton(0)} 
+          {pdfSegments.map((segment, segIndex) => (
+            <div key={segment.id} className="space-y-3">
+              <Card className="shadow-md border border-border hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row justify-between items-start pb-3 pt-4 px-4">
+                  <div>
+                    <CardTitle className="text-lg flex items-center">
+                      <ExternalLink className="h-4 w-4 mr-2 text-muted-foreground" />
+                      {segment.name}
+                    </CardTitle>
+                    <CardDescription className="text-xs">{segment.pageCount} page(s)</CardDescription>
                   </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Right Column: Source PDFs & Options */}
-        <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-20 self-start">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle>2. Upload Source PDF(s)</CardTitle>
-              <CardDescription>Select one or more PDFs whose pages you want to insert.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FileUploadZone onFilesSelected={handleSourceFilesSelected} multiple={true} accept="application/pdf" maxFiles={10} />
-              {isLoadingSources && (
-                <div className="flex justify-center items-center pt-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  <p className="ml-2 text-xs text-muted-foreground">Loading source previews...</p>
-                </div>
-              )}
-              {sourcePdfItems.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <Label className="text-sm font-medium">Files to Add ({sourcePdfItems.length}):</Label>
-                  <ScrollArea className="h-48 border rounded-md p-2">
-                    {sourcePdfItems.map(item => (
-                      <div key={item.id} className="flex items-center justify-between p-1.5 bg-muted/30 rounded mb-1.5 text-sm">
-                        <div className="flex items-center gap-1.5 overflow-hidden">
-                           {item.dataUri && (
-                            <PdfPagePreview 
-                                pdfDataUri={item.dataUri} 
-                                pageIndex={0} 
-                                targetHeight={PREVIEW_TARGET_HEIGHT_SOURCE}
-                                className="border-none shadow-none rounded-sm bg-white"
-                                />
-                           )}
-                          <span className="truncate text-xs" title={item.name}>{item.name}</span>
+                  <Button variant="ghost" size="icon" onClick={() => handleRemoveSegment(segment.id)} className="text-destructive hover:bg-destructive/10 h-8 w-8">
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Remove this PDF segment</span>
+                  </Button>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <ScrollArea className="h-[250px] border rounded-md p-2 bg-muted/20">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 p-1.5">
+                      {segment.pages.map((page) => (
+                        <div key={`${segment.id}-page-${page.originalIndex}-${page.id}`} className="flex flex-col items-center p-1 border rounded bg-card shadow-sm">
+                          <PdfPagePreview
+                            pdfDataUri={segment.dataUri}
+                            pageIndex={page.originalIndex}
+                            rotation={0} 
+                            targetHeight={PREVIEW_TARGET_HEIGHT}
+                            className="my-0.5"
+                          />
+                          <span className="text-xs mt-1 text-muted-foreground">Page {page.originalIndex + 1}</span>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveSourceFile(item.id)} className="h-6 w-6">
-                          <XCircle className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </ScrollArea>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+              {renderPlusButton(segIndex + 1)}
+            </div>
+          ))}
+        </>
+      )}
 
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle>3. Insertion Point</CardTitle>
-              <CardDescription>
-                Enter the page number in the Target PDF <span className="font-semibold">before</span> which new pages should be inserted.
-                Leave blank to append to the end. (e.g., '1' for beginning, '{targetPdfPages.length > 0 ? targetPdfPages.length + 1 : 'N+1'}' for end).
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Input 
-                type="number"
-                placeholder={`e.g., 1 or ${targetPdfPages.length > 0 ? targetPdfPages.length + 1 : '2'}`}
-                value={insertionPageNumber}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setInsertionPageNumber(e.target.value)}
-                min="1"
-                disabled={!targetPdfFile || sourcePdfItems.length === 0}
-              />
-            </CardContent>
-          </Card>
-          
+      {error && (
+        <Alert variant="destructive" className="mt-6">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {pdfSegments.length > 0 && (
+        <div className="mt-8 flex justify-center">
           <Button
-            onClick={handleAddPagesAndDownload}
-            disabled={!targetPdfFile || sourcePdfItems.length === 0 || isProcessing || isLoadingTarget || isLoadingSources}
-            className="w-full text-lg py-6"
+            onClick={handleAssembleAndDownload}
+            disabled={isProcessing || isLoadingInitial || isLoadingInsert.active}
             size="lg"
+            className="text-lg py-3 px-8 shadow-lg hover:shadow-xl transition-shadow"
           >
             {isProcessing ? (
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : (
               <Download className="mr-2 h-5 w-5" />
             )}
-            Add Pages & Download
+            Save & Download Assembled PDF
           </Button>
-
-          {error && (
-            <Alert variant="destructive" className="mt-4">
-              <Info className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
-
