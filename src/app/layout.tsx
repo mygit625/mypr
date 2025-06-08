@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'DocuEase - Your PDF Toolkit',
+  title: 'PDFBox - Your PDF Toolkit',
   description: 'Easily merge, split, summarize, convert, and manage your PDF documents.',
 };
 
@@ -43,4 +43,3 @@ export default function RootLayout({
     </html>
   );
 }
-
