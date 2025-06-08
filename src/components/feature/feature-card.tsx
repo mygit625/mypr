@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import type { LucideIcon } from 'lucide-react';
@@ -14,11 +15,11 @@ export function FeatureCard({ title, description, href, Icon, iconColor = 'text-
   return (
     <Link href={href} passHref legacyBehavior>
       <a className="block hover:no-underline">
-        <Card className="flex flex-col h-full shadow-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer overflow-hidden group">
+        <Card className="flex flex-col h-full shadow-sm hover:shadow-xl transition-all duration-300 ease-out cursor-pointer overflow-hidden group hover:-translate-y-1.5">
           <CardHeader className="pb-3 pt-5 px-5">
             <div className="flex items-center gap-3">
-              <Icon className={`h-8 w-8 ${iconColor} transition-colors group-hover:text-accent`} />
-              <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
+              <Icon className={`h-8 w-8 ${iconColor} transition-colors duration-300 group-hover:text-accent`} />
+              <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors duration-300">
                 {title}
               </CardTitle>
             </div>
