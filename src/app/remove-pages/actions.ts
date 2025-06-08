@@ -3,11 +3,20 @@
 
 import { PDFDocument } from 'pdf-lib';
 import type { Buffer } from 'buffer'; // Node.js Buffer
-import type { PageData as OrganizePageData } from '../organize/actions'; // Re-using type for initial load
 
 // Types for initial page data loading (re-used from organize/actions)
+// These are correctly re-exported for use by the page component.
 export type { GetInitialPageDataInput, GetInitialPageDataOutput, PageData } from '../organize/actions';
-export { getInitialPageDataAction } from '../organize/actions';
+
+// Import the original action that we want to wrap and re-export
+import { getInitialPageDataAction as originalGetInitialPageDataAction } from '../organize/actions';
+
+// The wrapper function that will be exported.
+// It uses the GetInitialPageDataInput and GetInitialPageDataOutput types
+// that are effectively in scope due to the `export type` above.
+export async function getInitialPageDataAction(input: GetInitialPageDataInput): Promise<GetInitialPageDataOutput> {
+  return originalGetInitialPageDataAction(input);
+}
 
 
 export interface RemovePagesInput {
