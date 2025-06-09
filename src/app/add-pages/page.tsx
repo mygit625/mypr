@@ -44,7 +44,6 @@ export default function AddPagesPage() {
 
     const newSegments: PdfSegment[] = [];
     for (const file of files) {
-      // Basic duplicate check against existing segments (name and size)
       if (pdfSegments.some(seg => seg.name === file.name && seg.file?.size === file.size)) {
         toast({ title: "Duplicate Skipped", description: `File ${file.name} seems to be a duplicate and was skipped.`, variant: "default" });
         continue;
@@ -61,7 +60,7 @@ export default function AddPagesPage() {
             file,
             dataUri,
             name: file.name,
-            pages: pageDataResult.pages.map(p => ({ ...p, rotation: 0 /* Assuming default rotation */ })),
+            pages: pageDataResult.pages.map(p => ({ ...p, rotation: 0 })),
             pageCount: pageDataResult.pages.length,
           });
         } else if (pageDataResult.pages && pageDataResult.pages.length === 0) {
@@ -85,7 +84,7 @@ export default function AddPagesPage() {
   
   const handleInitialFilesSelected = (selectedFiles: File[]) => {
     setIsLoadingInitial(true);
-    setPdfSegments([]); // Clear existing segments for initial upload
+    setPdfSegments([]); 
     processAndAddFiles(selectedFiles, 0).finally(() => setIsLoadingInitial(false));
   };
 
@@ -97,7 +96,7 @@ export default function AddPagesPage() {
   const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       processAndAddFiles(Array.from(event.target.files), insertionIndexRef.current);
-      event.target.value = ""; // Reset file input
+      event.target.value = ""; 
     }
   };
 
@@ -125,8 +124,6 @@ export default function AddPagesPage() {
       } else if (result.assembledPdfDataUri) {
         downloadDataUri(result.assembledPdfDataUri, `assembled_document.pdf`);
         toast({ title: "Assembly Successful!", description: "Your PDF has been assembled and download has started." });
-        // Optionally reset state
-        // setPdfSegments([]);
       }
     } catch (e: any) {
       setError(e.message || "An unexpected error occurred during assembly.");
@@ -137,7 +134,7 @@ export default function AddPagesPage() {
   };
 
   const renderPlusButton = (index: number, isPrimaryCTA: boolean = false) => (
-    <div className={cn("flex justify-center items-center my-4", isPrimaryCTA && "py-10")}>
+    <div className={cn("flex justify-center items-center", isPrimaryCTA ? "py-10" : "my-4 inter-segment-plus-wrapper")}>
       {isLoadingInsert.active && isLoadingInsert.index === index ? (
         <div className="flex flex-col items-center text-muted-foreground">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
@@ -149,10 +146,10 @@ export default function AddPagesPage() {
           size={isPrimaryCTA ? "lg" : "default"}
           onClick={() => handlePlusIconClick(index)}
           className={cn(isPrimaryCTA ? "text-lg py-8 px-10 rounded-full" : "rounded-full aspect-square p-0 h-12 w-12 sm:h-14 sm:w-14", "flex flex-col items-center justify-center group shadow-md hover:shadow-lg transition-all")}
-          aria-label={isPrimaryCTA ? "Add initial PDF document" : `Insert PDF documents here (position ${index + 1})`}
+          aria-label={isPrimaryCTA ? "Add initial PDF document(s)" : `Insert PDF document(s) here (position ${index + 1})`}
         >
           <PlusCircle className={cn("h-6 w-6 sm:h-7 sm:w-7 text-primary group-hover:scale-110 transition-transform", isPrimaryCTA && "h-8 w-8 sm:h-10 sm:w-10 mb-2")} />
-          {isPrimaryCTA && <span className="mt-1 font-semibold">Add PDF</span>}
+          {isPrimaryCTA && <span className="mt-1 font-semibold">Add PDF(s)</span>}
         </Button>
       )}
     </div>
@@ -183,7 +180,7 @@ export default function AddPagesPage() {
                 onFilesSelected={handleInitialFilesSelected} 
                 multiple 
                 accept="application/pdf"
-                maxFiles={10} // Allow multiple initial files which will become initial segments
+                maxFiles={10}
             />
             <p className="text-xs text-muted-foreground mt-3">Or, use the plus button below to start.</p>
              {renderPlusButton(0, true)}
@@ -270,3 +267,5 @@ export default function AddPagesPage() {
     </div>
   );
 }
+
+    
