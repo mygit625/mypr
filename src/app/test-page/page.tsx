@@ -15,30 +15,29 @@ import { FlaskConical, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical } from 
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { assemblePdfAction } from './actions'; // Will be updated to new action signature
+import { assemblePdfAction } from './actions';
 import { cn } from '@/lib/utils';
 
-// Set up PDF.js worker
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 }
 
 interface SelectedPdfPageItem {
-  id: string; // Unique ID for this page card
-  originalFileId: string; // ID to group pages from the same original file
+  id: string;
+  originalFileId: string;
   originalFileName: string;
-  originalFileDataUri: string; // Data URI of the ENTIRE original PDF
-  pageIndexInOriginalFile: number; // 0-based index of this page within its original PDF
+  originalFileDataUri: string;
+  pageIndexInOriginalFile: number;
   totalPagesInOriginalFile: number;
-  displayName: string; // e.g., "mydoc.pdf (Page 1 of 3)"
+  displayName: string;
 }
 
 interface DisplayItem {
-  type: 'pdf_page' | 'add_button'; // Changed 'pdf' to 'pdf_page'
+  type: 'pdf_page' | 'add_button';
   id: string;
-  data?: SelectedPdfPageItem; // For 'pdf_page' type
-  originalItemIndex?: number; // Index in selectedPdfItems array
-  insertAtIndex?: number; // For 'add_button' type
+  data?: SelectedPdfPageItem;
+  originalItemIndex?: number;
+  insertAtIndex?: number;
 }
 
 const PREVIEW_TARGET_HEIGHT_TEST = 180;
@@ -62,18 +61,9 @@ export default function TestPage() {
   const processFiles = async (files: File[]): Promise<SelectedPdfPageItem[]> => {
     setIsLoadingPreviews(true);
     const newPageItems: SelectedPdfPageItem[] = [];
-    const originalFileId = crypto.randomUUID(); // Unique ID for this batch of uploads from one file
 
     for (const file of files) {
-      // Basic duplicate check based on name and size of the original file, 
-      // though exploding pages means true duplicates are less likely at page item level here.
-      // This check might need refinement if users upload the *same file* multiple times.
-      // For now, it's a simple guard.
-      // if (selectedPdfItems.some(item => item.originalFileName === file.name /* add more checks if needed */)) {
-      //    console.warn(`Skipping potentially duplicate file: ${file.name}`);
-      //    continue;
-      // }
-
+      const originalFileId = crypto.randomUUID(); // Unique ID for this specific uploaded file
       try {
         const dataUri = await readFileAsDataURL(file);
         
@@ -93,9 +83,9 @@ export default function TestPage() {
         for (let i = 0; i < numPages; i++) {
           newPageItems.push({
             id: crypto.randomUUID(),
-            originalFileId: originalFileId, // Associate page with its source file
+            originalFileId: originalFileId,
             originalFileName: file.name,
-            originalFileDataUri: dataUri, // Store full PDF URI for each page item
+            originalFileDataUri: dataUri,
             pageIndexInOriginalFile: i,
             totalPagesInOriginalFile: numPages,
             displayName: `${file.name} (Page ${i + 1} of ${numPages})`,
@@ -116,13 +106,7 @@ export default function TestPage() {
 
   const handleFilesSelected = async (newFiles: File[], insertAt: number | null) => {
     if (newFiles.length === 0) return;
-    // For this "explode pages" feature, we process one file at a time from the input.
-    // If multiple files are selected in the dialog, we'll process the first one.
-    // The FileUploadZone should ideally be set to `multiple={false}` for this page.
-    const fileToProcess = newFiles[0];
-    if (!fileToProcess) return;
-
-    const processedNewPageItems = await processFiles([fileToProcess]); // Pass as array
+    const processedNewPageItems = await processFiles(newFiles);
 
     setSelectedPdfItems((prevItems) => {
       const updatedItems = [...prevItems];
@@ -144,11 +128,7 @@ export default function TestPage() {
       setSelectedPdfItems([]);
       return;
     }
-    // Process only the first file if multiple are dropped, consistent with above.
-    const fileToProcess = newFiles[0];
-     if (!fileToProcess) return;
-
-    const processedNewPageItems = await processFiles([fileToProcess]);
+    const processedNewPageItems = await processFiles(newFiles);
     setSelectedPdfItems(processedNewPageItems);
   };
 
@@ -208,7 +188,7 @@ export default function TestPage() {
           title: "Test Assembly Successful!",
           description: "Your PDF pages have been assembled and download has started.",
         });
-        setSelectedPdfItems([]); // Clear after successful assembly
+        setSelectedPdfItems([]);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during assembly.";
@@ -258,19 +238,18 @@ export default function TestPage() {
         <FlaskConical className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Test Page - Explode PDF</h1>
         <p className="text-muted-foreground mt-2">
-          Upload a PDF. Each page will become a draggable card. Reorder and assemble.
+          Upload PDFs. Each page will become a draggable card. Reorder and assemble.
         </p>
       </header>
 
       {selectedPdfItems.length === 0 && !isLoadingPreviews && (
         <Card className="max-w-2xl mx-auto shadow-lg">
           <CardHeader>
-            <CardTitle>Upload a Single PDF</CardTitle>
-            <CardDescription>Select or drag and drop one PDF file. Its pages will be displayed individually below. (Max 1 file)</CardDescription>
+            <CardTitle>Upload PDFs</CardTitle>
+            <CardDescription>Select or drag and drop PDF files. Their pages will be displayed individually below. (Max 10 files)</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Set multiple to false for this page's behavior */}
-            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple={false} accept="application/pdf" maxFiles={1} />
+            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple={true} accept="application/pdf" maxFiles={10} />
           </CardContent>
         </Card>
       )}
@@ -279,7 +258,7 @@ export default function TestPage() {
           type="file"
           ref={fileInputRef}
           onChange={handleHiddenInputChange}
-          multiple={false} // Ensure only one file can be chosen via this input too
+          multiple={true}
           accept="application/pdf"
           className="hidden"
       />
@@ -345,7 +324,7 @@ export default function TestPage() {
                           }}
                           disabled={isLoadingPreviews}
                           className="rounded-full h-10 w-10 shadow-sm hover:shadow-md hover:border-primary/80 hover:text-primary/80 transition-all"
-                          aria-label={`Add PDF file at position ${item.insertAtIndex}`}
+                          aria-label={`Add PDF files at position ${item.insertAtIndex}`}
                         >
                           {isLoadingPreviews && insertAtIndexRef.current === item.insertAtIndex ? (
                             <Loader2 className="h-5 w-5 animate-spin" />
