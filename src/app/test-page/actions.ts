@@ -4,48 +4,54 @@
 import { PDFDocument } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
-export interface AssemblePdfInput {
-  orderedPdfDataUris: string[];
+interface PageToAssembleInfo {
+  sourcePdfDataUri: string; // Data URI of the source PDF
+  pageIndexToCopy: number;  // 0-based index of the page to copy from this source PDF
 }
 
-export interface AssemblePdfOutput {
+export interface AssembleIndividualPagesInput {
+  orderedPagesToAssemble: PageToAssembleInfo[];
+}
+
+export interface AssembleIndividualPagesOutput {
   assembledPdfDataUri?: string;
   error?: string;
 }
 
-export async function assemblePdfAction(input: AssemblePdfInput): Promise<AssemblePdfOutput> {
-  if (!input.orderedPdfDataUris || input.orderedPdfDataUris.length === 0) {
-     return { error: "At least one PDF file is required to assemble." };
+// Renamed original assemblePdfAction to avoid confusion if it was different
+export async function assemblePdfAction(input: AssembleIndividualPagesInput): Promise<AssembleIndividualPagesOutput> {
+  if (!input.orderedPagesToAssemble || input.orderedPagesToAssemble.length === 0) {
+     return { error: "No pages provided to assemble." };
   }
   
-  if (input.orderedPdfDataUris.length === 1) {
-    return { assembledPdfDataUri: input.orderedPdfDataUris[0] };
-  }
+  const finalPdfDoc = await PDFDocument.create();
 
   try {
-    const finalPdfDoc = await PDFDocument.create();
-
-    for (const dataUri of input.orderedPdfDataUris) {
-      if (!dataUri.startsWith('data:application/pdf;base64,')) {
-        console.error('Invalid data URI format for a PDF segment:', dataUri.substring(0, 100));
-        return { error: `Invalid PDF data format for one of the segments. Please ensure all files are valid PDFs.` };
+    for (const pageInfo of input.orderedPagesToAssemble) {
+      if (!pageInfo.sourcePdfDataUri.startsWith('data:application/pdf;base64,')) {
+        console.error('Invalid data URI format for a source PDF:', pageInfo.sourcePdfDataUri.substring(0, 100));
+        // Optionally skip this page or return an error for the whole batch
+        return { error: `Invalid PDF data format for one of the source documents. Please ensure all files are valid PDFs.` };
       }
-      const pdfBytes = Buffer.from(dataUri.split(',')[1], 'base64');
-      const segmentPdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+      const pdfBytes = Buffer.from(pageInfo.sourcePdfDataUri.split(',')[1], 'base64');
+      const sourcePdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
       
-      if (segmentPdfDoc.getPageCount() === 0) {
-        console.warn('A PDF segment with no pages was encountered and skipped.');
+      if (pageInfo.pageIndexToCopy < 0 || pageInfo.pageIndexToCopy >= sourcePdfDoc.getPageCount()) {
+        console.warn(`Invalid page index ${pageInfo.pageIndexToCopy} for a source PDF with ${sourcePdfDoc.getPageCount()} pages. Skipping this page.`);
+        continue; // Skip this invalid page
+      }
+      
+      if (sourcePdfDoc.getPageCount() === 0) {
+        console.warn('A source PDF with no pages was encountered and skipped.');
         continue; 
       }
 
-      const copiedPages = await finalPdfDoc.copyPages(segmentPdfDoc, segmentPdfDoc.getPageIndices());
-      copiedPages.forEach((page) => {
-        finalPdfDoc.addPage(page);
-      });
+      const [copiedPage] = await finalPdfDoc.copyPages(sourcePdfDoc, [pageInfo.pageIndexToCopy]);
+      finalPdfDoc.addPage(copiedPage);
     }
 
     if (finalPdfDoc.getPageCount() === 0) {
-        return { error: "The assembled PDF would be empty. No valid pages were found in the provided segments."}
+        return { error: "The assembled PDF would be empty. No valid pages were found or selected."}
     }
 
     const assembledPdfBytes = await finalPdfDoc.save();
@@ -54,10 +60,10 @@ export async function assemblePdfAction(input: AssemblePdfInput): Promise<Assemb
     return { assembledPdfDataUri };
 
   } catch (error: any) {
-    console.error("Error assembling PDF segments:", error);
+    console.error("Error assembling individual PDF pages:", error);
     if (error.message && error.message.toLowerCase().includes('encrypted') && !error.message.toLowerCase().includes('ignoreencryption')) {
-        return { error: "One of the PDF segments is encrypted with restrictions that prevent modification. Please provide decrypted PDFs."}
+        return { error: "One of the source PDFs is encrypted with restrictions that prevent modification. Please provide decrypted PDFs."}
     }
-    return { error: error.message || "An unexpected error occurred while assembling the PDF." };
+    return { error: error.message || "An unexpected error occurred while assembling the PDF pages." };
   }
 }
