@@ -63,7 +63,7 @@ export default function TestPage() {
     const newPageItems: SelectedPdfPageItem[] = [];
 
     for (const file of files) {
-      const originalFileId = crypto.randomUUID(); // Unique ID for this specific uploaded file
+      const originalFileId = crypto.randomUUID(); 
       try {
         const dataUri = await readFileAsDataURL(file);
         
@@ -246,10 +246,10 @@ export default function TestPage() {
         <Card className="max-w-2xl mx-auto shadow-lg">
           <CardHeader>
             <CardTitle>Upload PDFs</CardTitle>
-            <CardDescription>Select or drag and drop PDF files. Their pages will be displayed individually below. (Max 10 files)</CardDescription>
+            <CardDescription>Select or drag and drop PDF files. Their pages will be displayed individually below. (Max 5 files)</CardDescription>
           </CardHeader>
           <CardContent>
-            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple={true} accept="application/pdf" maxFiles={10} />
+            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple={true} accept="application/pdf" maxFiles={5} />
           </CardContent>
         </Card>
       )}
