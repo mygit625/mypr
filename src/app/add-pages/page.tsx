@@ -1,271 +1,316 @@
 
 "use client";
 
-import { useState, useRef, useCallback, ChangeEvent } from 'react';
+import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { FilePlus2, Loader2, Info, Download, Trash2, PlusCircle, ExternalLink } from 'lucide-react';
+import { FilePlus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { getInitialPageDataAction, assemblePdfAction, type PageData } from './actions';
+import { assemblePdfAction } from './actions'; // Changed import
 import { cn } from '@/lib/utils';
 
-interface PdfSegment {
+interface SelectedPdfItem {
   id: string;
-  file?: File; // Original file, might be undefined if segment data is reloaded/passed around
+  file: File;
   dataUri: string;
   name: string;
-  pages: PageData[];
-  pageCount: number;
 }
 
-const PREVIEW_TARGET_HEIGHT = 100;
+const PREVIEW_TARGET_HEIGHT_ASSEMBLE = 180; // Consistent with merge page
 
-export default function AddPagesPage() {
-  const [pdfSegments, setPdfSegments] = useState<PdfSegment[]>([]);
-  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
-  const [isLoadingInsert, setIsLoadingInsert] = useState<{ active: boolean; index: number | null }>({ active: false, index: null });
-  const [isProcessing, setIsProcessing] = useState(false);
+export default function AddPagesPage() { // Changed component name
+  const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfItem[]>([]);
+  const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
+  const [isAssembling, setIsAssembling] = useState(false); // Changed state name
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const insertionIndexRef = useRef<number>(0); // Store index for file input callback
+  const dragItemIndex = useRef<number | null>(null);
+  const dragOverItemIndex = useRef<number | null>(null);
 
-  const processAndAddFiles = async (files: File[], insertionIndex: number) => {
-    if (files.length === 0) return;
-
-    setIsLoadingInsert({ active: true, index: insertionIndex });
+  useEffect(() => {
     setError(null);
+  }, [selectedPdfItems]);
 
-    const newSegments: PdfSegment[] = [];
+  const processFiles = async (files: File[]): Promise<SelectedPdfItem[]> => {
+    setIsLoadingPreviews(true);
+    const newItems: SelectedPdfItem[] = [];
     for (const file of files) {
-      if (pdfSegments.some(seg => seg.name === file.name && seg.file?.size === file.size)) {
-        toast({ title: "Duplicate Skipped", description: `File ${file.name} seems to be a duplicate and was skipped.`, variant: "default" });
+      if (selectedPdfItems.find(item => item.name === file.name && item.file.size === file.size)) {
+        console.warn(`Skipping duplicate file: ${file.name}`);
         continue;
       }
       try {
         const dataUri = await readFileAsDataURL(file);
-        const pageDataResult = await getInitialPageDataAction({ pdfDataUri: dataUri });
-        if (pageDataResult.error) {
-          throw new Error(pageDataResult.error);
-        }
-        if (pageDataResult.pages && pageDataResult.pages.length > 0) {
-          newSegments.push({
-            id: crypto.randomUUID(),
-            file,
-            dataUri,
-            name: file.name,
-            pages: pageDataResult.pages.map(p => ({ ...p, rotation: 0 })),
-            pageCount: pageDataResult.pages.length,
-          });
-        } else if (pageDataResult.pages && pageDataResult.pages.length === 0) {
-            toast({ title: "Empty PDF Skipped", description: `File ${file.name} has no pages and was skipped.`});
-        }
+        newItems.push({
+          id: crypto.randomUUID(),
+          file,
+          dataUri,
+          name: file.name,
+        });
       } catch (e: any) {
-        toast({ title: `Error processing ${file.name}`, description: e.message, variant: "destructive" });
-        setError(`Failed to process ${file.name}: ${e.message}`);
+        console.error("Error reading file:", file.name, e);
+        toast({
+          title: "File Read Error",
+          description: `Could not read file: ${file.name}. ${e.message}`,
+          variant: "destructive",
+        });
       }
     }
+    setIsLoadingPreviews(false);
+    return newItems;
+  };
 
-    if (newSegments.length > 0) {
-      setPdfSegments(prevSegments => {
-        const updatedSegments = [...prevSegments];
-        updatedSegments.splice(insertionIndex, 0, ...newSegments);
-        return updatedSegments;
-      });
-    }
-    setIsLoadingInsert({ active: false, index: null });
+  const handleFilesSelected = async (newFiles: File[]) => {
+    if (newFiles.length === 0) return;
+    const processedNewItems = await processFiles(newFiles);
+    setSelectedPdfItems((prevItems) => [...prevItems, ...processedNewItems]);
   };
   
-  const handleInitialFilesSelected = (selectedFiles: File[]) => {
-    setIsLoadingInitial(true);
-    setPdfSegments([]); 
-    processAndAddFiles(selectedFiles, 0).finally(() => setIsLoadingInitial(false));
+  const handleInitialFilesSelected = async (newFiles: File[]) => {
+    if (newFiles.length === 0) {
+      setSelectedPdfItems([]);
+      return;
+    }
+    const processedNewItems = await processFiles(newFiles);
+    setSelectedPdfItems(processedNewItems);
   };
 
-  const handlePlusIconClick = (index: number) => {
-    insertionIndexRef.current = index;
+  const handleRemoveFile = (idToRemove: string) => {
+    setSelectedPdfItems((prevItems) => prevItems.filter(item => item.id !== idToRemove));
+  };
+
+  const handleAddFilesClick = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleHiddenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
-      processAndAddFiles(Array.from(event.target.files), insertionIndexRef.current);
-      event.target.value = ""; 
+      handleFilesSelected(Array.from(event.target.files));
     }
   };
 
-  const handleRemoveSegment = (segmentId: string) => {
-    setPdfSegments(prev => prev.filter(seg => seg.id !== segmentId));
-    toast({ description: "PDF segment removed." });
+  const handleSortByName = () => {
+    setSelectedPdfItems((prevItems) =>
+      [...prevItems].sort((a, b) => a.name.localeCompare(b.name))
+    );
+    toast({ description: "Files sorted by name (A-Z)." });
   };
 
-  const handleAssembleAndDownload = async () => {
-    if (pdfSegments.length === 0) {
-      toast({ title: "No PDFs Added", description: "Please add at least one PDF document.", variant: "destructive" });
+  const handleAssembleAndDownload = async () => { // Renamed from handleMerge
+    if (selectedPdfItems.length < 1) { // Merge usually expects < 2, but "add pages" could mean 1 file is okay (it just gets "assembled" to itself)
+      toast({
+        title: "Not enough files",
+        description: "Please select at least one PDF file to assemble.", // Adjusted message
+        variant: "destructive",
+      });
       return;
     }
+     if (selectedPdfItems.length === 1 && selectedPdfItems[0]?.dataUri) {
+        // If only one file, just download it directly
+        downloadDataUri(selectedPdfItems[0].dataUri, selectedPdfItems[0].name);
+        toast({
+          title: "Download Started",
+          description: "Only one file selected, downloading it directly.",
+        });
+        setSelectedPdfItems([]); 
+        return;
+    }
 
-    setIsProcessing(true);
+
+    setIsAssembling(true); // Changed state
     setError(null);
 
     try {
-      const dataUris = pdfSegments.map(seg => seg.dataUri);
-      const result = await assemblePdfAction({ orderedPdfDataUris: dataUris });
+      const dataUris = selectedPdfItems.map(item => item.dataUri);
+      const result = await assemblePdfAction({ orderedPdfDataUris: dataUris }); // Changed action
 
       if (result.error) {
         setError(result.error);
-        toast({ title: "Assembly Error", description: result.error, variant: "destructive" });
+        toast({
+          title: "Assembly Error", // Changed toast title
+          description: result.error,
+          variant: "destructive",
+        });
       } else if (result.assembledPdfDataUri) {
-        downloadDataUri(result.assembledPdfDataUri, `assembled_document.pdf`);
-        toast({ title: "Assembly Successful!", description: "Your PDF has been assembled and download has started." });
+        downloadDataUri(result.assembledPdfDataUri, "assembled_document.pdf"); // Changed filename
+        toast({
+          title: "Assembly Successful!", // Changed toast title
+          description: "Your PDFs have been assembled and download has started.",
+        });
+        setSelectedPdfItems([]);
       }
     } catch (e: any) {
-      setError(e.message || "An unexpected error occurred during assembly.");
-      toast({ title: "Assembly Failed", description: e.message, variant: "destructive" });
+      const errorMessage = e.message || "An unexpected error occurred during assembly."; // Changed message
+      setError(errorMessage);
+      toast({ title: "Assembly Failed", description: errorMessage, variant: "destructive" }); // Changed title
     } finally {
-      setIsProcessing(false);
+      setIsAssembling(false); // Changed state
     }
   };
 
-  const renderPlusButton = (index: number, isPrimaryCTA: boolean = false) => (
-    <div className={cn("flex justify-center items-center", isPrimaryCTA ? "py-10" : "my-4 inter-segment-plus-wrapper")}>
-      {isLoadingInsert.active && isLoadingInsert.index === index ? (
-        <div className="flex flex-col items-center text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-          <span>Adding PDFs...</span>
-        </div>
-      ) : (
-        <Button
-          variant={isPrimaryCTA ? "default" : "outline"}
-          size={isPrimaryCTA ? "lg" : "default"}
-          onClick={() => handlePlusIconClick(index)}
-          className={cn(isPrimaryCTA ? "text-lg py-8 px-10 rounded-full" : "rounded-full aspect-square p-0 h-12 w-12 sm:h-14 sm:w-14", "flex flex-col items-center justify-center group shadow-md hover:shadow-lg transition-all")}
-          aria-label={isPrimaryCTA ? "Add initial PDF document(s)" : `Insert PDF document(s) here (position ${index + 1})`}
-        >
-          <PlusCircle className={cn("h-6 w-6 sm:h-7 sm:w-7 text-primary group-hover:scale-110 transition-transform", isPrimaryCTA && "h-8 w-8 sm:h-10 sm:w-10 mb-2")} />
-          {isPrimaryCTA && <span className="mt-1 font-semibold">Add PDF(s)</span>}
-        </Button>
-      )}
-    </div>
-  );
+  const handleDragStart = (index: number) => {
+    dragItemIndex.current = index;
+  };
+
+  const handleDragEnter = (index: number) => {
+    dragOverItemIndex.current = index;
+  };
+
+  const handleDragEnd = () => {
+    if (dragItemIndex.current !== null && dragOverItemIndex.current !== null && dragItemIndex.current !== dragOverItemIndex.current) {
+      const newItems = [...selectedPdfItems];
+      const draggedItem = newItems.splice(dragItemIndex.current, 1)[0];
+      newItems.splice(dragOverItemIndex.current, 0, draggedItem);
+      setSelectedPdfItems(newItems);
+    }
+    dragItemIndex.current = null;
+    dragOverItemIndex.current = null;
+  };
+  
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); 
+  };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-12">
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileInputChange}
-        multiple
-        accept="application/pdf"
-        className="hidden"
-      />
-      <header className="text-center py-6">
-        <FilePlus2 className="mx-auto h-14 w-14 text-primary mb-3" />
-        <h1 className="text-3xl font-bold tracking-tight">Add Pages to PDF</h1>
-        <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
-          Assemble a new PDF by adding documents in sequence. Click the <PlusCircle className="inline h-4 w-4 text-primary" /> icons to insert PDFs.
+    <div className="max-w-full mx-auto space-y-8">
+      <header className="text-center py-8">
+        <FilePlus2 className="mx-auto h-16 w-16 text-primary mb-4" /> {/* Changed icon */}
+        <h1 className="text-3xl font-bold tracking-tight">Add Pages to PDF</h1> {/* Changed title */}
+        <p className="text-muted-foreground mt-2">
+          Combine multiple PDF documents into one. Drag and drop to reorder.
         </p>
       </header>
 
-      {pdfSegments.length === 0 && !isLoadingInitial && (
-        <Card className="shadow-lg border-2 border-dashed hover:border-primary transition-colors">
-          <CardContent className="p-6 text-center">
-            <FileUploadZone 
-                onFilesSelected={handleInitialFilesSelected} 
-                multiple 
-                accept="application/pdf"
-                maxFiles={10}
-            />
-            <p className="text-xs text-muted-foreground mt-3">Or, use the plus button below to start.</p>
-             {renderPlusButton(0, true)}
+      {selectedPdfItems.length === 0 && !isLoadingPreviews && (
+        <Card className="max-w-2xl mx-auto shadow-lg">
+          <CardHeader>
+            <CardTitle>Upload PDFs</CardTitle>
+            <CardDescription>Select or drag and drop the PDF files you want to add together (up to 10 files initially).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple accept="application/pdf" maxFiles={10} />
           </CardContent>
         </Card>
       )}
-       {isLoadingInitial && (
-          <div className="flex justify-center items-center py-10">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="ml-3 text-lg text-muted-foreground">Loading initial PDF(s)...</p>
-          </div>
-        )}
 
+      {isLoadingPreviews && selectedPdfItems.length === 0 && (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="ml-3 text-lg text-muted-foreground">Loading initial previews...</p>
+        </div>
+      )}
 
-      {pdfSegments.length > 0 && (
-        <>
-          {renderPlusButton(0)} 
-          {pdfSegments.map((segment, segIndex) => (
-            <div key={segment.id} className="space-y-3">
-              <Card className="shadow-md border border-border hover:shadow-lg transition-shadow">
-                <CardHeader className="flex flex-row justify-between items-start pb-3 pt-4 px-4">
-                  <div>
-                    <CardTitle className="text-lg flex items-center">
-                      <ExternalLink className="h-4 w-4 mr-2 text-muted-foreground" />
-                      {segment.name}
-                    </CardTitle>
-                    <CardDescription className="text-xs">{segment.pageCount} page(s)</CardDescription>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => handleRemoveSegment(segment.id)} className="text-destructive hover:bg-destructive/10 h-8 w-8">
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Remove this PDF segment</span>
-                  </Button>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  <ScrollArea className="h-[250px] border rounded-md p-2 bg-muted/20">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 p-1.5">
-                      {segment.pages.map((page) => (
-                        <div key={`${segment.id}-page-${page.originalIndex}-${page.id}`} className="flex flex-col items-center p-1 border rounded bg-card shadow-sm">
-                          <PdfPagePreview
-                            pdfDataUri={segment.dataUri}
-                            pageIndex={page.originalIndex}
-                            rotation={0} 
-                            targetHeight={PREVIEW_TARGET_HEIGHT}
-                            className="my-0.5"
-                          />
-                          <span className="text-xs mt-1 text-muted-foreground">Page {page.originalIndex + 1}</span>
-                        </div>
-                      ))}
+      {selectedPdfItems.length > 0 && (
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-grow lg:w-3/4">
+            <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+                {selectedPdfItems.map((item, index) => (
+                  <Card
+                    key={item.id}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragEnter={() => handleDragEnter(index)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={handleDragOver}
+                    className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card"
+                  >
+                    <div className="relative w-full mb-2">
+                       <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveFile(item.id)}
+                        className="absolute top-1 right-1 z-10 h-7 w-7 bg-background/50 hover:bg-destructive/80 hover:text-destructive-foreground rounded-full"
+                        aria-label="Remove file"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_ASSEMBLE + 20}px`}}>
+                         <PdfPagePreview
+                            pdfDataUri={item.dataUri}
+                            pageIndex={0} 
+                            targetHeight={PREVIEW_TARGET_HEIGHT_ASSEMBLE}
+                            className="border rounded"
+                         />
+                      </div>
                     </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-              {renderPlusButton(segIndex + 1)}
-            </div>
-          ))}
-        </>
+                    <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={item.name}>
+                      {item.name}
+                    </p>
+                    <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1" aria-hidden="true" />
+                  </Card>
+                ))}
+                 {isLoadingPreviews && (
+                    <div className="col-span-full flex justify-center items-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="ml-2 text-muted-foreground">Loading new previews...</p>
+                    </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+
+          <div className="lg:w-1/4 space-y-4 lg:sticky lg:top-24 self-start">
+            <Card className="shadow-lg">
+              <CardHeader className="text-center">
+                <CardTitle>Assembly Options</CardTitle> {/* Changed title */}
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Alert variant="default" className="text-sm p-3">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    To change the order of your PDFs, drag and drop the files as you want.
+                  </AlertDescription>
+                </Alert>
+                <Button onClick={handleAddFilesClick} variant="outline" className="w-full">
+                  <Plus className="mr-2 h-4 w-4" /> Add More Files
+                </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleHiddenInputChange}
+                  multiple
+                  accept="application/pdf"
+                  className="hidden"
+                />
+                <Button onClick={handleSortByName} variant="outline" className="w-full" disabled={selectedPdfItems.length < 2}>
+                  <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort A-Z
+                </Button>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  onClick={handleAssembleAndDownload} // Changed handler
+                  disabled={selectedPdfItems.length < 1 || isAssembling || isLoadingPreviews} // Changed state and condition
+                  className="w-full"
+                  size="lg"
+                >
+                  {isAssembling ? ( // Changed state
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Combine className="mr-2 h-4 w-4" /> // Changed icon to Combine for assembly
+                  )}
+                  Assemble & Download PDFs ({selectedPdfItems.length}) {/* Changed text */}
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
       )}
 
       {error && (
-        <Alert variant="destructive" className="mt-6">
+        <Alert variant="destructive" className="mt-6 max-w-xl mx-auto">
           <Info className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-
-      {pdfSegments.length > 0 && (
-        <div className="mt-8 flex justify-center">
-          <Button
-            onClick={handleAssembleAndDownload}
-            disabled={isProcessing || isLoadingInitial || isLoadingInsert.active}
-            size="lg"
-            className="text-lg py-3 px-8 shadow-lg hover:shadow-xl transition-shadow"
-          >
-            {isProcessing ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <Download className="mr-2 h-5 w-5" />
-            )}
-            Save & Download Assembled PDF
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
-
-    

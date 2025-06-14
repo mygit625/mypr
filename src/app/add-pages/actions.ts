@@ -4,14 +4,6 @@
 import { PDFDocument } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
-// Re-export types and wrapped action from organize/actions
-export type { GetInitialPageDataInput, GetInitialPageDataOutput, PageData } from '../organize/actions';
-import { getInitialPageDataAction as originalGetInitialPageDataAction } from '../organize/actions';
-
-export async function getInitialPageDataAction(input: GetInitialPageDataInput): Promise<GetInitialPageDataOutput> {
-  return originalGetInitialPageDataAction(input);
-}
-
 export interface AssemblePdfInput {
   orderedPdfDataUris: string[];
 }
@@ -23,7 +15,17 @@ export interface AssemblePdfOutput {
 
 export async function assemblePdfAction(input: AssemblePdfInput): Promise<AssemblePdfOutput> {
   if (!input.orderedPdfDataUris || input.orderedPdfDataUris.length === 0) {
-    return { error: "No PDF segments provided to assemble." };
+    // If only one PDF is provided, arguably it could just return that PDF.
+    // However, for an "assemble" or "merge" like operation, usually more than one is implied.
+    // To match merge, let's say at least one is needed, but the UI should enforce 2+ for the button to be active.
+    // If the UI allows a single PDF, this action could just return it.
+    // For now, let's keep it that it expects something to assemble.
+     return { error: "At least one PDF file is required to assemble." };
+  }
+  
+  if (input.orderedPdfDataUris.length === 1) {
+    // If only one PDF is sent, just return it as is.
+    return { assembledPdfDataUri: input.orderedPdfDataUris[0] };
   }
 
   try {
@@ -35,12 +37,11 @@ export async function assemblePdfAction(input: AssemblePdfInput): Promise<Assemb
         return { error: `Invalid PDF data format for one of the segments. Please ensure all files are valid PDFs.` };
       }
       const pdfBytes = Buffer.from(dataUri.split(',')[1], 'base64');
-      // Set ignoreEncryption to true to attempt processing, but some encrypted files might still fail.
       const segmentPdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
       
       if (segmentPdfDoc.getPageCount() === 0) {
         console.warn('A PDF segment with no pages was encountered and skipped.');
-        continue; // Skip empty PDFs
+        continue; 
       }
 
       const copiedPages = await finalPdfDoc.copyPages(segmentPdfDoc, segmentPdfDoc.getPageIndices());
