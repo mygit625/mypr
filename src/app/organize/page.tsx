@@ -1,302 +1,402 @@
 
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
+import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
+
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { LayoutGrid, Loader2, Info, RotateCcw, RotateCw, Trash2, ArrowUp, ArrowDown, Download, RefreshCcw } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import PdfPagePreview from '@/components/feature/pdf-page-preview';
+import { LayoutGrid, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine } from 'lucide-react'; // Combine for action button
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { getInitialPageDataAction, organizePdfAction, type PageData, type PageOperation } from './actions';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import PdfPagePreview from '@/components/feature/pdf-page-preview';
+import { organizePagesAction } from './actions'; // Updated action import
 import { cn } from '@/lib/utils';
 
-// Helper to ensure rotation stays within 0, 90, 180, 270
-const normalizeRotation = (angle: number): number => {
-  let newAngle = angle % 360;
-  if (newAngle < 0) newAngle += 360;
-  if (![0, 90, 180, 270].includes(newAngle)) {
-    // Snap to nearest valid rotation if somehow it's off
-    if (newAngle > 0 && newAngle < 90) newAngle = newAngle < 45 ? 0 : 90;
-    else if (newAngle > 90 && newAngle < 180) newAngle = newAngle < 135 ? 90 : 180;
-    else if (newAngle > 180 && newAngle < 270) newAngle = newAngle < 225 ? 180 : 270;
-    else if (newAngle > 270 && newAngle < 360) newAngle = newAngle < 315 ? 270 : 0;
-    else newAngle = 0; // Default fallback
-  }
-  return newAngle;
-};
+if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+}
 
+interface SelectedPdfPageItem {
+  id: string;
+  originalFileId: string;
+  originalFileName: string;
+  originalFileDataUri: string;
+  pageIndexInOriginalFile: number;
+  totalPagesInOriginalFile: number;
+  displayName: string;
+}
 
-export default function OrganizePage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
-  const [pages, setPages] = useState<PageData[]>([]);
-  const [originalPages, setOriginalPages] = useState<PageData[]>([]);
+interface DisplayItem {
+  type: 'pdf_page' | 'add_button';
+  id: string;
+  data?: SelectedPdfPageItem;
+  originalItemIndex?: number; 
+  insertAtIndex?: number;
+}
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+const PREVIEW_TARGET_HEIGHT_ORGANIZE = 180; // Renamed constant
+
+export default function OrganizePage() { // Renamed component
+  const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfPageItem[]>([]);
+  const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
+  const [isOrganizing, setIsOrganizing] = useState(false); // Renamed state variable
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const PREVIEW_TARGET_HEIGHT = 100; // Target height for previews
 
-  const handleFileSelected = async (selectedFiles: File[]) => {
-    if (selectedFiles.length > 0) {
-      const selectedFile = selectedFiles[0];
-      setFile(selectedFile);
-      setError(null);
-      setPages([]);
-      setOriginalPages([]);
-      setIsLoading(true);
-      setPdfDataUri(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const insertAtIndexRef = useRef<number | null>(null);
+  const dragItemIndex = useRef<number | null>(null);
+  const dragOverItemIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    setError(null);
+  }, [selectedPdfItems]);
+
+  const processFiles = async (files: File[]): Promise<SelectedPdfPageItem[]> => {
+    setIsLoadingPreviews(true);
+    const newPageItems: SelectedPdfPageItem[] = [];
+
+    for (const file of files) {
+      const originalFileId = crypto.randomUUID();
       try {
-        const dataUri = await readFileAsDataURL(selectedFile);
-        setPdfDataUri(dataUri);
-        const result = await getInitialPageDataAction({ pdfDataUri: dataUri });
-        if (result.error) {
-          setError(result.error);
-          toast({ title: "Error loading PDF", description: result.error, variant: "destructive" });
-          setPdfDataUri(null);
-          setFile(null);
-        } else if (result.pages) {
-          const initialPages = result.pages.map(p => ({...p, rotation: normalizeRotation(p.rotation)}));
-          setPages(initialPages);
-          setOriginalPages(JSON.parse(JSON.stringify(initialPages)));
+        const dataUri = await readFileAsDataURL(file);
+        
+        const base64Marker = ';base64,';
+        const base64Index = dataUri.indexOf(base64Marker);
+        if (base64Index === -1) throw new Error('Invalid PDF data URI format.');
+        const pdfBase64Data = dataUri.substring(base64Index + base64Marker.length);
+        const pdfBinaryData = atob(pdfBase64Data);
+        const pdfDataArray = new Uint8Array(pdfBinaryData.length);
+        for (let i = 0; i < pdfBinaryData.length; i++) {
+          pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
+        }
+
+        const pdfDoc: PDFDocumentProxy = await pdfjsLib.getDocument({ data: pdfDataArray }).promise;
+        const numPages = pdfDoc.numPages;
+
+        for (let i = 0; i < numPages; i++) {
+          newPageItems.push({
+            id: crypto.randomUUID(),
+            originalFileId: originalFileId,
+            originalFileName: file.name,
+            originalFileDataUri: dataUri,
+            pageIndexInOriginalFile: i,
+            totalPagesInOriginalFile: numPages,
+            displayName: `${file.name} (Page ${i + 1} of ${numPages})`,
+          });
         }
       } catch (e: any) {
-        setError(e.message || "Failed to read or process file.");
-        toast({ title: "File Error", description: e.message, variant: "destructive" });
-        setPdfDataUri(null);
-        setFile(null);
-      } finally {
-        setIsLoading(false);
+        console.error("Error processing file into pages for organization:", file.name, e);
+        toast({
+          title: "File Process Error",
+          description: `Could not process file: ${file.name}. ${e.message}`,
+          variant: "destructive",
+        });
       }
-    } else {
-      setFile(null);
-      setPdfDataUri(null);
-      setPages([]);
-      setOriginalPages([]);
     }
+    setIsLoadingPreviews(false);
+    return newPageItems;
   };
 
-  const handlePageUpdate = (index: number, updates: Partial<PageData>) => {
-    setPages(currentPages =>
-      currentPages.map((page, i) =>
-        i === index ? { ...page, ...updates } : page
-      )
-    );
-  };
+  const handleFilesSelected = async (newFilesFromInput: File[], insertAt: number | null) => {
+    if (newFilesFromInput.length === 0) return;
+    // Process only the first file if multiple were somehow selected (input is single mode)
+    const fileToProcess = newFilesFromInput.length > 0 ? [newFilesFromInput[0]] : [];
+    if (fileToProcess.length === 0) return;
 
-  const handleRotate = (index: number, direction: 'cw' | 'ccw') => {
-    const page = pages[index];
-    let newRotation = page.rotation;
-    if (direction === 'cw') {
-      newRotation = (page.rotation + 90);
-    } else {
-      newRotation = (page.rotation - 90);
-    }
-    handlePageUpdate(index, { rotation: normalizeRotation(newRotation) });
-  };
+    const processedNewPageItems = await processFiles(fileToProcess);
 
-  const handleDeleteToggle = (index: number) => {
-    handlePageUpdate(index, { isDeleted: !pages[index].isDeleted });
-  };
-
-  const handleMovePage = (index: number, direction: 'up' | 'down') => {
-    setPages(currentPages => {
-      const newPages = [...currentPages];
-      const pageToMove = newPages[index];
-      newPages.splice(index, 1); // Remove page from current position
-      const targetIndex = direction === 'up' ? index - 1 : index + 1;
-
-      // Ensure targetIndex is within bounds
-      if (targetIndex < 0 || targetIndex > newPages.length) {
-        newPages.splice(index, 0, pageToMove); // Put it back if out of bounds
-        return newPages;
+    setSelectedPdfItems((prevItems) => {
+      const updatedItems = [...prevItems];
+      if (insertAt !== null && insertAt >= 0 && insertAt <= updatedItems.length) {
+        updatedItems.splice(insertAt, 0, ...processedNewPageItems);
+      } else {
+        updatedItems.push(...processedNewPageItems);
       }
-      newPages.splice(targetIndex, 0, pageToMove); // Insert at new position
-      return newPages;
+      return updatedItems;
     });
+    insertAtIndexRef.current = null;
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
-  const handleResetChanges = () => {
-    setPages(JSON.parse(JSON.stringify(originalPages)));
-    toast({ title: "Changes Reset", description: "Page order, rotations, and deletions have been reset." });
+  const handleInitialFilesSelected = async (newFilesFromInput: File[]) => {
+    if (newFilesFromInput.length === 0) {
+      setSelectedPdfItems([]);
+      return;
+    }
+    // Process only the first file if multiple were somehow selected (input is single mode)
+    const fileToProcess = newFilesFromInput.length > 0 ? [newFilesFromInput[0]] : [];
+     if (fileToProcess.length === 0) return;
+
+    const processedNewPageItems = await processFiles(fileToProcess);
+    setSelectedPdfItems(processedNewPageItems); 
   };
 
-  const handleOrganizeAndDownload = async () => {
-    if (!pdfDataUri || pages.length === 0) {
-      toast({ title: "No PDF or Pages", description: "Please upload a PDF and ensure it has pages.", variant: "destructive" });
+  const handleRemoveFile = (idToRemove: string) => {
+    setSelectedPdfItems((prevItems) => prevItems.filter(item => item.id !== idToRemove));
+  };
+
+  const handleAddFilesTrigger = (index: number) => {
+    insertAtIndexRef.current = index;
+    fileInputRef.current?.click();
+  };
+
+  const handleHiddenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      handleFilesSelected(Array.from(event.target.files), insertAtIndexRef.current);
+    }
+  };
+
+  const handleSortByName = () => {
+    setSelectedPdfItems((prevItems) =>
+      [...prevItems].sort((a, b) => a.displayName.localeCompare(b.displayName))
+    );
+    toast({ description: "Pages sorted by name (original file, then page number)." });
+  };
+
+  const handleOrganizeAndDownload = async () => { // Renamed function
+    if (selectedPdfItems.length < 1) {
+      toast({
+        title: "No pages selected",
+        description: "Please upload a PDF and ensure pages are present to organize.",
+        variant: "destructive",
+      });
       return;
     }
 
-    setIsProcessing(true);
+    setIsOrganizing(true); // Use renamed state
     setError(null);
 
-    const operations: PageOperation[] = pages
-      .filter(page => !page.isDeleted)
-      .map(page => ({
-        originalIndex: page.originalIndex,
-        rotation: page.rotation,
+    try {
+      const pagesToAssemble = selectedPdfItems.map(item => ({
+        sourcePdfDataUri: item.originalFileDataUri,
+        pageIndexToCopy: item.pageIndexInOriginalFile,
       }));
 
-    if (operations.length === 0) {
-      toast({ title: "No pages selected", description: "All pages are marked for deletion. Cannot create an empty PDF.", variant: "destructive" });
-      setIsProcessing(false);
-      return;
-    }
+      const result = await organizePagesAction({ orderedPagesToAssemble: pagesToAssemble }); // Call renamed action
 
-    try {
-      const result = await organizePdfAction({ pdfDataUri, operations });
       if (result.error) {
         setError(result.error);
-        toast({ title: "Organization Error", description: result.error, variant: "destructive" });
-      } else if (result.organizedPdfDataUri) {
-        downloadDataUri(result.organizedPdfDataUri, `organized_${file?.name || 'document.pdf'}`);
-        toast({ title: "Organization Successful!", description: "Your PDF has been reorganized and download has started." });
+        toast({
+          title: "Organization Error", // Updated toast title
+          description: result.error,
+          variant: "destructive",
+        });
+      } else if (result.organizedPdfDataUri) { // Use renamed field
+        downloadDataUri(result.organizedPdfDataUri, "organized_document.pdf"); // Updated filename
+        toast({
+          title: "Organization Successful!", // Updated toast title
+          description: "Your PDF pages have been organized and download has started.", // Updated message
+        });
+        setSelectedPdfItems([]);
       }
     } catch (e: any) {
-      setError(e.message || "An unexpected error occurred during organization.");
-      toast({ title: "Organization Failed", description: e.message, variant: "destructive" });
+      const errorMessage = e.message || "An unexpected error occurred during organization."; // Updated message
+      setError(errorMessage);
+      toast({ title: "Organization Failed", description: errorMessage, variant: "destructive" }); // Updated title
     } finally {
-      setIsProcessing(false);
+      setIsOrganizing(false); // Use renamed state
     }
   };
 
-  const getDisplayedPageIndex = (currentIndex: number): number => {
-    let visibleCount = 0;
-    for(let i = 0; i <= currentIndex; i++) {
-        if(!pages[i].isDeleted) {
-            visibleCount++;
-        }
+  const handleDragStart = (index: number) => {
+    dragItemIndex.current = index;
+  };
+
+  const handleDragEnter = (index: number) => {
+    dragOverItemIndex.current = index;
+  };
+
+  const handleDragEnd = () => {
+    if (dragItemIndex.current !== null && dragOverItemIndex.current !== null && dragItemIndex.current !== dragOverItemIndex.current) {
+      const newItems = [...selectedPdfItems];
+      const draggedItem = newItems.splice(dragItemIndex.current, 1)[0];
+      newItems.splice(dragOverItemIndex.current, 0, draggedItem);
+      setSelectedPdfItems(newItems);
     }
-    return visibleCount;
+    dragItemIndex.current = null;
+    dragOverItemIndex.current = null;
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement | HTMLButtonElement>) => {
+    e.preventDefault();
+  };
+
+  const displayItems: DisplayItem[] = [];
+  if (selectedPdfItems.length > 0 || isLoadingPreviews) {
+    displayItems.push({ type: 'add_button', id: 'add-slot-0', insertAtIndex: 0 });
+
+    selectedPdfItems.forEach((pageItem, index) => {
+      displayItems.push({ type: 'pdf_page', id: pageItem.id, data: pageItem, originalItemIndex: index });
+      displayItems.push({ type: 'add_button', id: `add-slot-${index + 1}`, insertAtIndex: index + 1 });
+    });
   }
 
-
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <header className="text-center">
-        <LayoutGrid className="mx-auto h-16 w-16 text-primary mb-4" />
-        <h1 className="text-3xl font-bold tracking-tight">Organize PDF Pages</h1>
+    <div className="max-w-full mx-auto space-y-8">
+      <header className="text-center py-8">
+        <LayoutGrid className="mx-auto h-16 w-16 text-primary mb-4" /> {/* Updated Icon */}
+        <h1 className="text-3xl font-bold tracking-tight">Organize PDF Pages</h1> {/* Updated Title */}
         <p className="text-muted-foreground mt-2">
-          Reorder, rotate, and delete pages in your PDF document.
+          Upload a PDF. Drag and drop its pages to reorder, then assemble them into a new document.
         </p>
       </header>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>Upload PDF</CardTitle>
-          <CardDescription>Select the PDF file you want to organize.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FileUploadZone onFilesSelected={handleFileSelected} multiple={false} accept="application/pdf" />
-        </CardContent>
-      </Card>
+      {selectedPdfItems.length === 0 && !isLoadingPreviews && (
+        <Card className="max-w-2xl mx-auto shadow-lg">
+          <CardHeader>
+            <CardTitle>Upload PDF</CardTitle>
+            <CardDescription>Select or drag a PDF file. Its pages will be displayed individually for organization.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple={false} accept="application/pdf" />
+          </CardContent>
+        </Card>
+      )}
 
-      {isLoading && (
-        <div className="flex justify-center items-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="ml-2 text-muted-foreground">Loading PDF pages...</p>
+      <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleHiddenInputChange}
+          multiple={false} // Single file for organize, as per add-pages
+          accept="application/pdf"
+          className="hidden"
+      />
+
+      {isLoadingPreviews && selectedPdfItems.length === 0 && (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="ml-3 text-lg text-muted-foreground">Processing PDF pages...</p>
         </div>
       )}
 
-      {error && !isLoading && (
-        <Alert variant="destructive">
+      {(selectedPdfItems.length > 0 || (isLoadingPreviews && selectedPdfItems.length > 0)) && (
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-grow lg:w-3/4">
+            <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
+              <div className="flex flex-wrap items-center gap-px p-1">
+                {displayItems.map((item) => {
+                  if (item.type === 'pdf_page' && item.data) {
+                    const pageItem = item.data;
+                    return (
+                      <Card
+                        key={pageItem.id}
+                        draggable
+                        onDragStart={() => handleDragStart(item.originalItemIndex!)}
+                        onDragEnter={() => handleDragEnter(item.originalItemIndex!)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={handleDragOver}
+                        className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between w-44"
+                      >
+                        <div className="relative w-full mb-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveFile(pageItem.id)}
+                            className="absolute top-1 right-1 z-10 h-7 w-7 bg-background/50 hover:bg-destructive/80 hover:text-destructive-foreground rounded-full"
+                            aria-label="Remove page"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_ORGANIZE + 20}px`}}>
+                            <PdfPagePreview
+                                pdfDataUri={pageItem.originalFileDataUri}
+                                pageIndex={pageItem.pageIndexInOriginalFile}
+                                targetHeight={PREVIEW_TARGET_HEIGHT_ORGANIZE}
+                                className="border rounded"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={pageItem.displayName}>
+                          {pageItem.displayName}
+                        </p>
+                        <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1" aria-hidden="true" />
+                      </Card>
+                    );
+                  } else if (item.type === 'add_button') {
+                    return (
+                      <div key={item.id} className="flex items-center justify-center h-full w-12">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            if (!isLoadingPreviews) handleAddFilesTrigger(item.insertAtIndex!);
+                          }}
+                          disabled={isLoadingPreviews}
+                          className="rounded-full h-10 w-10 shadow-sm hover:shadow-md hover:border-primary/80 hover:text-primary/80 transition-all"
+                          aria-label={`Add PDF file at position ${item.insertAtIndex}`}
+                        >
+                          {isLoadingPreviews && insertAtIndexRef.current === item.insertAtIndex ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <Plus className="h-5 w-5" />
+                          )}
+                        </Button>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+                 {isLoadingPreviews && selectedPdfItems.length > 0 && displayItems.length === 0 && (
+                    <div className="col-span-full flex justify-center items-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="ml-2 text-muted-foreground">Loading page previews...</p>
+                    </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+
+          <div className="lg:w-1/4 space-y-4 lg:sticky lg:top-24 self-start">
+            <Card className="shadow-lg">
+              <CardHeader className="text-center">
+                <CardTitle>Organization Options</CardTitle> 
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Alert variant="default" className="text-sm p-3">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Drag and drop page cards to reorder them. The final PDF will be assembled based on this order.
+                  </AlertDescription>
+                </Alert>
+                <Button onClick={handleSortByName} variant="outline" className="w-full" disabled={selectedPdfItems.length < 2}>
+                  <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort Pages
+                </Button>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  onClick={handleOrganizeAndDownload} // Use renamed handler
+                  disabled={selectedPdfItems.length < 1 || isOrganizing || isLoadingPreviews}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isOrganizing ? ( // Use renamed state
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Combine className="mr-2 h-4 w-4" /> // Using Combine icon like add-pages for action
+                  )}
+                  Organize & Download Pages ({selectedPdfItems.length}) {/* Updated text */}
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <Alert variant="destructive" className="mt-6 max-w-xl mx-auto">
           <Info className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      )}
-
-      {pdfDataUri && pages.length > 0 && !isLoading && (
-        <>
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle>Manage Pages</CardTitle>
-              <CardDescription>Drag to reorder, use controls for rotation/deletion. Click "Apply & Download" to save changes.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[600px] p-1 border rounded-md bg-muted/20">
-                <div className="space-y-3 p-2">
-                {pages.map((page, index) => (
-                  <Card key={`${page.id}-${page.originalIndex}-${index}`} className={cn(`transition-opacity shadow-sm bg-card`, page.isDeleted ? 'opacity-60 ring-2 ring-destructive/50' : '')}>
-                    <div className="flex items-start p-3 gap-3">
-                       <div 
-                          className="flex-shrink-0 mr-1 mt-1 flex items-center justify-center overflow-hidden"
-                          style={{ minWidth: '80px', minHeight: `${PREVIEW_TARGET_HEIGHT}px`, width: 'auto', height: `${PREVIEW_TARGET_HEIGHT}px`}}
-                        >
-                          {pdfDataUri && (
-                             <PdfPagePreview
-                               pdfDataUri={pdfDataUri}
-                               pageIndex={page.originalIndex}
-                               rotation={page.rotation}
-                               targetHeight={PREVIEW_TARGET_HEIGHT}
-                             />
-                          )}
-                       </div>
-                      <div className="flex-grow">
-                        <CardHeader className="p-0 mb-1">
-                           <CardTitle className="text-md flex justify-between items-center">
-                            <span className={cn(page.isDeleted && "line-through text-muted-foreground")}>
-                                {page.isDeleted ? 'Page (Marked for Deletion)' : `Page ${getDisplayedPageIndex(index)}`}
-                                <span className="text-xs text-muted-foreground ml-1">(Original: {page.originalIndex + 1})</span>
-                            </span>
-                             <Button variant="ghost" size="icon" onClick={() => handleDeleteToggle(index)} title={page.isDeleted ? "Restore Page" : "Delete Page"} className="h-7 w-7">
-                                {page.isDeleted ? <RefreshCcw className="h-4 w-4 text-green-600" /> : <Trash2 className="h-4 w-4 text-destructive" />}
-                             </Button>
-                           </CardTitle>
-                        </CardHeader>
-                        <p className="text-xs text-muted-foreground mb-2">
-                            Dimensions: {page.width.toFixed(0)}pt x {page.height.toFixed(0)}pt | Rotation: {page.rotation}°
-                        </p>
-                        <div className="flex justify-between items-center gap-1">
-                          <div className="flex gap-1">
-                            <Button variant="outline" size="xs" onClick={() => handleRotate(index, 'ccw')} disabled={page.isDeleted || isLoading || isProcessing} title="Rotate Counter-Clockwise">
-                              <RotateCcw className="h-3 w-3 mr-1" /> Left
-                            </Button>
-                            <Button variant="outline" size="xs" onClick={() => handleRotate(index, 'cw')} disabled={page.isDeleted || isLoading || isProcessing} title="Rotate Clockwise">
-                              <RotateCw className="h-3 w-3 mr-1" /> Right
-                            </Button>
-                          </div>
-                          <div className="flex gap-1">
-                            <Button variant="outline" size="xs" onClick={() => handleMovePage(index, 'up')} disabled={index === 0 || page.isDeleted || isLoading || isProcessing} title="Move Up">
-                              <ArrowUp className="h-3 w-3" />
-                            </Button>
-                            <Button variant="outline" size="xs" onClick={() => handleMovePage(index, 'down')} disabled={index === pages.length - 1 || page.isDeleted || isLoading || isProcessing} title="Move Down">
-                              <ArrowDown className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-            <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
-                <Button variant="outline" onClick={handleResetChanges} disabled={isProcessing || isLoading}>
-                    <RefreshCcw className="mr-2 h-4 w-4" /> Reset All Changes
-                </Button>
-                <Button
-                  onClick={handleOrganizeAndDownload}
-                  disabled={isProcessing || isLoading || !file || pages.filter(p => !p.isDeleted).length === 0}
-                  size="lg"
-                >
-                {isProcessing ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                )}
-                Apply Changes & Download
-                </Button>
-            </CardFooter>
-          </Card>
-        </>
       )}
     </div>
   );
