@@ -14,31 +14,26 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { assemblePdfAction } from './actions';
 import { cn } from '@/lib/utils';
-import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 
-// Ensure worker is set (though PdfPagePreview also attempts this)
-if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-}
+// Removed pdfjsLib import as it's not needed for first-page preview only
 
 interface SelectedPdfItem {
   id: string;
   file: File;
   dataUri: string;
   name: string;
-  numPages: number; // Added to store page count
+  // numPages removed
 }
 
 interface DisplayItem {
   type: 'pdf' | 'add_button';
-  id: string; 
-  data?: SelectedPdfItem; 
-  originalPdfIndex?: number; 
-  insertAtIndex?: number; 
+  id: string;
+  data?: SelectedPdfItem;
+  originalPdfIndex?: number;
+  insertAtIndex?: number;
 }
 
-const INDIVIDUAL_PAGE_PREVIEW_HEIGHT = 150; // Height for each page preview within a card
-const MAX_CARD_PREVIEW_AREA_HEIGHT = "300px"; // Max height for the scrollable area in a card
+const PREVIEW_TARGET_HEIGHT_TEST = 180; // Restored constant name and typical value
 
 export default function TestPage() {
   const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfItem[]>([]);
@@ -46,7 +41,7 @@ export default function TestPage() {
   const [isAssembling, setIsAssembling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const insertAtIndexRef = useRef<number | null>(null);
   const dragItemIndex = useRef<number | null>(null);
@@ -66,39 +61,12 @@ export default function TestPage() {
       }
       try {
         const dataUri = await readFileAsDataURL(file);
-        let numPages = 0;
-        try {
-          const base64Marker = ';base64,';
-          const base64Index = dataUri.indexOf(base64Marker);
-          if (base64Index === -1) throw new Error('Invalid PDF data URI format for page counting.');
-          const pdfBase64Data = dataUri.substring(base64Index + base64Marker.length);
-          const pdfBinaryData = atob(pdfBase64Data);
-          const pdfDataArray = new Uint8Array(pdfBinaryData.length);
-          for (let i = 0; i < pdfBinaryData.length; i++) {
-            pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
-          }
-          const pdfDoc = await pdfjsLib.getDocument({ data: pdfDataArray }).promise;
-          numPages = pdfDoc.numPages;
-          if (typeof (pdfDoc as any).destroy === 'function') { // Check if destroy is a function
-            await (pdfDoc as any).destroy();
-          }
-        } catch (pdfLoadError: any) {
-          console.error(`Error loading PDF ${file.name} to count pages:`, pdfLoadError);
-          toast({
-            title: "PDF Load Warning",
-            description: `Could not determine page count for ${file.name}. Previews might be limited. ${pdfLoadError.message}`,
-            variant: "destructive", // Or a less severe variant
-          });
-          // Decide if you want to add the file with numPages = 0 or skip it
-          // For now, let's add it with 0 pages so it shows up with an error/warning
-        }
-
+        // Removed logic for getting numPages
         newItems.push({
           id: crypto.randomUUID(),
           file,
           dataUri,
           name: file.name,
-          numPages,
         });
       } catch (e: any) {
         console.error("Error reading file:", file.name, e);
@@ -116,22 +84,22 @@ export default function TestPage() {
   const handleFilesSelected = async (newFiles: File[], insertAt: number | null) => {
     if (newFiles.length === 0) return;
     const processedNewItems = await processFiles(newFiles);
-    
+
     setSelectedPdfItems((prevItems) => {
       const updatedItems = [...prevItems];
       if (insertAt !== null && insertAt >= 0 && insertAt <= updatedItems.length) {
         updatedItems.splice(insertAt, 0, ...processedNewItems);
       } else {
-        updatedItems.push(...processedNewItems); 
+        updatedItems.push(...processedNewItems);
       }
       return updatedItems;
     });
-    insertAtIndexRef.current = null; 
+    insertAtIndexRef.current = null;
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""; 
+      fileInputRef.current.value = "";
     }
   };
-  
+
   const handleInitialFilesSelected = async (newFiles: File[]) => {
     if (newFiles.length === 0) {
       setSelectedPdfItems([]);
@@ -172,7 +140,7 @@ export default function TestPage() {
       });
       return;
     }
-    
+
     setIsAssembling(true);
     setError(null);
 
@@ -222,9 +190,9 @@ export default function TestPage() {
     dragItemIndex.current = null;
     dragOverItemIndex.current = null;
   };
-  
+
   const handleDragOver = (e: DragEvent<HTMLDivElement | HTMLButtonElement>) => {
-    e.preventDefault(); 
+    e.preventDefault();
   };
 
   const displayItems: DisplayItem[] = [];
@@ -244,7 +212,7 @@ export default function TestPage() {
         <FlaskConical className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Test Page</h1>
         <p className="text-muted-foreground mt-2">
-          This is a test page with the same layout and features as Add PDF Pages. Drag and drop to reorder. Previews all pages.
+          This is a test page with the same layout and features as Add PDF Pages. Drag and drop to reorder.
         </p>
       </header>
 
@@ -259,7 +227,7 @@ export default function TestPage() {
           </CardContent>
         </Card>
       )}
-      
+
       <input
           type="file"
           ref={fileInputRef}
@@ -269,10 +237,10 @@ export default function TestPage() {
           className="hidden"
       />
 
-      {isLoadingPreviews && selectedPdfItems.length === 0 && ( 
+      {isLoadingPreviews && selectedPdfItems.length === 0 && (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="ml-3 text-lg text-muted-foreground">Loading initial previews & page counts...</p>
+          <p className="ml-3 text-lg text-muted-foreground">Loading initial previews...</p>
         </div>
       )}
 
@@ -280,7 +248,7 @@ export default function TestPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-grow lg:w-3/4">
             <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
-              <div className="flex flex-wrap items-stretch gap-px p-1"> {/* items-stretch for full height cards */}
+              <div className="flex flex-wrap items-center gap-px p-1"> {/* items-center for vertical alignment */}
                 {displayItems.map((item) => {
                   if (item.type === 'pdf' && item.data) {
                     const pdfItem = item.data;
@@ -292,57 +260,36 @@ export default function TestPage() {
                         onDragEnter={() => handleDragEnter(item.originalPdfIndex!)}
                         onDragEnd={handleDragEnd}
                         onDragOver={handleDragOver}
-                        className="flex flex-col p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card justify-between w-64" // Increased width, removed items-center
+                        className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between w-44" // Restored width
                       >
-                        <div className="relative w-full mb-1 flex justify-between items-center">
-                          <p className="text-sm text-left truncate font-semibold px-1 flex-grow" title={pdfItem.name}>
-                            {pdfItem.name}
-                          </p>
+                        <div className="relative w-full mb-2">
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleRemoveFile(pdfItem.id)}
-                            className="h-7 w-7 bg-background/50 hover:bg-destructive/80 hover:text-destructive-foreground rounded-full flex-shrink-0"
+                            className="absolute top-1 right-1 z-10 h-7 w-7 bg-background/50 hover:bg-destructive/80 hover:text-destructive-foreground rounded-full"
                             aria-label="Remove file"
                           >
                             <X className="h-4 w-4" />
                           </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground mb-2 w-full px-1">Total Pages: {pdfItem.numPages > 0 ? pdfItem.numPages : 'N/A'}</p>
-                        
-                        <ScrollArea 
-                          className="w-full border rounded-md p-1 mb-2 bg-muted/30" 
-                          style={{height: MAX_CARD_PREVIEW_AREA_HEIGHT}}
-                        >
-                          <div className="space-y-2 p-1">
-                            {pdfItem.numPages > 0 ? (
-                              Array.from({ length: pdfItem.numPages }).map((_, pageIdx) => (
-                                <div key={pageIdx} className="flex flex-col items-center">
-                                  <PdfPagePreview
-                                    pdfDataUri={pdfItem.dataUri}
-                                    pageIndex={pageIdx}
-                                    targetHeight={INDIVIDUAL_PAGE_PREVIEW_HEIGHT}
-                                    className="border rounded shadow-sm bg-white" 
-                                  />
-                                  <p className="text-xs text-muted-foreground mt-1">Page {pageIdx + 1}</p>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="flex items-center justify-center h-full text-muted-foreground text-sm py-4">
-                                <Info className="h-4 w-4 mr-2"/>
-                                {isLoadingPreviews ? "Loading pages..." : "No pages to display or PDF error."}
-                              </div>
-                            )}
+                          <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_TEST + 20}px`}}>
+                            <PdfPagePreview
+                                pdfDataUri={pdfItem.dataUri}
+                                pageIndex={0} // Only first page
+                                targetHeight={PREVIEW_TARGET_HEIGHT_TEST}
+                                className="border rounded"
+                            />
                           </div>
-                        </ScrollArea>
-                        <div className="flex justify-center w-full">
-                         <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1" aria-hidden="true" />
                         </div>
+                        <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={pdfItem.name}>
+                          {pdfItem.name}
+                        </p>
+                        <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1" aria-hidden="true" />
                       </Card>
                     );
                   } else if (item.type === 'add_button') {
                     return (
-                      <div key={item.id} className="flex items-center justify-center h-full w-12 self-stretch"> {/* self-stretch for full height */}
+                      <div key={item.id} className="flex items-center justify-center h-full w-12">
                         <Button
                           variant="outline"
                           size="icon"
@@ -364,10 +311,10 @@ export default function TestPage() {
                   }
                   return null;
                 })}
-                 {isLoadingPreviews && selectedPdfItems.length > 0 && displayItems.length === 0 && ( 
+                 {isLoadingPreviews && selectedPdfItems.length > 0 && displayItems.length === 0 && (
                     <div className="col-span-full flex justify-center items-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="ml-2 text-muted-foreground">Loading file previews & page counts...</p>
+                        <p className="ml-2 text-muted-foreground">Loading file previews...</p>
                     </div>
                 )}
               </div>
@@ -420,5 +367,3 @@ export default function TestPage() {
     </div>
   );
 }
-
-    
