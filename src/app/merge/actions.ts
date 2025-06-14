@@ -5,7 +5,7 @@ import { PDFDocument } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
 export interface MergePdfsInput {
-  pdfDataUris: string[];
+  orderedPdfDataUris: string[];
 }
 
 export interface MergePdfsOutput {
@@ -14,36 +14,55 @@ export interface MergePdfsOutput {
 }
 
 export async function mergePdfsAction(input: MergePdfsInput): Promise<MergePdfsOutput> {
-  if (!input.pdfDataUris || input.pdfDataUris.length < 2) {
-    return { error: "At least two PDF files are required to merge." };
+  if (!input.orderedPdfDataUris || input.orderedPdfDataUris.length === 0) {
+    // For merge, typically at least two are expected, but the UI might allow one to "prepare"
+    // For consistency with add-pages, let's allow one, which will just return itself.
+    // The UI should enforce 2+ for the button to be active for actual merging.
+     return { error: "At least one PDF file is required to merge." };
+  }
+  
+  if (input.orderedPdfDataUris.length === 1) {
+    // If only one PDF is sent, just return it as is.
+    return { mergedPdfDataUri: input.orderedPdfDataUris[0] };
   }
 
   try {
-    const mergedPdf = await PDFDocument.create();
+    const finalPdfDoc = await PDFDocument.create();
 
-    for (const dataUri of input.pdfDataUris) {
+    for (const dataUri of input.orderedPdfDataUris) {
       if (!dataUri.startsWith('data:application/pdf;base64,')) {
-        console.error('Invalid data URI format for a PDF:', dataUri.substring(0,100));
-        return { error: `Invalid PDF data format for one of the files. Please ensure all files are valid PDFs.` };
+        console.error('Invalid data URI format for a PDF segment:', dataUri.substring(0, 100));
+        return { error: `Invalid PDF data format for one of the segments. Please ensure all files are valid PDFs.` };
       }
-      // Ensure global Buffer is available or use a polyfill if in a non-Node.js serverless env without it.
-      // For Next.js server actions, Buffer should typically be available.
       const pdfBytes = Buffer.from(dataUri.split(',')[1], 'base64');
-      const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+      const segmentPdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
       
-      const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+      if (segmentPdfDoc.getPageCount() === 0) {
+        console.warn('A PDF segment with no pages was encountered and skipped during merge.');
+        continue; 
+      }
+
+      const copiedPages = await finalPdfDoc.copyPages(segmentPdfDoc, segmentPdfDoc.getPageIndices());
       copiedPages.forEach((page) => {
-        mergedPdf.addPage(page);
+        finalPdfDoc.addPage(page);
       });
     }
 
-    const mergedPdfBytes = await mergedPdf.save();
+    if (finalPdfDoc.getPageCount() === 0) {
+        return { error: "The merged PDF would be empty. No valid pages were found in the provided segments."}
+    }
+
+    const mergedPdfBytes = await finalPdfDoc.save();
     const mergedPdfDataUri = `data:application/pdf;base64,${Buffer.from(mergedPdfBytes).toString('base64')}`;
     
     return { mergedPdfDataUri };
 
   } catch (error: any) {
-    console.error("Error merging PDFs:", error);
-    return { error: error.message || "An unexpected error occurred while merging PDFs." };
+    console.error("Error merging PDF segments:", error);
+    if (error.message && error.message.toLowerCase().includes('encrypted') && !error.message.toLowerCase().includes('ignoreencryption')) {
+        return { error: "One of the PDF segments is encrypted with restrictions that prevent modification. Please provide decrypted PDFs."}
+    }
+    return { error: error.message || "An unexpected error occurred while merging the PDF." };
   }
 }
+
