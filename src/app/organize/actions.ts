@@ -1,15 +1,14 @@
+
 "use server";
 
-import { PDFDocument, degrees } from 'pdf-lib';
+import { PDFDocument, degrees } from 'pdf-lib'; // Import degrees
 import type { Buffer } from 'buffer';
 
 // --- START: Existing code for Rotate/Remove Pages ---
-// These parts are kept for compatibility with other features (Rotate, Remove Pages)
-// that might be using them.
-import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs'; // For page dimensions
-import type { PDFDocumentProxy as PDFJSInternalDocumentProxy } from 'pdfjs-dist/types/src/display/api'; // Aliased
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs'; 
+import type { PDFDocumentProxy as PDFJSInternalDocumentProxy } from 'pdfjs-dist/types/src/display/api';
 
-if (typeof window !== 'undefined') { // pdfjs-dist setup should only run in browser-like env for getInitialPageDataAction
+if (typeof window !== 'undefined') { 
     if (pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
     }
@@ -19,10 +18,10 @@ if (typeof window !== 'undefined') { // pdfjs-dist setup should only run in brow
 export interface PageData {
   id: string;
   originalIndex: number;
-  rotation: number; // Current rotation
+  rotation: number; 
   width: number;
   height: number;
-  isDeleted?: boolean; // For page removal feature
+  isDeleted?: boolean;
 }
 
 export interface GetInitialPageDataInput {
@@ -44,7 +43,6 @@ export async function getInitialPageDataAction(input: GetInitialPageDataInput): 
     }
     const pdfBytes = Buffer.from(input.pdfDataUri.split(',')[1], 'base64');
 
-    // Ensure we're passing the ArrayBuffer correctly
     const arrayBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     const pdfDoc: PDFJSInternalDocumentProxy = await loadingTask.promise;
@@ -52,11 +50,11 @@ export async function getInitialPageDataAction(input: GetInitialPageDataInput): 
     const pagesData: PageData[] = [];
     for (let i = 0; i < pdfDoc.numPages; i++) {
       const page = await pdfDoc.getPage(i + 1);
-      const viewport = page.getViewport({ scale: 1, rotation: page.rotate }); // Use page.rotate for correct initial dimensions
+      const viewport = page.getViewport({ scale: 1, rotation: page.rotate }); 
       pagesData.push({
         id: crypto.randomUUID(),
         originalIndex: i,
-        rotation: page.rotate || 0, // Store original rotation
+        rotation: page.rotate || 0, 
         width: viewport.width,
         height: viewport.height,
         isDeleted: false,
@@ -74,7 +72,7 @@ export async function getInitialPageDataAction(input: GetInitialPageDataInput): 
 
 export interface PageOperation {
   originalIndex: number;
-  rotation: number; // New absolute rotation angle for the page
+  rotation: number;
 }
 
 export interface OrganizePdfInput {
@@ -87,7 +85,6 @@ export interface OrganizePdfOutput {
   error?: string;
 }
 
-// This action is used by Rotate PDF to apply rotations and reorderings to a SINGLE source PDF.
 export async function organizePdfAction(input: OrganizePdfInput): Promise<OrganizePdfOutput> {
   if (!input.pdfDataUri) {
     return { error: "Original PDF data not provided." };
@@ -111,7 +108,7 @@ export async function organizePdfAction(input: OrganizePdfInput): Promise<Organi
         continue;
       }
       const [copiedPage] = await newPdfDoc.copyPages(originalPdfDoc, [op.originalIndex]);
-      copiedPage.setRotation(degrees(op.rotation)); // Apply new absolute rotation
+      copiedPage.setRotation(degrees(op.rotation));
       newPdfDoc.addPage(copiedPage);
     }
 
@@ -139,6 +136,7 @@ export async function organizePdfAction(input: OrganizePdfInput): Promise<Organi
 interface PageToAssembleInfo {
   sourcePdfDataUri: string;
   pageIndexToCopy: number;  // 0-based
+  rotation: number; // Added rotation
 }
 
 export interface AssembleIndividualPagesForOrganizeInput {
@@ -150,8 +148,6 @@ export interface AssembleIndividualPagesForOrganizeOutput {
   error?: string;
 }
 
-// This action is for the "Organize PDF" page which now behaves like "Add PDF Pages"
-// by assembling individual pages from (potentially multiple) source PDFs.
 export async function assembleIndividualPagesAction(input: AssembleIndividualPagesForOrganizeInput): Promise<AssembleIndividualPagesForOrganizeOutput> {
   if (!input.orderedPagesToAssemble || input.orderedPagesToAssemble.length === 0) {
      return { error: "No pages provided to organize and assemble." };
@@ -179,6 +175,7 @@ export async function assembleIndividualPagesAction(input: AssembleIndividualPag
       }
 
       const [copiedPage] = await finalPdfDoc.copyPages(sourcePdfDoc, [pageInfo.pageIndexToCopy]);
+      copiedPage.setRotation(degrees(pageInfo.rotation)); // Apply rotation
       finalPdfDoc.addPage(copiedPage);
     }
 
@@ -200,3 +197,5 @@ export async function assembleIndividualPagesAction(input: AssembleIndividualPag
   }
 }
 // --- END: New code for page-level assembly ---
+
+    

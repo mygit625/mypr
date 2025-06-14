@@ -11,7 +11,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { LayoutGrid, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine } from 'lucide-react';
+import { LayoutGrid, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine, RotateCcw, RotateCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
@@ -30,6 +30,7 @@ interface SelectedPdfPageItem {
   pageIndexInOriginalFile: number;
   totalPagesInOriginalFile: number;
   displayName: string;
+  rotation: number; // Added rotation
 }
 
 interface DisplayItem {
@@ -89,6 +90,7 @@ export default function OrganizePage() {
             pageIndexInOriginalFile: i,
             totalPagesInOriginalFile: numPages,
             displayName: `${file.name} (Page ${i + 1} of ${numPages})`,
+            rotation: 0, // Initialize rotation
           });
         }
       } catch (e: any) {
@@ -160,6 +162,18 @@ export default function OrganizePage() {
     toast({ description: "Pages sorted by name (original file, then page number)." });
   };
 
+  const handleRotatePage = (pageId: string, direction: 'cw' | 'ccw') => {
+    setSelectedPdfItems(prevItems =>
+      prevItems.map(item => {
+        if (item.id === pageId) {
+          const newRotation = (item.rotation + (direction === 'cw' ? 90 : -90) + 360) % 360;
+          return { ...item, rotation: newRotation };
+        }
+        return item;
+      })
+    );
+  };
+
   const handleOrganizeAndDownload = async () => {
     if (selectedPdfItems.length < 1) {
       toast({
@@ -177,6 +191,7 @@ export default function OrganizePage() {
       const pagesToAssemble = selectedPdfItems.map(item => ({
         sourcePdfDataUri: item.originalFileDataUri,
         pageIndexToCopy: item.pageIndexInOriginalFile,
+        rotation: item.rotation, // Include rotation
       }));
 
       const result = await assembleIndividualPagesAction({ orderedPagesToAssemble: pagesToAssemble });
@@ -230,9 +245,6 @@ export default function OrganizePage() {
 
   const displayItems: DisplayItem[] = [];
   if (selectedPdfItems.length > 0 || isLoadingPreviews) {
-    // The line that added the initial plus button was here, it has been removed.
-    // displayItems.push({ type: 'add_button', id: 'add-slot-0', insertAtIndex: 0 }); // REMOVED
-
     selectedPdfItems.forEach((pageItem, index) => {
       displayItems.push({ type: 'pdf_page', id: pageItem.id, data: pageItem, originalItemIndex: index });
       displayItems.push({ type: 'add_button', id: `add-slot-${index + 1}`, insertAtIndex: index + 1 });
@@ -295,20 +307,39 @@ export default function OrganizePage() {
                         onDragOver={handleDragOver}
                         className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between w-44"
                       >
-                        <div className="relative w-full mb-2">
+                        <div className="relative w-full mb-1">
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleRemoveFile(pageItem.id)}
-                            className="absolute top-1 right-1 z-10 h-7 w-7 bg-background/50 hover:bg-destructive/80 hover:text-destructive-foreground rounded-full"
+                            className="absolute top-0 right-0 z-10 h-7 w-7 bg-background/50 hover:bg-destructive/80 hover:text-destructive-foreground rounded-full"
                             aria-label="Remove page"
                           >
                             <X className="h-4 w-4" />
                           </Button>
+                          <div className="flex justify-center space-x-1 mb-1">
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => handleRotatePage(pageItem.id, 'ccw')}
+                              aria-label="Rotate Left"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => handleRotatePage(pageItem.id, 'cw')}
+                              aria-label="Rotate Right"
+                            >
+                              <RotateCw className="h-3 w-3" />
+                            </Button>
+                          </div>
                           <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_ORGANIZE + 20}px`}}>
                             <PdfPagePreview
                                 pdfDataUri={pageItem.originalFileDataUri}
                                 pageIndex={pageItem.pageIndexInOriginalFile}
+                                rotation={pageItem.rotation}
                                 targetHeight={PREVIEW_TARGET_HEIGHT_ORGANIZE}
                                 className="border rounded"
                             />
@@ -363,7 +394,7 @@ export default function OrganizePage() {
                 <Alert variant="default" className="text-sm p-3">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    Drag and drop page cards to reorder them. The final PDF will be assembled based on this order.
+                    Drag and drop page cards to reorder them. Use rotate buttons on each page. The final PDF will be assembled based on this order and rotations.
                   </AlertDescription>
                 </Alert>
                 <Button onClick={handleSortByName} variant="outline" className="w-full" disabled={selectedPdfItems.length < 2}>
@@ -400,3 +431,5 @@ export default function OrganizePage() {
     </div>
   );
 }
+
+    
