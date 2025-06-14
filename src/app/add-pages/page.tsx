@@ -246,7 +246,7 @@ export default function AddPagesPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-grow lg:w-3/4">
             <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
-              <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-11 gap-px p-1 items-center">
+              <div className="flex flex-wrap items-center gap-px p-1">
                 {displayItems.map((item) => {
                   if (item.type === 'pdf' && item.data) {
                     const pdfItem = item.data;
@@ -258,7 +258,7 @@ export default function AddPagesPage() {
                         onDragEnter={() => handleDragEnter(item.originalPdfIndex!)}
                         onDragEnd={handleDragEnd}
                         onDragOver={handleDragOver}
-                        className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between"
+                        className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between w-44"
                       >
                         <div className="relative w-full mb-2">
                           <Button
@@ -287,7 +287,7 @@ export default function AddPagesPage() {
                     );
                   } else if (item.type === 'add_button') {
                     return (
-                      <div key={item.id} className="flex items-center justify-center h-full" style={{minHeight: `${PREVIEW_TARGET_HEIGHT_ASSEMBLE + 40}px`}}>
+                      <div key={item.id} className="flex items-center justify-center h-full w-12">
                         <Button
                           variant="outline"
                           size="icon"
