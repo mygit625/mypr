@@ -2,6 +2,9 @@
 "use client";
 
 import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
+import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
+
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -15,30 +18,37 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { assemblePdfAction } from './actions';
 import { cn } from '@/lib/utils';
 
-interface SelectedPdfItem {
+if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+}
+
+interface SelectedPdfPageItem {
   id: string;
-  file: File;
-  dataUri: string;
-  name: string;
+  originalFileId: string;
+  originalFileName: string;
+  originalFileDataUri: string;
+  pageIndexInOriginalFile: number;
+  totalPagesInOriginalFile: number;
+  displayName: string;
 }
 
 interface DisplayItem {
-  type: 'pdf' | 'add_button';
-  id: string; // Unique key for React list
-  data?: SelectedPdfItem; // For 'pdf' type
-  originalPdfIndex?: number; // For 'pdf' type, index in selectedPdfItems
-  insertAtIndex?: number; // For 'add_button' type
+  type: 'pdf_page' | 'add_button';
+  id: string;
+  data?: SelectedPdfPageItem;
+  originalItemIndex?: number; // Index in the selectedPdfItems array
+  insertAtIndex?: number;
 }
 
 const PREVIEW_TARGET_HEIGHT_ASSEMBLE = 180;
 
 export default function AddPagesPage() {
-  const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfItem[]>([]);
+  const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfPageItem[]>([]);
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isAssembling, setIsAssembling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const insertAtIndexRef = useRef<number | null>(null);
   const dragItemIndex = useRef<number | null>(null);
@@ -48,63 +58,78 @@ export default function AddPagesPage() {
     setError(null);
   }, [selectedPdfItems]);
 
-  const processFiles = async (files: File[]): Promise<SelectedPdfItem[]> => {
+  const processFiles = async (files: File[]): Promise<SelectedPdfPageItem[]> => {
     setIsLoadingPreviews(true);
-    const newItems: SelectedPdfItem[] = [];
+    const newPageItems: SelectedPdfPageItem[] = [];
+
     for (const file of files) {
-      if (selectedPdfItems.find(item => item.name === file.name && item.file.size === file.size && item.file.lastModified === file.lastModified)) {
-         console.warn(`Skipping duplicate file: ${file.name}`);
-         continue;
-      }
+      const originalFileId = crypto.randomUUID();
       try {
         const dataUri = await readFileAsDataURL(file);
-        newItems.push({
-          id: crypto.randomUUID(),
-          file,
-          dataUri,
-          name: file.name,
-        });
+        
+        const base64Marker = ';base64,';
+        const base64Index = dataUri.indexOf(base64Marker);
+        if (base64Index === -1) throw new Error('Invalid PDF data URI format.');
+        const pdfBase64Data = dataUri.substring(base64Index + base64Marker.length);
+        const pdfBinaryData = atob(pdfBase64Data);
+        const pdfDataArray = new Uint8Array(pdfBinaryData.length);
+        for (let i = 0; i < pdfBinaryData.length; i++) {
+          pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
+        }
+
+        const pdfDoc: PDFDocumentProxy = await pdfjsLib.getDocument({ data: pdfDataArray }).promise;
+        const numPages = pdfDoc.numPages;
+
+        for (let i = 0; i < numPages; i++) {
+          newPageItems.push({
+            id: crypto.randomUUID(),
+            originalFileId: originalFileId,
+            originalFileName: file.name,
+            originalFileDataUri: dataUri,
+            pageIndexInOriginalFile: i,
+            totalPagesInOriginalFile: numPages,
+            displayName: `${file.name} (Page ${i + 1} of ${numPages})`,
+          });
+        }
       } catch (e: any) {
-        console.error("Error reading file:", file.name, e);
+        console.error("Error processing file into pages:", file.name, e);
         toast({
-          title: "File Read Error",
-          description: `Could not read file: ${file.name}. ${e.message}`,
+          title: "File Process Error",
+          description: `Could not process file: ${file.name}. ${e.message}`,
           variant: "destructive",
         });
       }
     }
     setIsLoadingPreviews(false);
-    return newItems;
+    return newPageItems;
   };
 
   const handleFilesSelected = async (newFiles: File[], insertAt: number | null) => {
     if (newFiles.length === 0) return;
-    const processedNewItems = await processFiles(newFiles);
-    
+    const processedNewPageItems = await processFiles(newFiles);
+
     setSelectedPdfItems((prevItems) => {
       const updatedItems = [...prevItems];
       if (insertAt !== null && insertAt >= 0 && insertAt <= updatedItems.length) {
-        updatedItems.splice(insertAt, 0, ...processedNewItems);
+        updatedItems.splice(insertAt, 0, ...processedNewPageItems);
       } else {
-        updatedItems.push(...processedNewItems); 
+        updatedItems.push(...processedNewPageItems);
       }
       return updatedItems;
     });
-    insertAtIndexRef.current = null; 
+    insertAtIndexRef.current = null;
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""; 
+      fileInputRef.current.value = "";
     }
   };
-  
+
   const handleInitialFilesSelected = async (newFiles: File[]) => {
     if (newFiles.length === 0) {
       setSelectedPdfItems([]);
       return;
     }
-    setIsLoadingPreviews(true); 
-    const processedNewItems = await processFiles(newFiles);
-    setSelectedPdfItems(processedNewItems);
-    setIsLoadingPreviews(false); 
+    const processedNewPageItems = await processFiles(newFiles);
+    setSelectedPdfItems(processedNewPageItems);
   };
 
   const handleRemoveFile = (idToRemove: string) => {
@@ -124,27 +149,31 @@ export default function AddPagesPage() {
 
   const handleSortByName = () => {
     setSelectedPdfItems((prevItems) =>
-      [...prevItems].sort((a, b) => a.name.localeCompare(b.name))
+      [...prevItems].sort((a, b) => a.displayName.localeCompare(b.displayName))
     );
-    toast({ description: "Files sorted by name (A-Z)." });
+    toast({ description: "Pages sorted by name (original file, then page number)." });
   };
 
   const handleAssembleAndDownload = async () => {
     if (selectedPdfItems.length < 1) {
       toast({
-        title: "No files",
-        description: "Please select at least one PDF file to assemble.",
+        title: "No pages selected",
+        description: "Please upload PDF(s) and ensure pages are present to assemble.",
         variant: "destructive",
       });
       return;
     }
-    
+
     setIsAssembling(true);
     setError(null);
 
     try {
-      const dataUris = selectedPdfItems.map(item => item.dataUri);
-      const result = await assemblePdfAction({ orderedPdfDataUris: dataUris });
+      const pagesToAssemble = selectedPdfItems.map(item => ({
+        sourcePdfDataUri: item.originalFileDataUri,
+        pageIndexToCopy: item.pageIndexInOriginalFile,
+      }));
+
+      const result = await assemblePdfAction({ orderedPagesToAssemble: pagesToAssemble });
 
       if (result.error) {
         setError(result.error);
@@ -154,10 +183,10 @@ export default function AddPagesPage() {
           variant: "destructive",
         });
       } else if (result.assembledPdfDataUri) {
-        downloadDataUri(result.assembledPdfDataUri, "assembled_document.pdf");
+        downloadDataUri(result.assembledPdfDataUri, "added_pages_document.pdf");
         toast({
           title: "Assembly Successful!",
-          description: "Your PDFs have been assembled and download has started.",
+          description: "Your PDF pages have been assembled and download has started.",
         });
         setSelectedPdfItems([]);
       }
@@ -188,21 +217,20 @@ export default function AddPagesPage() {
     dragItemIndex.current = null;
     dragOverItemIndex.current = null;
   };
-  
+
   const handleDragOver = (e: DragEvent<HTMLDivElement | HTMLButtonElement>) => {
-    e.preventDefault(); 
+    e.preventDefault();
   };
 
   const displayItems: DisplayItem[] = [];
   if (selectedPdfItems.length > 0 || isLoadingPreviews) {
     displayItems.push({ type: 'add_button', id: 'add-slot-0', insertAtIndex: 0 });
 
-    selectedPdfItems.forEach((pdfItem, pdfIndex) => {
-      displayItems.push({ type: 'pdf', id: pdfItem.id, data: pdfItem, originalPdfIndex: pdfIndex });
-      displayItems.push({ type: 'add_button', id: `add-slot-${pdfIndex + 1}`, insertAtIndex: pdfIndex + 1 });
+    selectedPdfItems.forEach((pageItem, index) => {
+      displayItems.push({ type: 'pdf_page', id: pageItem.id, data: pageItem, originalItemIndex: index });
+      displayItems.push({ type: 'add_button', id: `add-slot-${index + 1}`, insertAtIndex: index + 1 });
     });
   }
-
 
   return (
     <div className="max-w-full mx-auto space-y-8">
@@ -210,7 +238,7 @@ export default function AddPagesPage() {
         <FilePlus2 className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Add Pages to PDF</h1>
         <p className="text-muted-foreground mt-2">
-          Combine multiple PDF documents into one. Drag and drop to reorder.
+          Upload PDFs. Each page will become a draggable card. Reorder and assemble them into a new document.
         </p>
       </header>
 
@@ -218,27 +246,27 @@ export default function AddPagesPage() {
         <Card className="max-w-2xl mx-auto shadow-lg">
           <CardHeader>
             <CardTitle>Upload PDFs</CardTitle>
-            <CardDescription>Select or drag and drop the PDF files you want to add together (up to 10 files initially).</CardDescription>
+            <CardDescription>Select or drag PDF files. Their pages will be displayed individually. (Max 5 files)</CardDescription>
           </CardHeader>
           <CardContent>
-            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple accept="application/pdf" maxFiles={10} />
+            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple={true} accept="application/pdf" maxFiles={5} />
           </CardContent>
         </Card>
       )}
-      
+
       <input
           type="file"
           ref={fileInputRef}
           onChange={handleHiddenInputChange}
-          multiple
+          multiple={true}
           accept="application/pdf"
           className="hidden"
       />
 
-      {isLoadingPreviews && selectedPdfItems.length === 0 && ( 
+      {isLoadingPreviews && selectedPdfItems.length === 0 && (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="ml-3 text-lg text-muted-foreground">Loading initial previews...</p>
+          <p className="ml-3 text-lg text-muted-foreground">Processing PDF pages...</p>
         </div>
       )}
 
@@ -248,14 +276,14 @@ export default function AddPagesPage() {
             <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
               <div className="flex flex-wrap items-center gap-px p-1">
                 {displayItems.map((item) => {
-                  if (item.type === 'pdf' && item.data) {
-                    const pdfItem = item.data;
+                  if (item.type === 'pdf_page' && item.data) {
+                    const pageItem = item.data;
                     return (
                       <Card
-                        key={pdfItem.id}
+                        key={pageItem.id}
                         draggable
-                        onDragStart={() => handleDragStart(item.originalPdfIndex!)}
-                        onDragEnter={() => handleDragEnter(item.originalPdfIndex!)}
+                        onDragStart={() => handleDragStart(item.originalItemIndex!)}
+                        onDragEnter={() => handleDragEnter(item.originalItemIndex!)}
                         onDragEnd={handleDragEnd}
                         onDragOver={handleDragOver}
                         className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between w-44"
@@ -264,23 +292,23 @@ export default function AddPagesPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleRemoveFile(pdfItem.id)}
+                            onClick={() => handleRemoveFile(pageItem.id)}
                             className="absolute top-1 right-1 z-10 h-7 w-7 bg-background/50 hover:bg-destructive/80 hover:text-destructive-foreground rounded-full"
-                            aria-label="Remove file"
+                            aria-label="Remove page"
                           >
                             <X className="h-4 w-4" />
                           </Button>
                           <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_ASSEMBLE + 20}px`}}>
                             <PdfPagePreview
-                                pdfDataUri={pdfItem.dataUri}
-                                pageIndex={0} 
+                                pdfDataUri={pageItem.originalFileDataUri}
+                                pageIndex={pageItem.pageIndexInOriginalFile}
                                 targetHeight={PREVIEW_TARGET_HEIGHT_ASSEMBLE}
                                 className="border rounded"
                             />
                           </div>
                         </div>
-                        <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={pdfItem.name}>
-                          {pdfItem.name}
+                        <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={pageItem.displayName}>
+                          {pageItem.displayName}
                         </p>
                         <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1" aria-hidden="true" />
                       </Card>
@@ -309,10 +337,10 @@ export default function AddPagesPage() {
                   }
                   return null;
                 })}
-                 {isLoadingPreviews && selectedPdfItems.length > 0 && displayItems.length === 0 && ( 
+                 {isLoadingPreviews && selectedPdfItems.length > 0 && displayItems.length === 0 && (
                     <div className="col-span-full flex justify-center items-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="ml-2 text-muted-foreground">Loading file previews...</p>
+                        <p className="ml-2 text-muted-foreground">Loading page previews...</p>
                     </div>
                 )}
               </div>
@@ -328,11 +356,11 @@ export default function AddPagesPage() {
                 <Alert variant="default" className="text-sm p-3">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    To change the order of your PDFs, drag and drop the files as you want. Use the '+' buttons to insert more PDFs.
+                    Drag and drop page cards to reorder them. The final PDF will be assembled based on this order.
                   </AlertDescription>
                 </Alert>
                 <Button onClick={handleSortByName} variant="outline" className="w-full" disabled={selectedPdfItems.length < 2}>
-                  <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort A-Z
+                  <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort Pages
                 </Button>
               </CardContent>
               <CardFooter>
@@ -347,7 +375,7 @@ export default function AddPagesPage() {
                   ) : (
                     <Combine className="mr-2 h-4 w-4" />
                   )}
-                  Assemble & Download PDFs ({selectedPdfItems.length})
+                  Assemble & Download Pages ({selectedPdfItems.length})
                 </Button>
               </CardFooter>
             </Card>
@@ -365,3 +393,5 @@ export default function AddPagesPage() {
     </div>
   );
 }
+
+    
