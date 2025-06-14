@@ -22,6 +22,14 @@ interface SelectedPdfItem {
   name: string;
 }
 
+interface DisplayItem {
+  type: 'pdf' | 'add_button';
+  id: string; // Unique key for React list
+  data?: SelectedPdfItem; // For 'pdf' type
+  originalPdfIndex?: number; // For 'pdf' type, index in selectedPdfItems
+  insertAtIndex?: number; // For 'add_button' type
+}
+
 const PREVIEW_TARGET_HEIGHT_ASSEMBLE = 180;
 
 export default function AddPagesPage() {
@@ -30,7 +38,9 @@ export default function AddPagesPage() {
   const [isAssembling, setIsAssembling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const insertAtIndexRef = useRef<number | null>(null);
   const dragItemIndex = useRef<number | null>(null);
   const dragOverItemIndex = useRef<number | null>(null);
 
@@ -39,12 +49,16 @@ export default function AddPagesPage() {
   }, [selectedPdfItems]);
 
   const processFiles = async (files: File[]): Promise<SelectedPdfItem[]> => {
+    // Temporarily set loading state for specific plus button if needed, or global.
+    // For simplicity, using global isLoadingPreviews for now.
     setIsLoadingPreviews(true);
     const newItems: SelectedPdfItem[] = [];
     for (const file of files) {
-      if (selectedPdfItems.find(item => item.name === file.name && item.file.size === file.size)) {
-        console.warn(`Skipping duplicate file: ${file.name}`);
-        continue;
+      // Avoid adding the exact same file instance multiple times if selected via the same plus button click.
+      // A more robust check might involve preventing duplicates across all selectedPdfItems.
+      if (selectedPdfItems.find(item => item.name === file.name && item.file.size === file.size && item.file.lastModified === file.lastModified)) {
+         console.warn(`Skipping duplicate file: ${file.name}`);
+         continue;
       }
       try {
         const dataUri = await readFileAsDataURL(file);
@@ -67,10 +81,23 @@ export default function AddPagesPage() {
     return newItems;
   };
 
-  const handleFilesSelected = async (newFiles: File[]) => {
+  const handleFilesSelected = async (newFiles: File[], insertAt: number | null) => {
     if (newFiles.length === 0) return;
     const processedNewItems = await processFiles(newFiles);
-    setSelectedPdfItems((prevItems) => [...prevItems, ...processedNewItems]);
+    
+    setSelectedPdfItems((prevItems) => {
+      const updatedItems = [...prevItems];
+      if (insertAt !== null && insertAt >= 0 && insertAt <= updatedItems.length) {
+        updatedItems.splice(insertAt, 0, ...processedNewItems);
+      } else {
+        updatedItems.push(...processedNewItems); // Fallback to append
+      }
+      return updatedItems;
+    });
+    insertAtIndexRef.current = null; // Reset
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Reset file input to allow re-selection of same file
+    }
   };
   
   const handleInitialFilesSelected = async (newFiles: File[]) => {
@@ -78,21 +105,26 @@ export default function AddPagesPage() {
       setSelectedPdfItems([]);
       return;
     }
+    // For initial upload, new files replace existing ones or form the first set.
+    // We effectively "insert" them at index 0, replacing anything that might have been there.
+    setIsLoadingPreviews(true); // Ensure loading state is active
     const processedNewItems = await processFiles(newFiles);
     setSelectedPdfItems(processedNewItems);
+    setIsLoadingPreviews(false); // Reset loading state
   };
 
   const handleRemoveFile = (idToRemove: string) => {
     setSelectedPdfItems((prevItems) => prevItems.filter(item => item.id !== idToRemove));
   };
 
-  const handleAddFilesClick = () => {
+  const handleAddFilesTrigger = (index: number) => {
+    insertAtIndexRef.current = index;
     fileInputRef.current?.click();
   };
 
   const handleHiddenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
-      handleFilesSelected(Array.from(event.target.files));
+      handleFilesSelected(Array.from(event.target.files), insertAtIndexRef.current);
     }
   };
 
@@ -106,22 +138,13 @@ export default function AddPagesPage() {
   const handleAssembleAndDownload = async () => {
     if (selectedPdfItems.length < 1) {
       toast({
-        title: "Not enough files",
+        title: "No files",
         description: "Please select at least one PDF file to assemble.",
         variant: "destructive",
       });
       return;
     }
-     if (selectedPdfItems.length === 1 && selectedPdfItems[0]?.dataUri) {
-        downloadDataUri(selectedPdfItems[0].dataUri, selectedPdfItems[0].name);
-        toast({
-          title: "Download Started",
-          description: "Only one file selected, downloading it directly.",
-        });
-        setSelectedPdfItems([]); 
-        return;
-    }
-
+    
     setIsAssembling(true);
     setError(null);
 
@@ -172,9 +195,23 @@ export default function AddPagesPage() {
     dragOverItemIndex.current = null;
   };
   
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: DragEvent<HTMLDivElement | HTMLButtonElement>) => {
     e.preventDefault(); 
   };
+
+  // Create display items for the grid
+  const displayItems: DisplayItem[] = [];
+  if (selectedPdfItems.length > 0 || isLoadingPreviews) {
+    // Add "plus" button for before the first item
+    displayItems.push({ type: 'add_button', id: 'add-slot-0', insertAtIndex: 0 });
+
+    selectedPdfItems.forEach((pdfItem, pdfIndex) => {
+      displayItems.push({ type: 'pdf', id: pdfItem.id, data: pdfItem, originalPdfIndex: pdfIndex });
+      // Add "plus" button for after this item
+      displayItems.push({ type: 'add_button', id: `add-slot-${pdfIndex + 1}`, insertAtIndex: pdfIndex + 1 });
+    });
+  }
+
 
   return (
     <div className="max-w-full mx-auto space-y-8">
@@ -197,75 +234,94 @@ export default function AddPagesPage() {
           </CardContent>
         </Card>
       )}
+      
+      <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleHiddenInputChange}
+          multiple
+          accept="application/pdf"
+          className="hidden"
+      />
 
-      {isLoadingPreviews && selectedPdfItems.length === 0 && (
+      {isLoadingPreviews && selectedPdfItems.length === 0 && ( // Spinner for initial load
         <div className="flex justify-center items-center py-12">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <p className="ml-3 text-lg text-muted-foreground">Loading initial previews...</p>
         </div>
       )}
 
-      {selectedPdfItems.length > 0 && (
+      {(selectedPdfItems.length > 0 || (isLoadingPreviews && selectedPdfItems.length > 0)) && (
         <div className="flex flex-col lg:flex-row gap-6">
-          <div className="flex-grow lg:w-3/4 relative"> {/* Added relative positioning context */}
-            <Button
-              onClick={handleAddFilesClick}
-              variant="default"
-              size="icon"
-              className="absolute top-2 right-2 z-20 rounded-full h-10 w-10 shadow-lg"
-              aria-label="Add more files"
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleHiddenInputChange}
-              multiple
-              accept="application/pdf"
-              className="hidden"
-            />
+          <div className="flex-grow lg:w-3/4">
             <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
-                {selectedPdfItems.map((item, index) => (
-                  <Card
-                    key={item.id}
-                    draggable
-                    onDragStart={() => handleDragStart(index)}
-                    onDragEnter={() => handleDragEnter(index)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={handleDragOver}
-                    className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card"
-                  >
-                    <div className="relative w-full mb-2">
-                       <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveFile(item.id)}
-                        className="absolute top-1 right-1 z-10 h-7 w-7 bg-background/50 hover:bg-destructive/80 hover:text-destructive-foreground rounded-full"
-                        aria-label="Remove file"
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-x-3 gap-y-4 p-4 items-center">
+                {displayItems.map((item) => {
+                  if (item.type === 'pdf' && item.data) {
+                    const pdfItem = item.data;
+                    return (
+                      <Card
+                        key={pdfItem.id}
+                        draggable
+                        onDragStart={() => handleDragStart(item.originalPdfIndex!)}
+                        onDragEnter={() => handleDragEnter(item.originalPdfIndex!)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={handleDragOver}
+                        className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between"
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_ASSEMBLE + 20}px`}}>
-                         <PdfPagePreview
-                            pdfDataUri={item.dataUri}
-                            pageIndex={0} 
-                            targetHeight={PREVIEW_TARGET_HEIGHT_ASSEMBLE}
-                            className="border rounded"
-                         />
+                        <div className="relative w-full mb-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveFile(pdfItem.id)}
+                            className="absolute top-1 right-1 z-10 h-7 w-7 bg-background/50 hover:bg-destructive/80 hover:text-destructive-foreground rounded-full"
+                            aria-label="Remove file"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_ASSEMBLE + 20}px`}}>
+                            <PdfPagePreview
+                                pdfDataUri={pdfItem.dataUri}
+                                pageIndex={0} 
+                                targetHeight={PREVIEW_TARGET_HEIGHT_ASSEMBLE}
+                                className="border rounded"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={pdfItem.name}>
+                          {pdfItem.name}
+                        </p>
+                        <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1" aria-hidden="true" />
+                      </Card>
+                    );
+                  } else if (item.type === 'add_button') {
+                    return (
+                      <div key={item.id} className="flex items-center justify-center h-full" style={{minHeight: `${PREVIEW_TARGET_HEIGHT_ASSEMBLE + 80}px`}}>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            if (!isLoadingPreviews) handleAddFilesTrigger(item.insertAtIndex!);
+                          }}
+                          disabled={isLoadingPreviews}
+                          className="rounded-full h-14 w-14 shadow-md hover:shadow-lg hover:border-primary hover:text-primary transition-all"
+                          aria-label={`Add PDF files at position ${item.insertAtIndex}`}
+                        >
+                          {isLoadingPreviews && insertAtIndexRef.current === item.insertAtIndex ? (
+                            <Loader2 className="h-7 w-7 animate-spin" />
+                          ) : (
+                            <Plus className="h-7 w-7" />
+                          )}
+                        </Button>
                       </div>
-                    </div>
-                    <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={item.name}>
-                      {item.name}
-                    </p>
-                    <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1" aria-hidden="true" />
-                  </Card>
-                ))}
-                 {isLoadingPreviews && (
+                    );
+                  }
+                  return null;
+                })}
+                 {isLoadingPreviews && selectedPdfItems.length > 0 && displayItems.length === 0 && ( // Global loader if items are loading after initial set
                     <div className="col-span-full flex justify-center items-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <p className="ml-2 text-muted-foreground">Loading new previews...</p>
+                        <p className="ml-2 text-muted-foreground">Loading file previews...</p>
                     </div>
                 )}
               </div>
@@ -281,10 +337,9 @@ export default function AddPagesPage() {
                 <Alert variant="default" className="text-sm p-3">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    To change the order of your PDFs, drag and drop the files as you want.
+                    To change the order of your PDFs, drag and drop the files as you want. Use the '+' buttons to insert more PDFs.
                   </AlertDescription>
                 </Alert>
-                {/* "Add More Files" button removed from here */}
                 <Button onClick={handleSortByName} variant="outline" className="w-full" disabled={selectedPdfItems.length < 2}>
                   <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort A-Z
                 </Button>
@@ -319,6 +374,3 @@ export default function AddPagesPage() {
     </div>
   );
 }
-
-
-    
