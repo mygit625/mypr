@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
@@ -229,7 +230,8 @@ export default function OrganizePage() {
 
   const displayItems: DisplayItem[] = [];
   if (selectedPdfItems.length > 0 || isLoadingPreviews) {
-    displayItems.push({ type: 'add_button', id: 'add-slot-0', insertAtIndex: 0 });
+    // The line that added the initial plus button was here, it has been removed.
+    // displayItems.push({ type: 'add_button', id: 'add-slot-0', insertAtIndex: 0 }); // REMOVED
 
     selectedPdfItems.forEach((pageItem, index) => {
       displayItems.push({ type: 'pdf_page', id: pageItem.id, data: pageItem, originalItemIndex: index });
