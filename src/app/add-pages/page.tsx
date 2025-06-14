@@ -36,7 +36,7 @@ interface DisplayItem {
   type: 'pdf_page' | 'add_button';
   id: string;
   data?: SelectedPdfPageItem;
-  originalItemIndex?: number; // Index in the selectedPdfItems array
+  originalItemIndex?: number; 
   insertAtIndex?: number;
 }
 
@@ -104,9 +104,10 @@ export default function AddPagesPage() {
     return newPageItems;
   };
 
-  const handleFilesSelected = async (newFiles: File[], insertAt: number | null) => {
-    if (newFiles.length === 0) return;
-    const processedNewPageItems = await processFiles(newFiles);
+  const handleFilesSelected = async (newFilesFromInput: File[], insertAt: number | null) => {
+    if (newFilesFromInput.length === 0) return;
+    const filesToProcess = newFilesFromInput.slice(0, 1); 
+    const processedNewPageItems = await processFiles(filesToProcess);
 
     setSelectedPdfItems((prevItems) => {
       const updatedItems = [...prevItems];
@@ -123,13 +124,14 @@ export default function AddPagesPage() {
     }
   };
 
-  const handleInitialFilesSelected = async (newFiles: File[]) => {
-    if (newFiles.length === 0) {
+  const handleInitialFilesSelected = async (newFilesFromInput: File[]) => {
+    if (newFilesFromInput.length === 0) {
       setSelectedPdfItems([]);
       return;
     }
-    const processedNewPageItems = await processFiles(newFiles);
-    setSelectedPdfItems(processedNewPageItems);
+    const filesToProcess = newFilesFromInput.slice(0, 1); 
+    const processedNewPageItems = await processFiles(filesToProcess);
+    setSelectedPdfItems(processedNewPageItems); 
   };
 
   const handleRemoveFile = (idToRemove: string) => {
@@ -158,7 +160,7 @@ export default function AddPagesPage() {
     if (selectedPdfItems.length < 1) {
       toast({
         title: "No pages selected",
-        description: "Please upload PDF(s) and ensure pages are present to assemble.",
+        description: "Please upload a PDF and ensure pages are present to assemble.",
         variant: "destructive",
       });
       return;
@@ -238,18 +240,18 @@ export default function AddPagesPage() {
         <FilePlus2 className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Add Pages to PDF</h1>
         <p className="text-muted-foreground mt-2">
-          Upload PDFs. Each page will become a draggable card. Reorder and assemble them into a new document.
+          Upload a PDF. Each page will become a draggable card. Reorder and assemble them into a new document.
         </p>
       </header>
 
       {selectedPdfItems.length === 0 && !isLoadingPreviews && (
         <Card className="max-w-2xl mx-auto shadow-lg">
           <CardHeader>
-            <CardTitle>Upload PDFs</CardTitle>
-            <CardDescription>Select or drag PDF files. Their pages will be displayed individually. (Max 5 files)</CardDescription>
+            <CardTitle>Upload PDF</CardTitle>
+            <CardDescription>Select or drag a PDF file. Its pages will be displayed individually.</CardDescription>
           </CardHeader>
           <CardContent>
-            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple={true} accept="application/pdf" maxFiles={5} />
+            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple={false} accept="application/pdf" />
           </CardContent>
         </Card>
       )}
@@ -258,7 +260,7 @@ export default function AddPagesPage() {
           type="file"
           ref={fileInputRef}
           onChange={handleHiddenInputChange}
-          multiple={true}
+          multiple={false}
           accept="application/pdf"
           className="hidden"
       />
@@ -324,7 +326,7 @@ export default function AddPagesPage() {
                           }}
                           disabled={isLoadingPreviews}
                           className="rounded-full h-10 w-10 shadow-sm hover:shadow-md hover:border-primary/80 hover:text-primary/80 transition-all"
-                          aria-label={`Add PDF files at position ${item.insertAtIndex}`}
+                          aria-label={`Add PDF file at position ${item.insertAtIndex}`}
                         >
                           {isLoadingPreviews && insertAtIndexRef.current === item.insertAtIndex ? (
                             <Loader2 className="h-5 w-5 animate-spin" />
@@ -393,5 +395,3 @@ export default function AddPagesPage() {
     </div>
   );
 }
-
-    
