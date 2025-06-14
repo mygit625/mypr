@@ -12,7 +12,7 @@ import { FilePlus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine }
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { assemblePdfAction } from './actions'; // Changed import
+import { assemblePdfAction } from './actions';
 import { cn } from '@/lib/utils';
 
 interface SelectedPdfItem {
@@ -22,12 +22,12 @@ interface SelectedPdfItem {
   name: string;
 }
 
-const PREVIEW_TARGET_HEIGHT_ASSEMBLE = 180; // Consistent with merge page
+const PREVIEW_TARGET_HEIGHT_ASSEMBLE = 180;
 
-export default function AddPagesPage() { // Changed component name
+export default function AddPagesPage() {
   const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfItem[]>([]);
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
-  const [isAssembling, setIsAssembling] = useState(false); // Changed state name
+  const [isAssembling, setIsAssembling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,17 +103,16 @@ export default function AddPagesPage() { // Changed component name
     toast({ description: "Files sorted by name (A-Z)." });
   };
 
-  const handleAssembleAndDownload = async () => { // Renamed from handleMerge
-    if (selectedPdfItems.length < 1) { // Merge usually expects < 2, but "add pages" could mean 1 file is okay (it just gets "assembled" to itself)
+  const handleAssembleAndDownload = async () => {
+    if (selectedPdfItems.length < 1) {
       toast({
         title: "Not enough files",
-        description: "Please select at least one PDF file to assemble.", // Adjusted message
+        description: "Please select at least one PDF file to assemble.",
         variant: "destructive",
       });
       return;
     }
      if (selectedPdfItems.length === 1 && selectedPdfItems[0]?.dataUri) {
-        // If only one file, just download it directly
         downloadDataUri(selectedPdfItems[0].dataUri, selectedPdfItems[0].name);
         toast({
           title: "Download Started",
@@ -123,35 +122,34 @@ export default function AddPagesPage() { // Changed component name
         return;
     }
 
-
-    setIsAssembling(true); // Changed state
+    setIsAssembling(true);
     setError(null);
 
     try {
       const dataUris = selectedPdfItems.map(item => item.dataUri);
-      const result = await assemblePdfAction({ orderedPdfDataUris: dataUris }); // Changed action
+      const result = await assemblePdfAction({ orderedPdfDataUris: dataUris });
 
       if (result.error) {
         setError(result.error);
         toast({
-          title: "Assembly Error", // Changed toast title
+          title: "Assembly Error",
           description: result.error,
           variant: "destructive",
         });
       } else if (result.assembledPdfDataUri) {
-        downloadDataUri(result.assembledPdfDataUri, "assembled_document.pdf"); // Changed filename
+        downloadDataUri(result.assembledPdfDataUri, "assembled_document.pdf");
         toast({
-          title: "Assembly Successful!", // Changed toast title
+          title: "Assembly Successful!",
           description: "Your PDFs have been assembled and download has started.",
         });
         setSelectedPdfItems([]);
       }
     } catch (e: any) {
-      const errorMessage = e.message || "An unexpected error occurred during assembly."; // Changed message
+      const errorMessage = e.message || "An unexpected error occurred during assembly.";
       setError(errorMessage);
-      toast({ title: "Assembly Failed", description: errorMessage, variant: "destructive" }); // Changed title
+      toast({ title: "Assembly Failed", description: errorMessage, variant: "destructive" });
     } finally {
-      setIsAssembling(false); // Changed state
+      setIsAssembling(false);
     }
   };
 
@@ -181,8 +179,8 @@ export default function AddPagesPage() { // Changed component name
   return (
     <div className="max-w-full mx-auto space-y-8">
       <header className="text-center py-8">
-        <FilePlus2 className="mx-auto h-16 w-16 text-primary mb-4" /> {/* Changed icon */}
-        <h1 className="text-3xl font-bold tracking-tight">Add Pages to PDF</h1> {/* Changed title */}
+        <FilePlus2 className="mx-auto h-16 w-16 text-primary mb-4" />
+        <h1 className="text-3xl font-bold tracking-tight">Add Pages to PDF</h1>
         <p className="text-muted-foreground mt-2">
           Combine multiple PDF documents into one. Drag and drop to reorder.
         </p>
@@ -209,7 +207,24 @@ export default function AddPagesPage() { // Changed component name
 
       {selectedPdfItems.length > 0 && (
         <div className="flex flex-col lg:flex-row gap-6">
-          <div className="flex-grow lg:w-3/4">
+          <div className="flex-grow lg:w-3/4 relative"> {/* Added relative positioning context */}
+            <Button
+              onClick={handleAddFilesClick}
+              variant="default"
+              size="icon"
+              className="absolute top-2 right-2 z-20 rounded-full h-10 w-10 shadow-lg"
+              aria-label="Add more files"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleHiddenInputChange}
+              multiple
+              accept="application/pdf"
+              className="hidden"
+            />
             <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
                 {selectedPdfItems.map((item, index) => (
@@ -260,7 +275,7 @@ export default function AddPagesPage() { // Changed component name
           <div className="lg:w-1/4 space-y-4 lg:sticky lg:top-24 self-start">
             <Card className="shadow-lg">
               <CardHeader className="text-center">
-                <CardTitle>Assembly Options</CardTitle> {/* Changed title */}
+                <CardTitle>Assembly Options</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Alert variant="default" className="text-sm p-3">
@@ -269,34 +284,24 @@ export default function AddPagesPage() { // Changed component name
                     To change the order of your PDFs, drag and drop the files as you want.
                   </AlertDescription>
                 </Alert>
-                <Button onClick={handleAddFilesClick} variant="outline" className="w-full">
-                  <Plus className="mr-2 h-4 w-4" /> Add More Files
-                </Button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleHiddenInputChange}
-                  multiple
-                  accept="application/pdf"
-                  className="hidden"
-                />
+                {/* "Add More Files" button removed from here */}
                 <Button onClick={handleSortByName} variant="outline" className="w-full" disabled={selectedPdfItems.length < 2}>
                   <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort A-Z
                 </Button>
               </CardContent>
               <CardFooter>
                 <Button
-                  onClick={handleAssembleAndDownload} // Changed handler
-                  disabled={selectedPdfItems.length < 1 || isAssembling || isLoadingPreviews} // Changed state and condition
+                  onClick={handleAssembleAndDownload}
+                  disabled={selectedPdfItems.length < 1 || isAssembling || isLoadingPreviews}
                   className="w-full"
                   size="lg"
                 >
-                  {isAssembling ? ( // Changed state
+                  {isAssembling ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <Combine className="mr-2 h-4 w-4" /> // Changed icon to Combine for assembly
+                    <Combine className="mr-2 h-4 w-4" />
                   )}
-                  Assemble & Download PDFs ({selectedPdfItems.length}) {/* Changed text */}
+                  Assemble & Download PDFs ({selectedPdfItems.length})
                 </Button>
               </CardFooter>
             </Card>
@@ -314,3 +319,6 @@ export default function AddPagesPage() { // Changed component name
     </div>
   );
 }
+
+
+    
