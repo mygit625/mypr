@@ -49,13 +49,9 @@ export default function AddPagesPage() {
   }, [selectedPdfItems]);
 
   const processFiles = async (files: File[]): Promise<SelectedPdfItem[]> => {
-    // Temporarily set loading state for specific plus button if needed, or global.
-    // For simplicity, using global isLoadingPreviews for now.
     setIsLoadingPreviews(true);
     const newItems: SelectedPdfItem[] = [];
     for (const file of files) {
-      // Avoid adding the exact same file instance multiple times if selected via the same plus button click.
-      // A more robust check might involve preventing duplicates across all selectedPdfItems.
       if (selectedPdfItems.find(item => item.name === file.name && item.file.size === file.size && item.file.lastModified === file.lastModified)) {
          console.warn(`Skipping duplicate file: ${file.name}`);
          continue;
@@ -90,13 +86,13 @@ export default function AddPagesPage() {
       if (insertAt !== null && insertAt >= 0 && insertAt <= updatedItems.length) {
         updatedItems.splice(insertAt, 0, ...processedNewItems);
       } else {
-        updatedItems.push(...processedNewItems); // Fallback to append
+        updatedItems.push(...processedNewItems); 
       }
       return updatedItems;
     });
-    insertAtIndexRef.current = null; // Reset
+    insertAtIndexRef.current = null; 
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Reset file input to allow re-selection of same file
+      fileInputRef.current.value = ""; 
     }
   };
   
@@ -105,12 +101,10 @@ export default function AddPagesPage() {
       setSelectedPdfItems([]);
       return;
     }
-    // For initial upload, new files replace existing ones or form the first set.
-    // We effectively "insert" them at index 0, replacing anything that might have been there.
-    setIsLoadingPreviews(true); // Ensure loading state is active
+    setIsLoadingPreviews(true); 
     const processedNewItems = await processFiles(newFiles);
     setSelectedPdfItems(processedNewItems);
-    setIsLoadingPreviews(false); // Reset loading state
+    setIsLoadingPreviews(false); 
   };
 
   const handleRemoveFile = (idToRemove: string) => {
@@ -199,15 +193,12 @@ export default function AddPagesPage() {
     e.preventDefault(); 
   };
 
-  // Create display items for the grid
   const displayItems: DisplayItem[] = [];
   if (selectedPdfItems.length > 0 || isLoadingPreviews) {
-    // Add "plus" button for before the first item
     displayItems.push({ type: 'add_button', id: 'add-slot-0', insertAtIndex: 0 });
 
     selectedPdfItems.forEach((pdfItem, pdfIndex) => {
       displayItems.push({ type: 'pdf', id: pdfItem.id, data: pdfItem, originalPdfIndex: pdfIndex });
-      // Add "plus" button for after this item
       displayItems.push({ type: 'add_button', id: `add-slot-${pdfIndex + 1}`, insertAtIndex: pdfIndex + 1 });
     });
   }
@@ -244,7 +235,7 @@ export default function AddPagesPage() {
           className="hidden"
       />
 
-      {isLoadingPreviews && selectedPdfItems.length === 0 && ( // Spinner for initial load
+      {isLoadingPreviews && selectedPdfItems.length === 0 && ( 
         <div className="flex justify-center items-center py-12">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <p className="ml-3 text-lg text-muted-foreground">Loading initial previews...</p>
@@ -255,7 +246,7 @@ export default function AddPagesPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-grow lg:w-3/4">
             <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-x-3 gap-y-4 p-4 items-center">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-x-2 gap-y-3 p-4 items-center">
                 {displayItems.map((item) => {
                   if (item.type === 'pdf' && item.data) {
                     const pdfItem = item.data;
@@ -296,7 +287,7 @@ export default function AddPagesPage() {
                     );
                   } else if (item.type === 'add_button') {
                     return (
-                      <div key={item.id} className="flex items-center justify-center h-full" style={{minHeight: `${PREVIEW_TARGET_HEIGHT_ASSEMBLE + 80}px`}}>
+                      <div key={item.id} className="flex items-center justify-center h-full" style={{minHeight: `${PREVIEW_TARGET_HEIGHT_ASSEMBLE + 40}px`}}>
                         <Button
                           variant="outline"
                           size="icon"
@@ -304,13 +295,13 @@ export default function AddPagesPage() {
                             if (!isLoadingPreviews) handleAddFilesTrigger(item.insertAtIndex!);
                           }}
                           disabled={isLoadingPreviews}
-                          className="rounded-full h-14 w-14 shadow-md hover:shadow-lg hover:border-primary hover:text-primary transition-all"
+                          className="rounded-full h-10 w-10 shadow-sm hover:shadow-md hover:border-primary/80 hover:text-primary/80 transition-all"
                           aria-label={`Add PDF files at position ${item.insertAtIndex}`}
                         >
                           {isLoadingPreviews && insertAtIndexRef.current === item.insertAtIndex ? (
-                            <Loader2 className="h-7 w-7 animate-spin" />
+                            <Loader2 className="h-5 w-5 animate-spin" />
                           ) : (
-                            <Plus className="h-7 w-7" />
+                            <Plus className="h-5 w-5" />
                           )}
                         </Button>
                       </div>
@@ -318,7 +309,7 @@ export default function AddPagesPage() {
                   }
                   return null;
                 })}
-                 {isLoadingPreviews && selectedPdfItems.length > 0 && displayItems.length === 0 && ( // Global loader if items are loading after initial set
+                 {isLoadingPreviews && selectedPdfItems.length > 0 && displayItems.length === 0 && ( 
                     <div className="col-span-full flex justify-center items-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         <p className="ml-2 text-muted-foreground">Loading file previews...</p>
