@@ -4,7 +4,7 @@ import {
   Combine, Split, FileText, Minimize2, FileCode, FileSpreadsheet,
   FileImage, Edit3, PenTool, Droplets, RotateCcw, Globe, Unlock, Lock, LayoutGrid,
   Archive, Wrench, ListOrdered, ScanText, FileType, Presentation, Table2, ImagePlus, BarChart3,
-  Crop, Diff, Paintbrush, PanelTop, FileMinus2, FilePlus2
+  Crop, Diff, Paintbrush, PanelTop, FileMinus2, FilePlus2, FlaskConical
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -32,6 +32,7 @@ const featuresByCategory: FeatureCategory[] = [
       { title: 'Rotate PDF', description: 'Rotate your PDFs the way you need them. Rotate multiple PDFs at once!', href: '/rotate', Icon: RotateCcw, iconColor: 'text-gray-500' },
       { title: 'Remove PDF Pages', description: 'Delete one or several pages from your PDF document.', href: '/remove-pages', Icon: FileMinus2, iconColor: 'text-rose-500' },
       { title: 'Add PDF Pages', description: 'Insert new pages into an existing PDF document easily.', href: '/add-pages', Icon: FilePlus2, iconColor: 'text-lime-500' },
+      { title: 'Test Page', description: 'A test page replicating Add PDF Pages functionality.', href: '/test-page', Icon: FlaskConical, iconColor: 'text-cyan-500' },
     ],
   },
   {

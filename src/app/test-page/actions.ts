@@ -15,16 +15,10 @@ export interface AssemblePdfOutput {
 
 export async function assemblePdfAction(input: AssemblePdfInput): Promise<AssemblePdfOutput> {
   if (!input.orderedPdfDataUris || input.orderedPdfDataUris.length === 0) {
-    // If only one PDF is provided, arguably it could just return that PDF.
-    // However, for an "assemble" or "merge" like operation, usually more than one is implied.
-    // To match merge, let's say at least one is needed, but the UI should enforce 2+ for the button to be active.
-    // If the UI allows a single PDF, this action could just return it.
-    // For now, let's keep it that it expects something to assemble.
      return { error: "At least one PDF file is required to assemble." };
   }
   
   if (input.orderedPdfDataUris.length === 1) {
-    // If only one PDF is sent, just return it as is.
     return { assembledPdfDataUri: input.orderedPdfDataUris[0] };
   }
 
@@ -59,4 +53,11 @@ export async function assemblePdfAction(input: AssemblePdfInput): Promise<Assemb
     
     return { assembledPdfDataUri };
 
-  } catch (error: any)
+  } catch (error: any) {
+    console.error("Error assembling PDF segments:", error);
+    if (error.message && error.message.toLowerCase().includes('encrypted') && !error.message.toLowerCase().includes('ignoreencryption')) {
+        return { error: "One of the PDF segments is encrypted with restrictions that prevent modification. Please provide decrypted PDFs."}
+    }
+    return { error: error.message || "An unexpected error occurred while assembling the PDF." };
+  }
+}
