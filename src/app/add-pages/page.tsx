@@ -246,7 +246,7 @@ export default function AddPagesPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-grow lg:w-3/4">
             <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-x-2 gap-y-3 p-4 items-center">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-x-1 gap-y-1 p-4 items-center">
                 {displayItems.map((item) => {
                   if (item.type === 'pdf' && item.data) {
                     const pdfItem = item.data;
@@ -365,3 +365,5 @@ export default function AddPagesPage() {
     </div>
   );
 }
+
+    
