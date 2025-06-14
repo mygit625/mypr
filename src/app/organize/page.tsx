@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
@@ -11,11 +10,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { LayoutGrid, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine } from 'lucide-react'; // Combine for action button
+import { LayoutGrid, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { organizePagesAction } from './actions'; // Updated action import
+import { assembleIndividualPagesAction } from './actions';
 import { cn } from '@/lib/utils';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
@@ -36,16 +35,16 @@ interface DisplayItem {
   type: 'pdf_page' | 'add_button';
   id: string;
   data?: SelectedPdfPageItem;
-  originalItemIndex?: number; 
+  originalItemIndex?: number;
   insertAtIndex?: number;
 }
 
-const PREVIEW_TARGET_HEIGHT_ORGANIZE = 180; // Renamed constant
+const PREVIEW_TARGET_HEIGHT_ORGANIZE = 180;
 
-export default function OrganizePage() { // Renamed component
+export default function OrganizePage() {
   const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfPageItem[]>([]);
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
-  const [isOrganizing, setIsOrganizing] = useState(false); // Renamed state variable
+  const [isOrganizing, setIsOrganizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -66,7 +65,7 @@ export default function OrganizePage() { // Renamed component
       const originalFileId = crypto.randomUUID();
       try {
         const dataUri = await readFileAsDataURL(file);
-        
+
         const base64Marker = ';base64,';
         const base64Index = dataUri.indexOf(base64Marker);
         if (base64Index === -1) throw new Error('Invalid PDF data URI format.');
@@ -106,7 +105,6 @@ export default function OrganizePage() { // Renamed component
 
   const handleFilesSelected = async (newFilesFromInput: File[], insertAt: number | null) => {
     if (newFilesFromInput.length === 0) return;
-    // Process only the first file if multiple were somehow selected (input is single mode)
     const fileToProcess = newFilesFromInput.length > 0 ? [newFilesFromInput[0]] : [];
     if (fileToProcess.length === 0) return;
 
@@ -132,12 +130,11 @@ export default function OrganizePage() { // Renamed component
       setSelectedPdfItems([]);
       return;
     }
-    // Process only the first file if multiple were somehow selected (input is single mode)
     const fileToProcess = newFilesFromInput.length > 0 ? [newFilesFromInput[0]] : [];
      if (fileToProcess.length === 0) return;
 
     const processedNewPageItems = await processFiles(fileToProcess);
-    setSelectedPdfItems(processedNewPageItems); 
+    setSelectedPdfItems(processedNewPageItems);
   };
 
   const handleRemoveFile = (idToRemove: string) => {
@@ -162,7 +159,7 @@ export default function OrganizePage() { // Renamed component
     toast({ description: "Pages sorted by name (original file, then page number)." });
   };
 
-  const handleOrganizeAndDownload = async () => { // Renamed function
+  const handleOrganizeAndDownload = async () => {
     if (selectedPdfItems.length < 1) {
       toast({
         title: "No pages selected",
@@ -172,7 +169,7 @@ export default function OrganizePage() { // Renamed component
       return;
     }
 
-    setIsOrganizing(true); // Use renamed state
+    setIsOrganizing(true);
     setError(null);
 
     try {
@@ -181,29 +178,29 @@ export default function OrganizePage() { // Renamed component
         pageIndexToCopy: item.pageIndexInOriginalFile,
       }));
 
-      const result = await organizePagesAction({ orderedPagesToAssemble: pagesToAssemble }); // Call renamed action
+      const result = await assembleIndividualPagesAction({ orderedPagesToAssemble: pagesToAssemble });
 
       if (result.error) {
         setError(result.error);
         toast({
-          title: "Organization Error", // Updated toast title
+          title: "Organization Error",
           description: result.error,
           variant: "destructive",
         });
-      } else if (result.organizedPdfDataUri) { // Use renamed field
-        downloadDataUri(result.organizedPdfDataUri, "organized_document.pdf"); // Updated filename
+      } else if (result.organizedPdfDataUri) {
+        downloadDataUri(result.organizedPdfDataUri, "organized_document.pdf");
         toast({
-          title: "Organization Successful!", // Updated toast title
-          description: "Your PDF pages have been organized and download has started.", // Updated message
+          title: "Organization Successful!",
+          description: "Your PDF pages have been organized and download has started.",
         });
         setSelectedPdfItems([]);
       }
     } catch (e: any) {
-      const errorMessage = e.message || "An unexpected error occurred during organization."; // Updated message
+      const errorMessage = e.message || "An unexpected error occurred during organization.";
       setError(errorMessage);
-      toast({ title: "Organization Failed", description: errorMessage, variant: "destructive" }); // Updated title
+      toast({ title: "Organization Failed", description: errorMessage, variant: "destructive" });
     } finally {
-      setIsOrganizing(false); // Use renamed state
+      setIsOrganizing(false);
     }
   };
 
@@ -243,8 +240,8 @@ export default function OrganizePage() { // Renamed component
   return (
     <div className="max-w-full mx-auto space-y-8">
       <header className="text-center py-8">
-        <LayoutGrid className="mx-auto h-16 w-16 text-primary mb-4" /> {/* Updated Icon */}
-        <h1 className="text-3xl font-bold tracking-tight">Organize PDF Pages</h1> {/* Updated Title */}
+        <LayoutGrid className="mx-auto h-16 w-16 text-primary mb-4" />
+        <h1 className="text-3xl font-bold tracking-tight">Organize PDF Pages</h1>
         <p className="text-muted-foreground mt-2">
           Upload a PDF. Drag and drop its pages to reorder, then assemble them into a new document.
         </p>
@@ -266,7 +263,7 @@ export default function OrganizePage() { // Renamed component
           type="file"
           ref={fileInputRef}
           onChange={handleHiddenInputChange}
-          multiple={false} // Single file for organize, as per add-pages
+          multiple={false}
           accept="application/pdf"
           className="hidden"
       />
@@ -358,7 +355,7 @@ export default function OrganizePage() { // Renamed component
           <div className="lg:w-1/4 space-y-4 lg:sticky lg:top-24 self-start">
             <Card className="shadow-lg">
               <CardHeader className="text-center">
-                <CardTitle>Organization Options</CardTitle> 
+                <CardTitle>Organization Options</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Alert variant="default" className="text-sm p-3">
@@ -373,17 +370,17 @@ export default function OrganizePage() { // Renamed component
               </CardContent>
               <CardFooter>
                 <Button
-                  onClick={handleOrganizeAndDownload} // Use renamed handler
+                  onClick={handleOrganizeAndDownload}
                   disabled={selectedPdfItems.length < 1 || isOrganizing || isLoadingPreviews}
                   className="w-full"
                   size="lg"
                 >
-                  {isOrganizing ? ( // Use renamed state
+                  {isOrganizing ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <Combine className="mr-2 h-4 w-4" /> // Using Combine icon like add-pages for action
+                    <Combine className="mr-2 h-4 w-4" />
                   )}
-                  Organize & Download Pages ({selectedPdfItems.length}) {/* Updated text */}
+                  Organize & Download Pages ({selectedPdfItems.length})
                 </Button>
               </CardFooter>
             </Card>

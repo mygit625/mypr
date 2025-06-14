@@ -1,51 +1,181 @@
-
 "use server";
 
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, degrees } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
-// Interface for specifying a page to be included in the assembly
-interface PageToAssembleInfo {
-  sourcePdfDataUri: string; // Data URI of the source PDF from which the page is taken
-  pageIndexToCopy: number;  // 0-based index of the page to copy from this source PDF
+// --- START: Existing code for Rotate/Remove Pages ---
+// These parts are kept for compatibility with other features (Rotate, Remove Pages)
+// that might be using them.
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs'; // For page dimensions
+import type { PDFDocumentProxy as PDFJSInternalDocumentProxy } from 'pdfjs-dist/types/src/display/api'; // Aliased
+
+if (typeof window !== 'undefined') { // pdfjs-dist setup should only run in browser-like env for getInitialPageDataAction
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    }
 }
 
-// Input for the organizePagesAction, listing pages in their desired final order
-export interface OrganizePagesInput {
-  orderedPagesToAssemble: PageToAssembleInfo[];
+
+export interface PageData {
+  id: string;
+  originalIndex: number;
+  rotation: number; // Current rotation
+  width: number;
+  height: number;
+  isDeleted?: boolean; // For page removal feature
 }
 
-// Output for the organizePagesAction
-export interface OrganizePagesOutput {
-  organizedPdfDataUri?: string; // Data URI of the newly assembled PDF
+export interface GetInitialPageDataInput {
+  pdfDataUri: string;
+}
+
+export interface GetInitialPageDataOutput {
+  pages?: PageData[];
   error?: string;
 }
 
-// Action to assemble individual pages from potentially multiple source PDFs into a single new PDF
-export async function organizePagesAction(input: OrganizePagesInput): Promise<OrganizePagesOutput> {
+export async function getInitialPageDataAction(input: GetInitialPageDataInput): Promise<GetInitialPageDataOutput> {
+  if (!input.pdfDataUri) {
+    return { error: "No PDF data provided." };
+  }
+  try {
+    if (!input.pdfDataUri.startsWith('data:application/pdf;base64,')) {
+      return { error: `Invalid PDF data format.` };
+    }
+    const pdfBytes = Buffer.from(input.pdfDataUri.split(',')[1], 'base64');
+
+    // Ensure we're passing the ArrayBuffer correctly
+    const arrayBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdfDoc: PDFJSInternalDocumentProxy = await loadingTask.promise;
+
+    const pagesData: PageData[] = [];
+    for (let i = 0; i < pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i + 1);
+      const viewport = page.getViewport({ scale: 1, rotation: page.rotate }); // Use page.rotate for correct initial dimensions
+      pagesData.push({
+        id: crypto.randomUUID(),
+        originalIndex: i,
+        rotation: page.rotate || 0, // Store original rotation
+        width: viewport.width,
+        height: viewport.height,
+        isDeleted: false,
+      });
+    }
+    if (typeof (pdfDoc as any).destroy === 'function') {
+        await (pdfDoc as any).destroy();
+    }
+    return { pages: pagesData };
+  } catch (error: any) {
+    console.error("Error in getInitialPageDataAction:", error);
+    return { error: error.message || "Failed to load page data from PDF." };
+  }
+}
+
+export interface PageOperation {
+  originalIndex: number;
+  rotation: number; // New absolute rotation angle for the page
+}
+
+export interface OrganizePdfInput {
+  pdfDataUri: string;
+  operations: PageOperation[];
+}
+
+export interface OrganizePdfOutput {
+  organizedPdfDataUri?: string;
+  error?: string;
+}
+
+// This action is used by Rotate PDF to apply rotations and reorderings to a SINGLE source PDF.
+export async function organizePdfAction(input: OrganizePdfInput): Promise<OrganizePdfOutput> {
+  if (!input.pdfDataUri) {
+    return { error: "Original PDF data not provided." };
+  }
+  if (!input.operations || input.operations.length === 0) {
+    return { error: "No page operations provided." };
+  }
+
+  try {
+    if (!input.pdfDataUri.startsWith('data:application/pdf;base64,')) {
+      return { error: `Invalid PDF data format.` };
+    }
+    const originalPdfBytes = Buffer.from(input.pdfDataUri.split(',')[1], 'base64');
+    const originalPdfDoc = await PDFDocument.load(originalPdfBytes, { ignoreEncryption: true });
+
+    const newPdfDoc = await PDFDocument.create();
+
+    for (const op of input.operations) {
+      if (op.originalIndex < 0 || op.originalIndex >= originalPdfDoc.getPageCount()) {
+        console.warn(`Invalid original page index ${op.originalIndex} during organization. Skipping.`);
+        continue;
+      }
+      const [copiedPage] = await newPdfDoc.copyPages(originalPdfDoc, [op.originalIndex]);
+      copiedPage.setRotation(degrees(op.rotation)); // Apply new absolute rotation
+      newPdfDoc.addPage(copiedPage);
+    }
+
+    if (newPdfDoc.getPageCount() === 0) {
+        return { error: "Resulting PDF would be empty. No valid pages were processed." };
+    }
+
+    const organizedPdfBytes = await newPdfDoc.save();
+    const organizedPdfDataUri = `data:application/pdf;base64,${Buffer.from(organizedPdfBytes).toString('base64')}`;
+
+    return { organizedPdfDataUri };
+
+  } catch (error: any) {
+    console.error("Error in organizePdfAction (single PDF processing):", error);
+    if (error.message && error.message.toLowerCase().includes('encrypted')) {
+        return { error: "The PDF is encrypted with restrictions that prevent modification."}
+    }
+    return { error: error.message || "An unexpected error occurred while processing the PDF." };
+  }
+}
+// --- END: Existing code for Rotate/Remove Pages ---
+
+
+// --- START: New code for page-level assembly (like add-pages, for the "Organize PDF" page) ---
+interface PageToAssembleInfo {
+  sourcePdfDataUri: string;
+  pageIndexToCopy: number;  // 0-based
+}
+
+export interface AssembleIndividualPagesForOrganizeInput {
+  orderedPagesToAssemble: PageToAssembleInfo[];
+}
+
+export interface AssembleIndividualPagesForOrganizeOutput {
+  organizedPdfDataUri?: string;
+  error?: string;
+}
+
+// This action is for the "Organize PDF" page which now behaves like "Add PDF Pages"
+// by assembling individual pages from (potentially multiple) source PDFs.
+export async function assembleIndividualPagesAction(input: AssembleIndividualPagesForOrganizeInput): Promise<AssembleIndividualPagesForOrganizeOutput> {
   if (!input.orderedPagesToAssemble || input.orderedPagesToAssemble.length === 0) {
      return { error: "No pages provided to organize and assemble." };
   }
-  
+
   const finalPdfDoc = await PDFDocument.create();
 
   try {
     for (const pageInfo of input.orderedPagesToAssemble) {
       if (!pageInfo.sourcePdfDataUri.startsWith('data:application/pdf;base64,')) {
-        console.error('Invalid data URI format for a source PDF in organization:', pageInfo.sourcePdfDataUri.substring(0, 100));
+        console.error('Invalid data URI format for a source PDF in organization (assembleIndividualPagesAction):', pageInfo.sourcePdfDataUri.substring(0, 100));
         return { error: `Invalid PDF data format for one of the source documents. Please ensure all files are valid PDFs.` };
       }
       const pdfBytes = Buffer.from(pageInfo.sourcePdfDataUri.split(',')[1], 'base64');
       const sourcePdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-      
+
       if (pageInfo.pageIndexToCopy < 0 || pageInfo.pageIndexToCopy >= sourcePdfDoc.getPageCount()) {
-        console.warn(`Invalid page index ${pageInfo.pageIndexToCopy} for a source PDF with ${sourcePdfDoc.getPageCount()} pages during organization. Skipping this page.`);
-        continue; 
+        console.warn(`Invalid page index ${pageInfo.pageIndexToCopy} for a source PDF with ${sourcePdfDoc.getPageCount()} during organization (assembleIndividualPagesAction). Skipping this page.`);
+        continue;
       }
-      
+
       if (sourcePdfDoc.getPageCount() === 0) {
-        console.warn('A source PDF with no pages was encountered and skipped during organization.');
-        continue; 
+        console.warn('A source PDF with no pages was encountered and skipped during organization (assembleIndividualPagesAction).');
+        continue;
       }
 
       const [copiedPage] = await finalPdfDoc.copyPages(sourcePdfDoc, [pageInfo.pageIndexToCopy]);
@@ -53,19 +183,20 @@ export async function organizePagesAction(input: OrganizePagesInput): Promise<Or
     }
 
     if (finalPdfDoc.getPageCount() === 0) {
-        return { error: "The organized PDF would be empty. No valid pages were found or selected."}
+        return { error: "The organized PDF (assembled from individual pages) would be empty. No valid pages were found or selected."}
     }
 
     const organizedPdfBytes = await finalPdfDoc.save();
     const organizedPdfDataUri = `data:application/pdf;base64,${Buffer.from(organizedPdfBytes).toString('base64')}`;
-    
+
     return { organizedPdfDataUri };
 
   } catch (error: any) {
-    console.error("Error organizing PDF pages:", error);
+    console.error("Error in assembleIndividualPagesAction for Organize PDF:", error);
     if (error.message && error.message.toLowerCase().includes('encrypted') && !error.message.toLowerCase().includes('ignoreencryption')) {
         return { error: "One of the source PDFs is encrypted with restrictions that prevent modification. Please provide decrypted PDFs."}
     }
-    return { error: error.message || "An unexpected error occurred while organizing the PDF pages." };
+    return { error: error.message || "An unexpected error occurred while assembling the PDF pages for organization." };
   }
 }
+// --- END: New code for page-level assembly ---

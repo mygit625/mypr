@@ -10,9 +10,10 @@ import { RotateCcw, RotateCw, Loader2, Info, Download, RefreshCcw } from 'lucide
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { getInitialPageDataAction, organizePdfAction, type PageData, type PageOperation } from '../organize/actions'; // Reusing actions from organize
+import { getInitialPageDataAction } from '../remove-pages/actions'; // Changed import source
+import { organizePdfAction, type PageData, type PageOperation } from '../organize/actions'; // organizePdfAction and types remain
 import { ScrollArea } from '@/components/ui/scroll-area';
-import PdfPagePreview from '@/components/feature/pdf-page-preview'; // Import the new component
+import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { cn } from '@/lib/utils';
 
 // Helper to ensure rotation stays within 0, 90, 180, 270
