@@ -1,6 +1,20 @@
 
 "use server";
 
+// Polyfill for Promise.withResolvers
+// This is required by pdfjs-dist v4.0.379+ if the environment (e.g., Node.js < 22) doesn't support it.
+if (typeof Promise.withResolvers !== 'function') {
+  Promise.withResolvers = function withResolvers<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: any) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
 import { PDFDocument, degrees } from 'pdf-lib'; // Import degrees
 import type { Buffer } from 'buffer';
 
@@ -8,6 +22,8 @@ import type { Buffer } from 'buffer';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs'; 
 import type { PDFDocumentProxy as PDFJSInternalDocumentProxy } from 'pdfjs-dist/types/src/display/api';
 
+// Note: This workerSrc setup below only runs if 'window' is defined, so it won't apply during server-side execution of getInitialPageDataAction.
+// pdfjs-dist might behave differently or attempt different initialization paths on the server.
 if (typeof window !== 'undefined') { 
     if (pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
