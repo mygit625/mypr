@@ -1,91 +1,196 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
+import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
+
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileMinus2, Loader2, Info, Trash2, RefreshCcw, Download } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import PdfPagePreview from '@/components/feature/pdf-page-preview';
+import { FileMinus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, RotateCcw, RotateCw, Trash2, Undo2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { getInitialPageDataAction, removeSelectedPagesAction, type PageData } from './actions';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import PdfPagePreview from '@/components/feature/pdf-page-preview';
+import { getInitialPageDataAction } from './actions'; // For initial PDF processing
+import { assembleIndividualPagesAction } from '../organize/actions'; // For final assembly
 import { cn } from '@/lib/utils';
 
-interface PageState extends PageData {
-  isMarkedForDeletion: boolean;
+if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 }
 
+interface SelectedPdfPageItem {
+  id: string;
+  originalFileId: string;
+  originalFileName: string;
+  originalFileDataUri: string;
+  pageIndexInOriginalFile: number;
+  totalPagesInOriginalFile: number;
+  displayName: string;
+  rotation: number;
+  isMarkedForDeletion: boolean; // Added
+}
+
+interface DisplayItem {
+  type: 'pdf_page' | 'add_button';
+  id: string;
+  data?: SelectedPdfPageItem;
+  originalItemIndex?: number;
+  insertAtIndex?: number;
+}
+
+const PREVIEW_TARGET_HEIGHT_REMOVE = 160; // Adjusted for more buttons
+
 export default function RemovePagesPage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
-  const [pages, setPages] = useState<PageState[]>([]);
-  
-  const [isLoading, setIsLoading] = useState(false);
+  const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfPageItem[]>([]);
+  const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const PREVIEW_TARGET_HEIGHT = 120;
 
-  const handleFileSelected = async (selectedFiles: File[]) => {
-    if (selectedFiles.length > 0) {
-      const selectedFile = selectedFiles[0];
-      setFile(selectedFile);
-      setError(null);
-      setPages([]);
-      setIsLoading(true);
-      setPdfDataUri(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const insertAtIndexRef = useRef<number | null>(null);
+  const dragItemIndex = useRef<number | null>(null);
+  const dragOverItemIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    setError(null);
+  }, [selectedPdfItems]);
+
+  const processFiles = async (files: File[]): Promise<SelectedPdfPageItem[]> => {
+    setIsLoadingPreviews(true);
+    const newPageItems: SelectedPdfPageItem[] = [];
+
+    for (const file of files) {
+      const originalFileId = crypto.randomUUID();
       try {
-        const dataUri = await readFileAsDataURL(selectedFile);
-        setPdfDataUri(dataUri);
-        const result = await getInitialPageDataAction({ pdfDataUri: dataUri });
-        if (result.error) {
-          setError(result.error);
-          toast({ title: "Error loading PDF", description: result.error, variant: "destructive" });
-          setPdfDataUri(null); setFile(null);
-        } else if (result.pages) {
-          setPages(result.pages.map(p => ({ ...p, isMarkedForDeletion: false, rotation: p.rotation || 0 })));
+        const dataUri = await readFileAsDataURL(file);
+
+        const base64Marker = ';base64,';
+        const base64Index = dataUri.indexOf(base64Marker);
+        if (base64Index === -1) throw new Error('Invalid PDF data URI format.');
+        const pdfBase64Data = dataUri.substring(base64Index + base64Marker.length);
+        const pdfBinaryData = atob(pdfBase64Data);
+        const pdfDataArray = new Uint8Array(pdfBinaryData.length);
+        for (let i = 0; i < pdfBinaryData.length; i++) {
+          pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
+        }
+
+        // Use getInitialPageDataAction to leverage server-side parsing if complex, or keep client-side for consistency with organize
+        // For now, keeping client-side parsing as in 'organize' for direct feature parity before this step.
+        const pdfDoc: PDFDocumentProxy = await pdfjsLib.getDocument({ data: pdfDataArray }).promise;
+        const numPages = pdfDoc.numPages;
+
+        for (let i = 0; i < numPages; i++) {
+          newPageItems.push({
+            id: crypto.randomUUID(),
+            originalFileId: originalFileId,
+            originalFileName: file.name,
+            originalFileDataUri: dataUri,
+            pageIndexInOriginalFile: i,
+            totalPagesInOriginalFile: numPages,
+            displayName: `${file.name} (Page ${i + 1} of ${numPages})`,
+            rotation: 0,
+            isMarkedForDeletion: false,
+          });
         }
       } catch (e: any) {
-        setError(e.message || "Failed to read or process file.");
-        toast({ title: "File Error", description: e.message, variant: "destructive" });
-        setPdfDataUri(null); setFile(null);
-      } finally {
-        setIsLoading(false);
+        console.error("Error processing file into pages for removal:", file.name, e);
+        toast({
+          title: "File Process Error",
+          description: `Could not process file: ${file.name}. ${e.message}`,
+          variant: "destructive",
+        });
       }
-    } else {
-      setFile(null); setPdfDataUri(null); setPages([]);
+    }
+    setIsLoadingPreviews(false);
+    return newPageItems;
+  };
+
+  const handleFilesSelected = async (newFilesFromInput: File[], insertAt: number | null) => {
+    if (newFilesFromInput.length === 0) return;
+    // Allow multiple files to be processed if 'multiple' is true for FileUploadZone
+    const processedNewPageItems = await processFiles(newFilesFromInput);
+
+    setSelectedPdfItems((prevItems) => {
+      const updatedItems = [...prevItems];
+      if (insertAt !== null && insertAt >= 0 && insertAt <= updatedItems.length) {
+        updatedItems.splice(insertAt, 0, ...processedNewPageItems);
+      } else {
+        updatedItems.push(...processedNewPageItems);
+      }
+      return updatedItems;
+    });
+    insertAtIndexRef.current = null;
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
-  const handleTogglePageDeletion = (idToToggle: string) => {
-    setPages(currentPages =>
-      currentPages.map((page) =>
-        page.id === idToToggle ? { ...page, isMarkedForDeletion: !page.isMarkedForDeletion } : page
+  const handleInitialFilesSelected = async (newFilesFromInput: File[]) => {
+    if (newFilesFromInput.length === 0) {
+      setSelectedPdfItems([]);
+      return;
+    }
+    const processedNewPageItems = await processFiles(newFilesFromInput);
+    setSelectedPdfItems(processedNewPageItems);
+  };
+
+  const handleRemoveCard = (idToRemove: string) => {
+    setSelectedPdfItems((prevItems) => prevItems.filter(item => item.id !== idToRemove));
+  };
+
+  const handleAddFilesTrigger = (index: number) => {
+    insertAtIndexRef.current = index;
+    fileInputRef.current?.click();
+  };
+
+  const handleHiddenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      handleFilesSelected(Array.from(event.target.files), insertAtIndexRef.current);
+    }
+  };
+
+  const handleSortByName = () => {
+    setSelectedPdfItems((prevItems) =>
+      [...prevItems].sort((a, b) => a.displayName.localeCompare(b.displayName))
+    );
+    toast({ description: "Pages sorted by name." });
+  };
+
+  const handleRotatePage = (pageId: string, direction: 'cw' | 'ccw') => {
+    setSelectedPdfItems(prevItems =>
+      prevItems.map(item => {
+        if (item.id === pageId) {
+          const newRotation = (item.rotation + (direction === 'cw' ? 90 : -90) + 360) % 360;
+          return { ...item, rotation: newRotation };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleTogglePageDeletion = (pageId: string) => {
+    setSelectedPdfItems(prevItems =>
+      prevItems.map(item =>
+        item.id === pageId ? { ...item, isMarkedForDeletion: !item.isMarkedForDeletion } : item
       )
     );
   };
 
-  const handleResetSelections = () => {
-    setPages(currentPages => currentPages.map(p => ({ ...p, isMarkedForDeletion: false })));
-    toast({ title: "Selections Reset", description: "All pages are now marked to be kept." });
-  };
+  const handleProcessAndDownload = async () => {
+    const pagesToKeep = selectedPdfItems.filter(item => !item.isMarkedForDeletion);
 
-  const handleRemoveAndDownload = async () => {
-    if (!pdfDataUri || pages.length === 0) {
-      toast({ title: "No PDF Loaded", description: "Please upload a PDF.", variant: "destructive" });
-      return;
-    }
-
-    const pagesToKeepIndices = pages
-      .filter(page => !page.isMarkedForDeletion)
-      .map(page => page.originalIndex);
-
-    if (pagesToKeepIndices.length === 0) {
-      toast({ title: "No Pages to Keep", description: "All pages are marked for deletion. Cannot create an empty PDF.", variant: "destructive" });
+    if (pagesToKeep.length < 1) {
+      toast({
+        title: "No Pages to Keep",
+        description: "Please ensure at least one page is not marked for deletion.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -93,146 +198,251 @@ export default function RemovePagesPage() {
     setError(null);
 
     try {
-      const result = await removeSelectedPagesAction({ pdfDataUri, pagesToKeepIndices });
+      const pagesToAssemble = pagesToKeep.map(item => ({
+        sourcePdfDataUri: item.originalFileDataUri,
+        pageIndexToCopy: item.pageIndexInOriginalFile,
+        rotation: item.rotation,
+      }));
+
+      const result = await assembleIndividualPagesAction({ orderedPagesToAssemble: pagesToAssemble });
+
       if (result.error) {
         setError(result.error);
-        toast({ title: "Processing Error", description: result.error, variant: "destructive" });
-      } else if (result.processedPdfDataUri) {
-        downloadDataUri(result.processedPdfDataUri, `processed_${file?.name || 'document.pdf'}`);
-        toast({ title: "Processing Successful!", description: "Your PDF has been processed and download has started." });
-        // Optionally reset state after successful download
-        // setFile(null); setPdfDataUri(null); setPages([]);
+        toast({
+          title: "Processing Error",
+          description: result.error,
+          variant: "destructive",
+        });
+      } else if (result.organizedPdfDataUri) { // Note: 'organizedPdfDataUri' is the field from the reused action
+        downloadDataUri(result.organizedPdfDataUri, "removed_pages_document.pdf");
+        toast({
+          title: "Processing Successful!",
+          description: "Your PDF has been processed and download has started.",
+        });
+        setSelectedPdfItems([]); // Clear items after successful processing
       }
     } catch (e: any) {
-      setError(e.message || "An unexpected error occurred.");
-      toast({ title: "Processing Failed", description: e.message, variant: "destructive" });
+      const errorMessage = e.message || "An unexpected error occurred during processing.";
+      setError(errorMessage);
+      toast({ title: "Processing Failed", description: errorMessage, variant: "destructive" });
     } finally {
       setIsProcessing(false);
     }
   };
+
+  const handleDragStart = (index: number) => { dragItemIndex.current = index; };
+  const handleDragEnter = (index: number) => { dragOverItemIndex.current = index; };
+  const handleDragEnd = () => {
+    if (dragItemIndex.current !== null && dragOverItemIndex.current !== null && dragItemIndex.current !== dragOverItemIndex.current) {
+      const newItems = [...selectedPdfItems];
+      const draggedItem = newItems.splice(dragItemIndex.current, 1)[0];
+      newItems.splice(dragOverItemIndex.current, 0, draggedItem);
+      setSelectedPdfItems(newItems);
+    }
+    dragItemIndex.current = null;
+    dragOverItemIndex.current = null;
+  };
+  const handleDragOver = (e: DragEvent<HTMLDivElement | HTMLButtonElement>) => { e.preventDefault(); };
+
+  const displayItems: DisplayItem[] = [];
+  if (selectedPdfItems.length > 0 || isLoadingPreviews) {
+    // No initial plus button on the very left
+    selectedPdfItems.forEach((pageItem, index) => {
+      displayItems.push({ type: 'pdf_page', id: pageItem.id, data: pageItem, originalItemIndex: index });
+      displayItems.push({ type: 'add_button', id: `add-slot-${index + 1}`, insertAtIndex: index + 1 });
+    });
+  }
   
-  const countKeptPages = pages.filter(p => !p.isMarkedForDeletion).length;
-  const countMarkedPages = pages.filter(p => p.isMarkedForDeletion).length;
+  const keptPagesCount = selectedPdfItems.filter(item => !item.isMarkedForDeletion).length;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <header className="text-center">
+    <div className="max-w-full mx-auto space-y-8">
+      <header className="text-center py-8">
         <FileMinus2 className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Remove PDF Pages</h1>
         <p className="text-muted-foreground mt-2">
-          Select pages to remove from your PDF document.
+          Upload PDFs. Mark pages for deletion, rotate, reorder, and then download the modified document.
         </p>
       </header>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>Upload PDF</CardTitle>
-          <CardDescription>Select the PDF file you want to modify.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FileUploadZone onFilesSelected={handleFileSelected} multiple={false} accept="application/pdf" />
-        </CardContent>
-      </Card>
+      {selectedPdfItems.length === 0 && !isLoadingPreviews && (
+        <Card className="max-w-2xl mx-auto shadow-lg">
+          <CardHeader>
+            <CardTitle>Upload PDFs</CardTitle>
+            <CardDescription>Select or drag PDF files. Pages will be displayed for management. (Max 5 files)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple={true} accept="application/pdf" maxFiles={5} />
+          </CardContent>
+        </Card>
+      )}
 
-      {isLoading && (
-        <div className="flex justify-center items-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="ml-2 text-muted-foreground">Loading PDF pages...</p>
+      <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleHiddenInputChange}
+          multiple={true} // Allow adding pages from multiple files via '+' button
+          accept="application/pdf"
+          className="hidden"
+      />
+
+      {isLoadingPreviews && selectedPdfItems.length === 0 && (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="ml-3 text-lg text-muted-foreground">Processing PDF pages...</p>
         </div>
       )}
 
-      {error && !isLoading && (
-        <Alert variant="destructive">
+      {(selectedPdfItems.length > 0 || (isLoadingPreviews && selectedPdfItems.length > 0)) && (
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-grow lg:w-3/4">
+            <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
+              <div className="flex flex-wrap items-start gap-3 p-2"> {/* Use items-start for consistent top alignment */}
+                {displayItems.map((item) => {
+                  if (item.type === 'pdf_page' && item.data) {
+                    const pageItem = item.data;
+                    return (
+                      <Card
+                        key={pageItem.id}
+                        draggable
+                        onDragStart={() => handleDragStart(item.originalItemIndex!)}
+                        onDragEnter={() => handleDragEnter(item.originalItemIndex!)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={handleDragOver}
+                        className={cn(
+                          "flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-all cursor-grab active:cursor-grabbing bg-card h-full justify-between w-48", // Slightly wider for more buttons
+                          pageItem.isMarkedForDeletion && "opacity-60 ring-2 ring-destructive border-destructive"
+                        )}
+                      >
+                        {pageItem.isMarkedForDeletion && (
+                           <div className="absolute inset-0 bg-destructive/30 flex items-center justify-center z-10 pointer-events-none rounded-lg">
+                                <span className="text-destructive-foreground font-semibold bg-destructive px-2 py-0.5 rounded text-xs">Marked for Deletion</span>
+                           </div>
+                        )}
+                        <div className={cn("relative w-full mb-1", pageItem.isMarkedForDeletion && "pointer-events-none")}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveCard(pageItem.id)}
+                            className="absolute top-0 right-0 z-20 h-7 w-7 bg-background/50 hover:bg-destructive/80 hover:text-destructive-foreground rounded-full"
+                            aria-label="Remove page from view"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          <div className="flex justify-center space-x-1 mb-1.5">
+                            <Button variant="outline" size="xs" onClick={() => handleRotatePage(pageItem.id, 'ccw')} aria-label="Rotate Left" disabled={pageItem.isMarkedForDeletion}>
+                              <RotateCcw className="h-3 w-3" />
+                            </Button>
+                            <Button variant="outline" size="xs" onClick={() => handleRotatePage(pageItem.id, 'cw')} aria-label="Rotate Right" disabled={pageItem.isMarkedForDeletion}>
+                              <RotateCw className="h-3 w-3" />
+                            </Button>
+                             <Button 
+                                variant={pageItem.isMarkedForDeletion ? "outline" : "destructive"} 
+                                size="xs" 
+                                onClick={() => handleTogglePageDeletion(pageItem.id)}
+                                className={cn(pageItem.isMarkedForDeletion && "border-green-500 hover:bg-green-100")}
+                                title={pageItem.isMarkedForDeletion ? "Keep this page" : "Mark to delete this page"}
+                              >
+                                {pageItem.isMarkedForDeletion ? 
+                                    <Undo2 className="h-3 w-3 text-green-600" /> : 
+                                    <Trash2 className="h-3 w-3" />
+                                }
+                              </Button>
+                          </div>
+                          <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_REMOVE + 20}px`}}>
+                            <PdfPagePreview
+                                pdfDataUri={pageItem.originalFileDataUri}
+                                pageIndex={pageItem.pageIndexInOriginalFile}
+                                rotation={pageItem.rotation}
+                                targetHeight={PREVIEW_TARGET_HEIGHT_REMOVE}
+                                className={cn("border rounded", pageItem.isMarkedForDeletion && "opacity-50")}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={pageItem.displayName}>
+                          {pageItem.displayName}
+                        </p>
+                        {!pageItem.isMarkedForDeletion && <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1" aria-hidden="true" />}
+                      </Card>
+                    );
+                  } else if (item.type === 'add_button') {
+                    return (
+                      <div key={item.id} className="flex items-center justify-center self-stretch h-auto w-12"> {/* Ensure it stretches and aligns */}
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => { if (!isLoadingPreviews) handleAddFilesTrigger(item.insertAtIndex!); }}
+                          disabled={isLoadingPreviews}
+                          className="rounded-full h-10 w-10 shadow-sm hover:shadow-md hover:border-primary/80 hover:text-primary/80 transition-all"
+                          aria-label={`Add PDF file at position ${item.insertAtIndex}`}
+                        >
+                          {isLoadingPreviews && insertAtIndexRef.current === item.insertAtIndex ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <Plus className="h-5 w-5" />
+                          )}
+                        </Button>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+                 {isLoadingPreviews && selectedPdfItems.length > 0 && displayItems.length === 0 && (
+                    <div className="col-span-full flex justify-center items-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="ml-2 text-muted-foreground">Loading page previews...</p>
+                    </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+
+          <div className="lg:w-1/4 space-y-4 lg:sticky lg:top-24 self-start">
+            <Card className="shadow-lg">
+              <CardHeader className="text-center">
+                <CardTitle>Page Removal Options</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Alert variant="default" className="text-sm p-3">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Mark pages for deletion using the <Trash2 className="inline h-3 w-3" /> icon. Rotate, reorder, and add more pages as needed.
+                    Kept pages: <span className="font-semibold text-green-600">{keptPagesCount}</span>.
+                    Marked: <span className="font-semibold text-destructive">{selectedPdfItems.length - keptPagesCount}</span>.
+                  </AlertDescription>
+                </Alert>
+                <Button onClick={handleSortByName} variant="outline" className="w-full" disabled={selectedPdfItems.length < 2}>
+                  <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort Pages
+                </Button>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  onClick={handleProcessAndDownload}
+                  disabled={selectedPdfItems.length < 1 || keptPagesCount < 1 || isProcessing || isLoadingPreviews}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  Apply & Download ({keptPagesCount} pages)
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <Alert variant="destructive" className="mt-6 max-w-xl mx-auto">
           <Info className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-
-      {pdfDataUri && pages.length > 0 && !isLoading && (
-        <>
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle>Manage Pages ({pages.length} total)</CardTitle>
-              <CardDescription>
-                Click the <Trash2 className="inline h-4 w-4 text-destructive" /> icon to mark a page for deletion.
-                Currently keeping: <span className="font-semibold text-green-600">{countKeptPages}</span> pages.
-                Marked for deletion: <span className="font-semibold text-red-600">{countMarkedPages}</span> pages.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[500px] p-1 border rounded-md bg-muted/20">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-2">
-                {pages.map((page) => (
-                  <Card 
-                    key={page.id} 
-                    className={cn(
-                        "transition-all shadow-sm bg-card relative overflow-hidden", 
-                        page.isMarkedForDeletion && "ring-2 ring-destructive border-destructive"
-                    )}
-                  >
-                    {page.isMarkedForDeletion && (
-                        <div className="absolute inset-0 bg-destructive/70 flex items-center justify-center z-10">
-                            <span className="text-destructive-foreground font-semibold text-sm">Marked for Deletion</span>
-                        </div>
-                    )}
-                    <div className={cn("p-2 flex flex-col items-center", page.isMarkedForDeletion && "opacity-40")}>
-                       <div 
-                          className="flex-shrink-0 mb-1 flex items-center justify-center overflow-hidden"
-                          style={{ minHeight: `${PREVIEW_TARGET_HEIGHT}px`, width: 'auto', height: `${PREVIEW_TARGET_HEIGHT}px`}}
-                        >
-                          {pdfDataUri && (
-                             <PdfPagePreview
-                               pdfDataUri={pdfDataUri}
-                               pageIndex={page.originalIndex}
-                               rotation={page.rotation || 0}
-                               targetHeight={PREVIEW_TARGET_HEIGHT}
-                             />
-                          )}
-                       </div>
-                      <p className="text-xs text-muted-foreground mb-1.5 text-center">
-                        Page {page.originalIndex + 1}
-                      </p>
-                      <Button 
-                        variant={page.isMarkedForDeletion ? "outline" : "destructive"} 
-                        size="sm" 
-                        onClick={() => handleTogglePageDeletion(page.id)} 
-                        className="w-full"
-                        title={page.isMarkedForDeletion ? "Keep this page" : "Mark to delete this page"}
-                        disabled={isLoading || isProcessing}
-                      >
-                        {page.isMarkedForDeletion ? 
-                            <RefreshCcw className="h-4 w-4 mr-1 text-green-600" /> : 
-                            <Trash2 className="h-4 w-4 mr-1" />
-                        }
-                        {page.isMarkedForDeletion ? "Keep" : "Delete"}
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-            <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
-                <Button variant="outline" onClick={handleResetSelections} disabled={isProcessing || isLoading || pages.length === 0}>
-                    <RefreshCcw className="mr-2 h-4 w-4" /> Reset Deletions
-                </Button>
-                <Button
-                  onClick={handleRemoveAndDownload}
-                  disabled={isProcessing || isLoading || !file || countKeptPages === 0}
-                  size="lg"
-                >
-                {isProcessing ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                )}
-                Apply & Download ({countKeptPages} pages)
-                </Button>
-            </CardFooter>
-          </Card>
-        </>
-      )}
     </div>
   );
 }
+
