@@ -22,28 +22,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FileWarning, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// CRITICAL DIAGNOSTIC LOGS:
-// console.log('[PdfPagePreview] Imported pdfjsLib object:', pdfjsLib);
 const importedApiVersion = pdfjsLib.version;
-// console.log('[PdfPagePreview] Imported pdfjsLib.version:', importedApiVersion);
-
 
 if (typeof window !== 'undefined' && importedApiVersion) {
     const dynamicWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${importedApiVersion}/pdf.worker.min.mjs`;
     if (pdfjsLib.GlobalWorkerOptions.workerSrc !== dynamicWorkerSrc) {
-        // console.log(`[PdfPagePreview] Attempting to set pdfjsLib.GlobalWorkerOptions.workerSrc to: ${dynamicWorkerSrc} (based on imported API version: ${importedApiVersion})`);
         pdfjsLib.GlobalWorkerOptions.workerSrc = dynamicWorkerSrc;
-        // console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc is now (dynamically set): ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
-    } else {
-        // console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already dynamically set to: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
     }
 } else if (typeof window !== 'undefined') {
     const fallbackVersion = "4.4.168"; 
     const fallbackWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${fallbackVersion}/pdf.worker.min.mjs`;
     pdfjsLib.GlobalWorkerOptions.workerSrc = fallbackWorkerSrc;
-    // console.warn(`[PdfPagePreview] importedApiVersion not available. WorkerSrc set to fallback based on version ${fallbackVersion}: ${fallbackWorkerSrc}`);
-} else {
-    // console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment).');
 }
 
 
@@ -78,7 +67,6 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       if (!isActive) return;
 
       if (!pdfDataUri) {
-        // console.log(`${logPrefix} No PDF data URI provided for page ${pageIndex + 1}.`);
         if (isActive) {
           setRenderError("No PDF data provided.");
           setIsLoading(false);
@@ -87,7 +75,6 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
 
       if (!canvasElement) {
-        // console.log(`${logPrefix} Canvas ref not current for page ${pageIndex + 1}. Will show loading.`);
         if (isActive) {
             if(!isLoading) setIsLoading(true); 
             setRenderError(null); 
@@ -95,7 +82,6 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         return; 
       }
       
-      // console.log(`${logPrefix} Attempting render for page ${pageIndex + 1}. URI starts: ${pdfDataUri.substring(0,30)}...`);
       if (isActive) {
          setIsLoading(true);
          setRenderError(null);
@@ -116,11 +102,8 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
         }
 
-        // console.log(`${logPrefix}-render CURRENT CHECK: pdfjsLib.version: ${pdfjsLib.version}, GlobalWorkerOptions.workerSrc value: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
-
         const loadingTask = pdfjsLib.getDocument({ data: pdfDataArray });
         pdf = await loadingTask.promise;
-        // console.log(`${logPrefix}-render PDF loaded. Total pages: ${pdf.numPages}. Target page: ${pageIndex + 1}.`);
 
         if (pageIndex < 0 || pageIndex >= pdf.numPages) {
           throw new Error(`${logPrefix}-render Page index ${pageIndex + 1} out of bounds (Total: ${pdf.numPages}).`);
@@ -162,34 +145,38 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         
         await Promise.race([renderTask.promise, timeoutPromise]);
         
-        // console.log(`${logPrefix}-render Render task completed for page ${pageIndex + 1}.`);
         if (isActive) setIsLoading(false); 
 
-        try { page.cleanup(); } catch (cleanupError) { /* console.warn(`${logPrefix}-render Error during page cleanup:`, cleanupError); */ }
+        try { page.cleanup(); } catch (cleanupError) { /* console.warn */ }
 
       } catch (err: any) {
-        // console.error(`${logPrefix} Error in renderPdfPageToCanvas for page ${pageIndex + 1}:`, err.message);
         if (isActive) {
           setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
           setIsLoading(false); 
         }
       } finally {
         if (pdf && typeof (pdf as any).destroy === 'function') {
-          try { await (pdf as any).destroy(); } catch (destroyError) { /* console.warn(`${logPrefix}-render Error destroying PDF doc:`, destroyError); */ }
+          try { await (pdf as any).destroy(); } catch (destroyError) { /* console.warn */ }
         }
       }
     };
     
-    const timerId = setTimeout(() => {
-        if (isActive) initRender();
-    }, 100); 
+    // Call initRender directly if canvas is available, or it will be called when canvas becomes available
+    // This effect runs when pdfDataUri, pageIndex, rotation, or targetHeight changes.
+    // It also runs initially.
+    if (canvasElement || !pdfDataUri) { // If no URI, we might want to clear/reset
+        initRender();
+    } else {
+        // If there's a URI but no canvas yet, set loading. The effect will re-run when canvas is ready.
+        setIsLoading(true);
+        setRenderError(null);
+    }
+
 
     return () => {
       isActive = false;
-      clearTimeout(timerId);
-      // console.log(`${logPrefix} Cleanup effect for page ${pageIndex + 1}.`);
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix, isLoading]); // Added isLoading to dependency array
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // Removed isLoading
 
 
   const estimatedWidth = targetHeight * (210 / 297); 
@@ -206,7 +193,10 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           detailedErrorMessage = `Worker Load Fail! API: ${apiV}. Worker Path: ${workerSrcPath}. Check CDN or network. Version '${apiV}' may not exist on CDN.`;
       } else if (renderError.includes("Cannot use the same canvas during multiple render() operations")) {
           detailedErrorMessage = `Canvas render conflict for page ${pageIndex + 1}. This suggests overlapping render calls.`;
+      } else if (renderError.includes("Promise.withResolvers")) {
+          detailedErrorMessage = `JS Feature Missing: Promise.withResolvers is not defined. Polyfill might be needed or browser is too old.`;
       }
+
 
       errorDisplay = (
          <div
