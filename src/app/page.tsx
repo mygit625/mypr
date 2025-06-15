@@ -40,7 +40,7 @@ const featuresByCategory: FeatureCategory[] = [
     features: [
       { title: 'Summarize PDF', description: 'Leverage AI to get a concise summary of your PDF content.', href: '/summarize', Icon: FileText, iconColor: 'text-teal-500' },
       { title: 'Repair PDF', description: 'Attempt to fix a damaged PDF and recover data from corrupt PDFs.', href: '/repair', Icon: Wrench, iconColor: 'text-gray-600' },
-      { title: 'OCR PDF', description: 'Convert scanned PDFs to searchable and selectable documents.', href: '#', Icon: ScanText, iconColor: 'text-indigo-500' },
+      { title: 'OCR PDF', description: 'Convert scanned PDFs to searchable and selectable documents using AI.', href: '/ocr', Icon: ScanText, iconColor: 'text-indigo-500' },
     ],
   },
   {
@@ -129,4 +129,3 @@ export default function HomePage() {
     </div>
   );
 }
-
