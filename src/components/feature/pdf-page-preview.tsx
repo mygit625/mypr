@@ -76,9 +76,12 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
       if (!canvasElement) {
         if (isActive) {
+            // If canvas is not yet available but we expect to render, keep/set loading.
+            // This might happen if the key on canvas causes a remount and ref is not yet populated.
             if(!isLoading) setIsLoading(true); 
             setRenderError(null); 
         }
+        // useEffect will re-run when canvasRef is populated by the newly mounted canvas.
         return; 
       }
       
@@ -161,22 +164,17 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
     };
     
-    // Call initRender directly if canvas is available, or it will be called when canvas becomes available
-    // This effect runs when pdfDataUri, pageIndex, rotation, or targetHeight changes.
-    // It also runs initially.
-    if (canvasElement || !pdfDataUri) { // If no URI, we might want to clear/reset
+    if (canvasElement || !pdfDataUri) {
         initRender();
     } else {
-        // If there's a URI but no canvas yet, set loading. The effect will re-run when canvas is ready.
         setIsLoading(true);
         setRenderError(null);
     }
 
-
     return () => {
       isActive = false;
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // Removed isLoading
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]);
 
 
   const estimatedWidth = targetHeight * (210 / 297); 
@@ -240,6 +238,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }}
     >
       <canvas
+        key={`${pdfDataUri}-${pageIndex}-${rotation}`} // Added key here
         ref={canvasRef}
         className={cn("border border-muted shadow-sm rounded-md bg-white transition-opacity duration-300", {
           'opacity-0': isLoading || !!renderError || !pdfDataUri, 
