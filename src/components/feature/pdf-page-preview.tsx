@@ -76,12 +76,9 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
       if (!canvasElement) {
         if (isActive) {
-            // If canvas is not yet available but we expect to render, keep/set loading.
-            // This might happen if the key on canvas causes a remount and ref is not yet populated.
             if(!isLoading) setIsLoading(true); 
             setRenderError(null); 
         }
-        // useEffect will re-run when canvasRef is populated by the newly mounted canvas.
         return; 
       }
       
@@ -93,6 +90,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
 
       let pdf: PDFDocumentProxy | null = null;
+      let pageProxy: PDFPageProxy | null = null; // Renamed to avoid conflict with 'page' in other scopes
 
       try {
         const base64Marker = ';base64,';
@@ -112,10 +110,10 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           throw new Error(`${logPrefix}-render Page index ${pageIndex + 1} out of bounds (Total: ${pdf.numPages}).`);
         }
 
-        const page: PDFPageProxy = await pdf.getPage(pageIndex + 1);
+        pageProxy = await pdf.getPage(pageIndex + 1); // Assign to pageProxy
         const dynamicRotation = (rotation || 0); 
-        const totalRotationForViewport = (page.rotate + dynamicRotation + 360) % 360;
-        const viewportAtScale1 = page.getViewport({ scale: 1, rotation: totalRotationForViewport });
+        const totalRotationForViewport = (pageProxy.rotate + dynamicRotation + 360) % 360;
+        const viewportAtScale1 = pageProxy.getViewport({ scale: 1, rotation: totalRotationForViewport });
 
         if (viewportAtScale1.height <= 0 || viewportAtScale1.width <= 0) {
           throw new Error(`${logPrefix}-render Page viewport@1 has invalid dimensions (H:${viewportAtScale1.height} W:${viewportAtScale1.width}).`);
@@ -124,7 +122,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         if (!Number.isFinite(scale) || scale <= 0) {
           throw new Error(`${logPrefix}-render Invalid scale: ${scale.toFixed(4)}.`);
         }
-        const viewport = page.getViewport({ scale, rotation: totalRotationForViewport });
+        const viewport = pageProxy.getViewport({ scale, rotation: totalRotationForViewport });
         if (viewport.width <= 0 || viewport.height <= 0) {
           throw new Error(`${logPrefix}-render Final viewport has invalid dimensions (W:${viewport.width.toFixed(2)} H:${viewport.height.toFixed(2)}).`);
         }
@@ -141,7 +139,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         const RENDER_TIMEOUT = 15000; 
         const renderContextParams: RenderParameters = { canvasContext: context, viewport: viewport };
         
-        const renderTask = page.render(renderContextParams);
+        const renderTask = pageProxy.render(renderContextParams);
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error(`${logPrefix}-render Render timed out for page ${pageIndex + 1} after ${RENDER_TIMEOUT/1000}s`)), RENDER_TIMEOUT)
         );
@@ -150,16 +148,21 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         
         if (isActive) setIsLoading(false); 
 
-        try { page.cleanup(); } catch (cleanupError) { /* console.warn */ }
-
       } catch (err: any) {
         if (isActive) {
           setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
           setIsLoading(false); 
         }
       } finally {
+        if (pageProxy && typeof pageProxy.cleanup === 'function') {
+          try {
+            pageProxy.cleanup();
+          } catch (cleanupError) {
+             console.warn(`${logPrefix}-warn Error during pageProxy.cleanup():`, cleanupError);
+          }
+        }
         if (pdf && typeof (pdf as any).destroy === 'function') {
-          try { await (pdf as any).destroy(); } catch (destroyError) { /* console.warn */ }
+          try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix}-warn Error during pdf.destroy():`, destroyError); }
         }
       }
     };
@@ -174,7 +177,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     return () => {
       isActive = false;
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]);
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // isLoading removed as a dependency
 
 
   const estimatedWidth = targetHeight * (210 / 297); 
@@ -238,7 +241,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }}
     >
       <canvas
-        key={`${pdfDataUri}-${pageIndex}-${rotation}`} // Added key here
+        key={`${pdfDataUri}-${pageIndex}-${rotation}`}
         ref={canvasRef}
         className={cn("border border-muted shadow-sm rounded-md bg-white transition-opacity duration-300", {
           'opacity-0': isLoading || !!renderError || !pdfDataUri, 
