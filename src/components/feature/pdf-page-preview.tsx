@@ -1,6 +1,20 @@
 
 "use client";
 
+// Polyfill for Promise.withResolvers
+// Required by pdfjs-dist v4.0.379+ if the environment doesn't support it.
+if (typeof Promise.withResolvers !== 'function') {
+  Promise.withResolvers = function withResolvers<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: any) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
@@ -9,30 +23,27 @@ import { FileWarning, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // CRITICAL DIAGNOSTIC LOGS:
-console.log('[PdfPagePreview] Imported pdfjsLib object:', pdfjsLib);
+// console.log('[PdfPagePreview] Imported pdfjsLib object:', pdfjsLib);
 const importedApiVersion = pdfjsLib.version;
-console.log('[PdfPagePreview] Imported pdfjsLib.version:', importedApiVersion);
+// console.log('[PdfPagePreview] Imported pdfjsLib.version:', importedApiVersion);
 
-// Dynamically set workerSrc based on the imported API version.
-// This aims to match the worker version to whatever the main API reports.
-// If importedApiVersion is unusual (e.g., "4.10.38"), this will likely result in a 404 for the worker.
+
 if (typeof window !== 'undefined' && importedApiVersion) {
     const dynamicWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${importedApiVersion}/pdf.worker.min.mjs`;
     if (pdfjsLib.GlobalWorkerOptions.workerSrc !== dynamicWorkerSrc) {
-        console.log(`[PdfPagePreview] Attempting to set pdfjsLib.GlobalWorkerOptions.workerSrc to: ${dynamicWorkerSrc} (based on imported API version: ${importedApiVersion})`);
+        // console.log(`[PdfPagePreview] Attempting to set pdfjsLib.GlobalWorkerOptions.workerSrc to: ${dynamicWorkerSrc} (based on imported API version: ${importedApiVersion})`);
         pdfjsLib.GlobalWorkerOptions.workerSrc = dynamicWorkerSrc;
-        console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc is now (dynamically set): ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+        // console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc is now (dynamically set): ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
     } else {
-        console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already dynamically set to: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+        // console.log(`[PdfPagePreview] pdfjsLib.GlobalWorkerOptions.workerSrc was already dynamically set to: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
     }
 } else if (typeof window !== 'undefined') {
-    // Fallback if importedApiVersion is somehow not available. This shouldn't happen given the above log.
-    const fallbackVersion = "4.4.168"; // Fallback to package.json version
+    const fallbackVersion = "4.4.168"; 
     const fallbackWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${fallbackVersion}/pdf.worker.min.mjs`;
     pdfjsLib.GlobalWorkerOptions.workerSrc = fallbackWorkerSrc;
-    console.warn(`[PdfPagePreview] importedApiVersion not available. WorkerSrc set to fallback based on version ${fallbackVersion}: ${fallbackWorkerSrc}`);
+    // console.warn(`[PdfPagePreview] importedApiVersion not available. WorkerSrc set to fallback based on version ${fallbackVersion}: ${fallbackWorkerSrc}`);
 } else {
-    console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment).');
+    // console.log('[PdfPagePreview] Skipping workerSrc setup (not in browser environment).');
 }
 
 
@@ -67,7 +78,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       if (!isActive) return;
 
       if (!pdfDataUri) {
-        console.log(`${logPrefix} No PDF data URI provided for page ${pageIndex + 1}.`);
+        // console.log(`${logPrefix} No PDF data URI provided for page ${pageIndex + 1}.`);
         if (isActive) {
           setRenderError("No PDF data provided.");
           setIsLoading(false);
@@ -76,19 +87,19 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       }
 
       if (!canvasElement) {
-        console.log(`${logPrefix} Canvas ref not current for page ${pageIndex + 1}. Will show loading.`);
+        // console.log(`${logPrefix} Canvas ref not current for page ${pageIndex + 1}. Will show loading.`);
         if (isActive) {
-            if(!isLoading) setIsLoading(true); // Ensure loading is true if canvas not ready
-            setRenderError(null); // Clear previous errors
+            if(!isLoading) setIsLoading(true); 
+            setRenderError(null); 
         }
-        return; // Wait for canvas ref
+        return; 
       }
       
-      console.log(`${logPrefix} Attempting render for page ${pageIndex + 1}. URI starts: ${pdfDataUri.substring(0,30)}...`);
+      // console.log(`${logPrefix} Attempting render for page ${pageIndex + 1}. URI starts: ${pdfDataUri.substring(0,30)}...`);
       if (isActive) {
          setIsLoading(true);
          setRenderError(null);
-         setActualUsedApiVersion(pdfjsLib.version); // Store the version actually used by getDocument
+         setActualUsedApiVersion(pdfjsLib.version); 
          setCurrentWorkerSrc(pdfjsLib.GlobalWorkerOptions.workerSrc as string);
       }
 
@@ -105,19 +116,18 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
         }
 
-        console.log(`${logPrefix}-render CURRENT CHECK: pdfjsLib.version: ${pdfjsLib.version}, GlobalWorkerOptions.workerSrc value: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+        // console.log(`${logPrefix}-render CURRENT CHECK: pdfjsLib.version: ${pdfjsLib.version}, GlobalWorkerOptions.workerSrc value: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
 
         const loadingTask = pdfjsLib.getDocument({ data: pdfDataArray });
         pdf = await loadingTask.promise;
-        console.log(`${logPrefix}-render PDF loaded. Total pages: ${pdf.numPages}. Target page: ${pageIndex + 1}.`);
+        // console.log(`${logPrefix}-render PDF loaded. Total pages: ${pdf.numPages}. Target page: ${pageIndex + 1}.`);
 
         if (pageIndex < 0 || pageIndex >= pdf.numPages) {
           throw new Error(`${logPrefix}-render Page index ${pageIndex + 1} out of bounds (Total: ${pdf.numPages}).`);
         }
 
         const page: PDFPageProxy = await pdf.getPage(pageIndex + 1);
-        const dynamicRotation = (rotation || 0); // Default to 0 if undefined
-        // Original page rotation + dynamic rotation from props
+        const dynamicRotation = (rotation || 0); 
         const totalRotationForViewport = (page.rotate + dynamicRotation + 360) % 360;
         const viewportAtScale1 = page.getViewport({ scale: 1, rotation: totalRotationForViewport });
 
@@ -152,20 +162,20 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         
         await Promise.race([renderTask.promise, timeoutPromise]);
         
-        console.log(`${logPrefix}-render Render task completed for page ${pageIndex + 1}.`);
+        // console.log(`${logPrefix}-render Render task completed for page ${pageIndex + 1}.`);
         if (isActive) setIsLoading(false); 
 
-        try { page.cleanup(); } catch (cleanupError) { console.warn(`${logPrefix}-render Error during page cleanup:`, cleanupError); }
+        try { page.cleanup(); } catch (cleanupError) { /* console.warn(`${logPrefix}-render Error during page cleanup:`, cleanupError); */ }
 
       } catch (err: any) {
-        console.error(`${logPrefix} Error in renderPdfPageToCanvas for page ${pageIndex + 1}:`, err.message);
+        // console.error(`${logPrefix} Error in renderPdfPageToCanvas for page ${pageIndex + 1}:`, err.message);
         if (isActive) {
           setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
           setIsLoading(false); 
         }
       } finally {
         if (pdf && typeof (pdf as any).destroy === 'function') {
-          try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix}-render Error destroying PDF doc:`, destroyError); }
+          try { await (pdf as any).destroy(); } catch (destroyError) { /* console.warn(`${logPrefix}-render Error destroying PDF doc:`, destroyError); */ }
         }
       }
     };
@@ -177,9 +187,9 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     return () => {
       isActive = false;
       clearTimeout(timerId);
-      console.log(`${logPrefix} Cleanup effect for page ${pageIndex + 1}.`);
+      // console.log(`${logPrefix} Cleanup effect for page ${pageIndex + 1}.`);
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]);
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix, isLoading]); // Added isLoading to dependency array
 
 
   const estimatedWidth = targetHeight * (210 / 297); 
@@ -211,7 +221,9 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
                         ? `Worker Fail (API: ${apiV})`
                         : renderError.includes("Cannot use the same canvas")
                             ? `Canvas Conflict`
-                            : 'PDF Render Error'
+                            : renderError.includes("Promise.withResolvers")
+                                ? `JS Feature Missing`
+                                : 'PDF Render Error'
                 }
             </p>
             {(renderError.includes("The API version") && renderError.includes("does not match")) &&
@@ -219,6 +231,9 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
             }
             {((renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && (workerSrcPath.includes(".worker.min.mjs") || workerSrcPath.includes(".worker.js"))) &&
              <p className="leading-tight text-[9px] opacity-80 mt-0.5 px-1">Worker for API '{apiV}' might be missing on CDN.</p>
+            }
+            {(renderError.includes("Promise.withResolvers")) &&
+             <p className="leading-tight text-[9px] opacity-80 mt-0.5 px-1">Modern JS feature needed by PDF library.</p>
             }
           </div>
       );
@@ -275,5 +290,3 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 };
 
 export default PdfPagePreview;
-
-    
