@@ -1,6 +1,20 @@
 
 "use client";
 
+// Polyfill for Promise.withResolvers
+// Required by pdfjs-dist v4.0.379+ if the environment doesn't support it.
+if (typeof Promise.withResolvers !== 'function') {
+  Promise.withResolvers = function withResolvers<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: any) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
 import { useState, useEffect } from 'react';
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
