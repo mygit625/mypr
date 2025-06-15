@@ -49,7 +49,7 @@ const featuresByCategory: FeatureCategory[] = [
       { title: 'Word to PDF', description: 'Make DOC and DOCX files easy to read by converting them to PDF.', href: '#', Icon: FileCode, iconColor: 'text-blue-700' },
       { title: 'PowerPoint to PDF', description: 'Make PPT and PPTX slideshows easy to view by converting to PDF.', href: '#', Icon: Presentation, iconColor: 'text-orange-700' },
       { title: 'Excel to PDF', description: 'Make Excel spreadsheets easy to read by converting them to PDF.', href: '#', Icon: Table2, iconColor: 'text-green-700' },
-      { title: 'JPG to PDF', description: 'Convert JPG images to PDF. Adjust orientation and margins.', href: '#', Icon: ImagePlus, iconColor: 'text-yellow-600' }, // This might be JPG to PDF, not PDF to JPG for this category
+      { title: 'JPG to PDF', description: 'Convert JPG images to PDF. Adjust orientation and margins.', href: '/jpg-to-pdf', Icon: ImagePlus, iconColor: 'text-yellow-600' },
       { title: 'HTML to PDF', description: 'Convert webpages in HTML to PDF. Copy and paste the URL.', href: '#', Icon: Globe, iconColor: 'text-sky-500' },
     ],
   },
