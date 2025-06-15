@@ -30,7 +30,7 @@ if (typeof window !== 'undefined' && importedApiVersion) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = dynamicWorkerSrc;
     }
 } else if (typeof window !== 'undefined') {
-    const fallbackVersion = "4.4.168"; 
+    const fallbackVersion = "4.4.168";
     const fallbackWorkerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${fallbackVersion}/pdf.worker.min.mjs`;
     pdfjsLib.GlobalWorkerOptions.workerSrc = fallbackWorkerSrc;
 }
@@ -60,37 +60,64 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
   useEffect(() => {
     let isActive = true;
-    const canvasElement = canvasRef.current;
+    // Capture the current canvas ref for this effect run.
+    // The initRender async function will use this captured value.
+    const canvasElementFromEffectStart = canvasRef.current;
     const logPrefix = `${stableInstanceLogPrefix}-eff`;
 
+    // Always reset loading and error state at the beginning of an effect run
+    // that intends to render.
+    if (pdfDataUri && canvasElementFromEffectStart) {
+        setIsLoading(true);
+        setRenderError(null);
+    } else if (!pdfDataUri) {
+        // If no data URI, it's not loading and there's no PDF error, but might be "no data"
+        setIsLoading(false);
+        setRenderError(null); // Or set "No PDF data" if preferred to show in component
+    } else {
+        // pdfDataUri is present, but canvasElement is not (yet).
+        // Set loading, as we expect canvas to appear.
+        setIsLoading(true);
+        setRenderError(null);
+    }
+
+
     const initRender = async () => {
+      // Use the canvas element captured at the start of this effect's execution.
+      const currentCanvas = canvasRef.current; // Re-check ref inside async function for latest
+      
       if (!isActive) return;
 
       if (!pdfDataUri) {
         if (isActive) {
-          setRenderError("No PDF data provided.");
+          // This case should ideally be handled by parent or by initial state setting.
+          // For robustness, ensure loading is false if no data.
           setIsLoading(false);
+          setRenderError("No PDF data provided."); // Or clear error if this is expected
         }
         return;
       }
 
-      if (!canvasElement) {
+      if (!currentCanvas) {
+        // Canvas not available yet. isLoading is true. Effect will re-run or parent will.
         if (isActive) {
-            if(!isLoading) setIsLoading(true); 
-            setRenderError(null); 
+            // console.warn(`${logPrefix} canvas is not yet available for rendering.`);
+            // Keep isLoading true, error null.
         }
-        return; 
+        return;
       }
       
-      if (isActive) {
-         setIsLoading(true);
-         setRenderError(null);
-         setActualUsedApiVersion(pdfjsLib.version); 
-         setCurrentWorkerSrc(pdfjsLib.GlobalWorkerOptions.workerSrc as string);
-      }
+      // If we've reached here, we have a pdfDataUri and a currentCanvas.
+      // Ensure loading is true if it wasn't already (e.g. if canvas appeared later).
+      if (isActive && !isLoading) setIsLoading(true);
+      if (isActive && renderError) setRenderError(null);
+
+
+      setActualUsedApiVersion(pdfjsLib.version);
+      setCurrentWorkerSrc(pdfjsLib.GlobalWorkerOptions.workerSrc as string);
 
       let pdf: PDFDocumentProxy | null = null;
-      let pageProxy: PDFPageProxy | null = null; // Renamed to avoid conflict with 'page' in other scopes
+      let pageProxy: PDFPageProxy | null = null;
 
       try {
         const base64Marker = ';base64,';
@@ -106,12 +133,20 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         const loadingTask = pdfjsLib.getDocument({ data: pdfDataArray });
         pdf = await loadingTask.promise;
 
+        if (!isActive) { if (pdf && typeof (pdf as any).destroy === 'function') {await (pdf as any).destroy();} return; }
+
         if (pageIndex < 0 || pageIndex >= pdf.numPages) {
           throw new Error(`${logPrefix}-render Page index ${pageIndex + 1} out of bounds (Total: ${pdf.numPages}).`);
         }
 
-        pageProxy = await pdf.getPage(pageIndex + 1); // Assign to pageProxy
-        const dynamicRotation = (rotation || 0); 
+        pageProxy = await pdf.getPage(pageIndex + 1);
+        if (!isActive) {
+            if (pageProxy && typeof pageProxy.cleanup === 'function') { pageProxy.cleanup(); }
+            if (pdf && typeof (pdf as any).destroy === 'function') { await (pdf as any).destroy(); }
+            return;
+        }
+
+        const dynamicRotation = (rotation || 0);
         const totalRotationForViewport = (pageProxy.rotate + dynamicRotation + 360) % 360;
         const viewportAtScale1 = pageProxy.getViewport({ scale: 1, rotation: totalRotationForViewport });
 
@@ -127,67 +162,69 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           throw new Error(`${logPrefix}-render Final viewport has invalid dimensions (W:${viewport.width.toFixed(2)} H:${viewport.height.toFixed(2)}).`);
         }
 
-        const context = canvasElement.getContext('2d');
+        const context = currentCanvas.getContext('2d');
         if (!context) throw new Error(`${logPrefix}-render Could not get canvas 2D context.`);
-        
+
         const newCanvasWidth = Math.max(1, Math.round(viewport.width));
         const newCanvasHeight = Math.max(1, Math.round(viewport.height));
-        
-        canvasElement.height = newCanvasHeight; 
-        canvasElement.width = newCanvasWidth;
 
-        const RENDER_TIMEOUT = 15000; 
+        currentCanvas.height = newCanvasHeight;
+        currentCanvas.width = newCanvasWidth;
+        context.clearRect(0, 0, newCanvasWidth, newCanvasHeight); // Explicitly clear
+
+        const RENDER_TIMEOUT = 15000;
         const renderContextParams: RenderParameters = { canvasContext: context, viewport: viewport };
-        
+
         const renderTask = pageProxy.render(renderContextParams);
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error(`${logPrefix}-render Render timed out for page ${pageIndex + 1} after ${RENDER_TIMEOUT/1000}s`)), RENDER_TIMEOUT)
         );
-        
+
         await Promise.race([renderTask.promise, timeoutPromise]);
-        
-        if (isActive) setIsLoading(false); 
+
+        if (isActive) setIsLoading(false);
 
       } catch (err: any) {
         if (isActive) {
           setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
-          setIsLoading(false); 
+          setIsLoading(false);
         }
       } finally {
-        if (pageProxy && typeof pageProxy.cleanup === 'function') {
-          try {
-            pageProxy.cleanup();
-          } catch (cleanupError) {
-             console.warn(`${logPrefix}-warn Error during pageProxy.cleanup():`, cleanupError);
+        if (isActive) { // Only cleanup if component is still active
+          if (pageProxy && typeof pageProxy.cleanup === 'function') {
+            try { pageProxy.cleanup(); } catch (cleanupError) { console.warn(`${logPrefix}-warn Error during pageProxy.cleanup():`, cleanupError); }
           }
-        }
-        if (pdf && typeof (pdf as any).destroy === 'function') {
-          try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix}-warn Error during pdf.destroy():`, destroyError); }
+          if (pdf && typeof (pdf as any).destroy === 'function') {
+            try { await (pdf as any).destroy(); } catch (destroyError) { console.warn(`${logPrefix}-warn Error during pdf.destroy():`, destroyError); }
+          }
+        } else { // If not active, but resources were allocated, still try to clean them up.
+          if (pageProxy && typeof pageProxy.cleanup === 'function') { try { pageProxy.cleanup(); } catch (e) { /* ignore */ } }
+          if (pdf && typeof (pdf as any).destroy === 'function') { try { await (pdf as any).destroy(); } catch (e) { /* ignore */ } }
         }
       }
     };
-    
-    if (canvasElement || !pdfDataUri) {
+
+    // Trigger rendering if we have data and potentially a canvas.
+    // initRender itself will check for canvas.
+    if (pdfDataUri) {
         initRender();
-    } else {
-        setIsLoading(true);
-        setRenderError(null);
     }
+
 
     return () => {
       isActive = false;
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix]); // isLoading removed as a dependency
+  }, [pdfDataUri, pageIndex, rotation, targetHeight, stableInstanceLogPrefix, isLoading, renderError]);
 
 
-  const estimatedWidth = targetHeight * (210 / 297); 
+  const estimatedWidth = targetHeight * (210 / 297);
 
   let errorDisplay = null;
   if (renderError) {
       let detailedErrorMessage = renderError;
-      const apiV = actualUsedApiVersion || importedApiVersion || 'N/A'; 
+      const apiV = actualUsedApiVersion || importedApiVersion || 'N/A';
       const workerSrcPath = currentWorkerSrc || 'N/A';
-      
+
       if (renderError.includes("The API version") && renderError.includes("does not match the Worker version")) {
           detailedErrorMessage = `PDF Library Mismatch! Imported API: ${apiV}, Worker expected to match. Worker Path: ${workerSrcPath}. This is an environment setup issue.`;
       } else if ((renderError.includes("Failed to fetch") || renderError.includes("NetworkError")) && (workerSrcPath.includes(".worker.min.mjs") || workerSrcPath.includes(".worker.js"))) {
@@ -229,40 +266,40 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
           </div>
       );
   }
-  
+
   return (
     <div
       className={cn("relative bg-transparent overflow-hidden flex items-center justify-center border border-dashed border-muted-foreground/30 rounded-md", className)}
       style={{
         height: `${targetHeight}px`,
-        width: `auto`, 
-        minWidth: `${Math.max(50, Math.round(estimatedWidth * 0.5))}px`, 
-        maxWidth: `${Math.max(100, Math.round(estimatedWidth * 2))}px` 
+        width: `auto`,
+        minWidth: `${Math.max(50, Math.round(estimatedWidth * 0.5))}px`,
+        maxWidth: `${Math.max(100, Math.round(estimatedWidth * 2))}px`
       }}
     >
       <canvas
-        key={`${pdfDataUri}-${pageIndex}-${rotation}`}
+        key={`${pdfDataUri}-${pageIndex}-${rotation}`} // This key is crucial
         ref={canvasRef}
         className={cn("border border-muted shadow-sm rounded-md bg-white transition-opacity duration-300", {
-          'opacity-0': isLoading || !!renderError || !pdfDataUri, 
+          'opacity-0': isLoading || !!renderError || !pdfDataUri,
           'opacity-100': !isLoading && !renderError && pdfDataUri,
         })}
         style={{
           maxWidth: '100%',
           maxHeight: '100%',
-          objectFit: 'contain', 
+          objectFit: 'contain',
         }}
         role="img"
         aria-label={`Preview of PDF page ${pageIndex + 1}`}
       />
-      
-      {isLoading && !renderError && pdfDataUri && ( 
+
+      {isLoading && !renderError && pdfDataUri && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-background/30 backdrop-blur-sm">
             <Skeleton
                 className="rounded-md bg-muted/50"
                 style={{
-                  height: `calc(100% - 4px)`, 
-                  width: `calc(100% - 4px)`   
+                  height: `calc(100% - 4px)`,
+                  width: `calc(100% - 4px)`
                 }}
                 aria-label={`Loading preview for page ${pageIndex + 1}`}
             />
@@ -271,7 +308,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
       {errorDisplay}
 
-       {(!pdfDataUri && !isLoading && !renderError) && ( 
+       {(!pdfDataUri && !isLoading && !renderError) && (
          <Skeleton
             className={cn("rounded-md bg-muted/30 w-full h-full")}
             aria-label={`No PDF loaded for page ${pageIndex + 1} preview`}
