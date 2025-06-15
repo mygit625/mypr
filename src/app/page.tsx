@@ -49,7 +49,7 @@ const featuresByCategory: FeatureCategory[] = [
       { title: 'Word to PDF', description: 'Make DOC and DOCX files easy to read by converting them to PDF.', href: '#', Icon: FileCode, iconColor: 'text-blue-700' },
       { title: 'PowerPoint to PDF', description: 'Make PPT and PPTX slideshows easy to view by converting to PDF.', href: '#', Icon: Presentation, iconColor: 'text-orange-700' },
       { title: 'Excel to PDF', description: 'Make Excel spreadsheets easy to read by converting them to PDF.', href: '#', Icon: Table2, iconColor: 'text-green-700' },
-      { title: 'JPG to PDF', description: 'Convert JPG images to PDF. Adjust orientation and margins.', href: '#', Icon: ImagePlus, iconColor: 'text-yellow-600' },
+      { title: 'JPG to PDF', description: 'Convert JPG images to PDF. Adjust orientation and margins.', href: '#', Icon: ImagePlus, iconColor: 'text-yellow-600' }, // This might be JPG to PDF, not PDF to JPG for this category
       { title: 'HTML to PDF', description: 'Convert webpages in HTML to PDF. Copy and paste the URL.', href: '#', Icon: Globe, iconColor: 'text-sky-500' },
     ],
   },
@@ -59,7 +59,7 @@ const featuresByCategory: FeatureCategory[] = [
       { title: 'PDF to Word', description: 'Easily convert your PDF files into editable DOC and DOCX documents.', href: '#', Icon: FileCode, iconColor: 'text-blue-500' },
       { title: 'PDF to PowerPoint', description: 'Convert your PDFs into easy-to-edit PPT and PPTX slideshows.', href: '#', Icon: BarChart3, iconColor: 'text-red-600' },
       { title: 'PDF to Excel', description: 'Pull data straight from PDFs into Excel spreadsheets in a few clicks.', href: '#', Icon: FileSpreadsheet, iconColor: 'text-green-600' },
-      { title: 'PDF to JPG', description: 'Convert each PDF page into a JPG or extract all images in a PDF.', href: '#', Icon: FileImage, iconColor: 'text-yellow-500' },
+      { title: 'PDF to JPG', description: 'Convert each PDF page into a JPG or extract all images in a PDF.', href: '/pdf-to-jpg', Icon: FileImage, iconColor: 'text-yellow-500' },
       { title: 'PDF to PDF/A', description: 'Transform PDF to PDF/A for long-term archiving.', href: '#', Icon: Archive, iconColor: 'text-slate-500' },
     ],
   },
