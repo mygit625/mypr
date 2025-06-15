@@ -252,7 +252,7 @@ export default function RotatePdfPage() {
 
   const displayItems: DisplayItem[] = [];
   if (selectedPdfItems.length > 0 || isLoadingPreviews) {
-    displayItems.push({ type: 'add_button', id: 'add-slot-0', insertAtIndex: 0 });
+    // REMOVED: displayItems.push({ type: 'add_button', id: 'add-slot-0', insertAtIndex: 0 });
     selectedPdfItems.forEach((fileItem, index) => {
       displayItems.push({ type: 'pdf_file', id: fileItem.id, data: fileItem, originalItemIndex: index });
       displayItems.push({ type: 'add_button', id: `add-slot-${index + 1}`, insertAtIndex: index + 1 });
@@ -466,5 +466,3 @@ export default function RotatePdfPage() {
     </div>
   );
 }
-
-    
