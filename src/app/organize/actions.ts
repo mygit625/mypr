@@ -1,8 +1,8 @@
 
 "use server";
 
-// Polyfill for Promise.withResolvers
-// This is required by pdfjs-dist v4.0.379+ if the environment (e.g., Node.js < 22) doesn't support it.
+// Polyfill for Promise.withResolvers - Kept for broader compatibility if other server-side code might need it,
+// though pdfjs-dist is being removed from this specific file.
 if (typeof Promise.withResolvers !== 'function') {
   Promise.withResolvers = function withResolvers<T>() {
     let resolve!: (value: T | PromiseLike<T>) => void;
@@ -15,26 +15,13 @@ if (typeof Promise.withResolvers !== 'function') {
   };
 }
 
-import { PDFDocument, degrees } from 'pdf-lib'; // Import degrees
+import { PDFDocument, degrees } from 'pdf-lib';
 import type { Buffer } from 'buffer';
-
-// --- START: Existing code for Rotate/Remove Pages ---
-import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs'; 
-import type { PDFDocumentProxy as PDFJSInternalDocumentProxy } from 'pdfjs-dist/types/src/display/api';
-
-// Note: This workerSrc setup below only runs if 'window' is defined, so it won't apply during server-side execution of getInitialPageDataAction.
-// pdfjs-dist might behave differently or attempt different initialization paths on the server.
-if (typeof window !== 'undefined') { 
-    if (pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-    }
-}
-
 
 export interface PageData {
   id: string;
   originalIndex: number;
-  rotation: number; 
+  rotation: number;
   width: number;
   height: number;
   isDeleted?: boolean;
@@ -59,30 +46,40 @@ export async function getInitialPageDataAction(input: GetInitialPageDataInput): 
     }
     const pdfBytes = Buffer.from(input.pdfDataUri.split(',')[1], 'base64');
 
-    const arrayBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
-    // Modified to disable worker for server-side execution
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, disableWorker: true });
-    const pdfDoc: PDFJSInternalDocumentProxy = await loadingTask.promise;
+    const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
 
     const pagesData: PageData[] = [];
-    for (let i = 0; i < pdfDoc.numPages; i++) {
-      const page = await pdfDoc.getPage(i + 1);
-      const viewport = page.getViewport({ scale: 1, rotation: page.rotate }); 
+    const pageCount = pdfDoc.getPageCount();
+
+    for (let i = 0; i < pageCount; i++) {
+      const page = pdfDoc.getPage(i);
+      const { width: intrinsicWidth, height: intrinsicHeight } = page.getSize();
+      const rotationAngle = page.getRotation().angle;
+
+      let actualWidth = intrinsicWidth;
+      let actualHeight = intrinsicHeight;
+
+      // Adjust width and height based on rotation to reflect display dimensions
+      if (rotationAngle === 90 || rotationAngle === 270) {
+        actualWidth = intrinsicHeight; // When rotated, width becomes height
+        actualHeight = intrinsicWidth;  // and height becomes width
+      }
+
       pagesData.push({
         id: crypto.randomUUID(),
         originalIndex: i,
-        rotation: page.rotate || 0, 
-        width: viewport.width,
-        height: viewport.height,
+        rotation: rotationAngle,
+        width: actualWidth,
+        height: actualHeight,
         isDeleted: false,
       });
     }
-    if (typeof (pdfDoc as any).destroy === 'function') {
-        await (pdfDoc as any).destroy();
-    }
     return { pages: pagesData };
   } catch (error: any) {
-    console.error("Error in getInitialPageDataAction:", error);
+    console.error("Error in getInitialPageDataAction (using pdf-lib):", error);
+    if (error.message && error.message.toLowerCase().includes('encrypted')) {
+        return { error: "The PDF is encrypted. Please provide a decrypted PDF to extract page data." };
+    }
     return { error: error.message || "Failed to load page data from PDF." };
   }
 }
@@ -214,5 +211,3 @@ export async function assembleIndividualPagesAction(input: AssembleIndividualPag
   }
 }
 // --- END: New code for page-level assembly ---
-
-    
