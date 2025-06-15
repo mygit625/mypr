@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ImagePlus, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download } from 'lucide-react';
+import { ImagePlus, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, FileType } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { convertJpgsToPdfAction } from './actions';
+import { convertJpgsToPdfAction, convertSingleJpgToPdfAction } from './actions';
 import { cn } from '@/lib/utils';
 
 interface SelectedImageItem {
@@ -19,8 +19,6 @@ interface SelectedImageItem {
   file: File;
   dataUri: string;
   name: string;
-  // width?: number; // Optional: store original image width for more precise preview layout
-  // height?: number; // Optional: store original image height
 }
 
 interface DisplayItem {
@@ -31,12 +29,13 @@ interface DisplayItem {
   insertAtIndex?: number;
 }
 
-const PREVIEW_TARGET_HEIGHT_JPG_TO_PDF = 180; // Approximate height for image previews
+const PREVIEW_TARGET_HEIGHT_JPG_TO_PDF = 180; 
 
 export default function JpgToPdfPage() {
   const [selectedImageItems, setSelectedImageItems] = useState<SelectedImageItem[]>([]);
-  const [isLoadingPreviews, setIsLoadingPreviews] = useState(false); // For reading files
-  const [isConverting, setIsConverting] = useState(false); // For PDF conversion
+  const [isLoadingPreviews, setIsLoadingPreviews] = useState(false); 
+  const [isConverting, setIsConverting] = useState(false); 
+  const [isConvertingSingleImageId, setIsConvertingSingleImageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -62,7 +61,6 @@ export default function JpgToPdfPage() {
         });
         continue;
       }
-      // Check for duplicates before processing
       if (selectedImageItems.some(item => item.name === file.name && item.file.size === file.size && item.file.lastModified === file.lastModified)) {
         console.warn(`Skipping duplicate image file: ${file.name}`);
         toast({ description: `Duplicate file skipped: ${file.name}`});
@@ -71,18 +69,11 @@ export default function JpgToPdfPage() {
 
       try {
         const dataUri = await readFileAsDataURL(file);
-        // Optional: Get image dimensions client-side if needed for more complex layouts
-        // const img = new Image();
-        // img.src = dataUri;
-        // await new Promise(resolve => img.onload = resolve);
-
         newImageItems.push({
           id: crypto.randomUUID(),
           file: file,
           dataUri: dataUri,
           name: file.name,
-          // width: img.width,
-          // height: img.height,
         });
       } catch (e: any) {
         console.error("Error processing image file:", file.name, e);
@@ -102,7 +93,6 @@ export default function JpgToPdfPage() {
 
     const processedNewImageItems = await processFiles(newFilesFromInput);
     if (processedNewImageItems.length === 0 && newFilesFromInput.length > 0) {
-        // All files might have been skipped (e.g., wrong type, duplicates)
         return;
     }
 
@@ -152,9 +142,37 @@ export default function JpgToPdfPage() {
     toast({ description: "Images sorted by name." });
   };
 
-  const handleDownloadOriginalJpg = (item: SelectedImageItem) => {
-    downloadDataUri(item.dataUri, item.name);
-    toast({ description: `Downloading original image: ${item.name}` });
+  const handleDownloadSingleImageAsPdf = async (item: SelectedImageItem) => {
+    setIsConvertingSingleImageId(item.id);
+    setError(null);
+    try {
+      const result = await convertSingleJpgToPdfAction({
+        jpgDataUri: item.dataUri,
+        filename: item.name
+      });
+
+      if (result.error) {
+        setError(result.error);
+        toast({
+          title: "Conversion Error",
+          description: result.error,
+          variant: "destructive",
+        });
+      } else if (result.pdfDataUri) {
+        const pdfFileName = item.name.replace(/\.(jpg|jpeg)$/i, '.pdf');
+        downloadDataUri(result.pdfDataUri, pdfFileName);
+        toast({
+          title: "PDF Downloaded",
+          description: `${item.name} converted to PDF and download started.`,
+        });
+      }
+    } catch (e: any) {
+      const errorMessage = e.message || `Failed to convert ${item.name} to PDF.`;
+      setError(errorMessage);
+      toast({ title: "Conversion Failed", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsConvertingSingleImageId(null);
+    }
   };
 
   const handleCombineAndDownload = async () => {
@@ -173,7 +191,7 @@ export default function JpgToPdfPage() {
     try {
       const jpgsToConvert = selectedImageItems.map(item => ({
         dataUri: item.dataUri,
-        // filename: item.name // Pass filename if action uses it
+        filename: item.name 
       }));
 
       const result = await convertJpgsToPdfAction({ jpgsToConvert });
@@ -191,7 +209,7 @@ export default function JpgToPdfPage() {
           title: "Conversion Successful!",
           description: "Your JPG images have been converted to PDF and download has started.",
         });
-        setSelectedImageItems([]); // Clear images after successful conversion
+        setSelectedImageItems([]); 
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during PDF creation.";
@@ -218,10 +236,6 @@ export default function JpgToPdfPage() {
 
   const displayItems: DisplayItem[] = [];
   if (selectedImageItems.length > 0 || isLoadingPreviews) {
-    // Add initial "add button" if list is empty but previews are loading, or if items exist.
-    // if (selectedImageItems.length > 0 || (isLoadingPreviews && selectedImageItems.length === 0) ) {
-    //      displayItems.push({ type: 'add_button', id: 'add-slot-0', insertAtIndex: 0 });
-    // }
     selectedImageItems.forEach((imgItem, index) => {
       displayItems.push({ type: 'image_card', id: imgItem.id, data: imgItem, originalItemIndex: index });
       displayItems.push({ type: 'add_button', id: `add-slot-${index + 1}`, insertAtIndex: index + 1 });
@@ -274,6 +288,7 @@ export default function JpgToPdfPage() {
                 {displayItems.map((item) => {
                   if (item.type === 'image_card' && item.data) {
                     const imgItem = item.data;
+                    const isCurrentlyConvertingThisImage = isConvertingSingleImageId === imgItem.id;
                     return (
                       <Card
                         key={imgItem.id}
@@ -313,10 +328,15 @@ export default function JpgToPdfPage() {
                           variant="outline"
                           size="sm"
                           className="w-full mt-2"
-                          onClick={() => handleDownloadOriginalJpg(imgItem)}
-                          disabled={isConverting}
+                          onClick={() => handleDownloadSingleImageAsPdf(imgItem)}
+                          disabled={isConverting || isConvertingSingleImageId !== null}
                         >
-                          <Download className="mr-1.5 h-3.5 w-3.5" /> Download JPG
+                          {isCurrentlyConvertingThisImage ? (
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <FileType className="mr-1.5 h-3.5 w-3.5" />
+                          )}
+                          Download as PDF
                         </Button>
                         <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1.5" aria-hidden="true" />
                       </Card>
@@ -327,8 +347,8 @@ export default function JpgToPdfPage() {
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => { if (!isLoadingPreviews && !isConverting) handleAddFilesTrigger(item.insertAtIndex!); }}
-                          disabled={isLoadingPreviews || isConverting}
+                          onClick={() => { if (!isLoadingPreviews && !isConverting && !isConvertingSingleImageId) handleAddFilesTrigger(item.insertAtIndex!); }}
+                          disabled={isLoadingPreviews || isConverting || isConvertingSingleImageId !== null}
                           className="rounded-full h-10 w-10 shadow-sm hover:shadow-md hover:border-primary/80 hover:text-primary/80 transition-all"
                           aria-label={`Add JPG images at position ${item.insertAtIndex}`}
                         >
@@ -343,7 +363,7 @@ export default function JpgToPdfPage() {
                   }
                   return null;
                 })}
-                 {isLoadingPreviews && selectedImageItems.length > 0 && displayItems.length === 0 && ( // When processing subsequent files and list temporarily empty
+                 {isLoadingPreviews && selectedImageItems.length > 0 && displayItems.length === 0 && ( 
                     <div className="col-span-full flex justify-center items-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         <p className="ml-2 text-muted-foreground">Loading image previews...</p>
@@ -365,15 +385,14 @@ export default function JpgToPdfPage() {
                     Drag and drop image cards to set their order in the final PDF.
                   </AlertDescription>
                 </Alert>
-                <Button onClick={handleSortByName} variant="outline" className="w-full" disabled={selectedImageItems.length < 2 || isConverting}>
+                <Button onClick={handleSortByName} variant="outline" className="w-full" disabled={selectedImageItems.length < 2 || isConverting || isConvertingSingleImageId !== null}>
                   <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort Images A-Z
                 </Button>
-                {/* Future options like page size, orientation could go here */}
               </CardContent>
               <CardFooter>
                 <Button
                   onClick={handleCombineAndDownload}
-                  disabled={selectedImageItems.length < 1 || isConverting || isLoadingPreviews}
+                  disabled={selectedImageItems.length < 1 || isConverting || isLoadingPreviews || isConvertingSingleImageId !== null}
                   className="w-full"
                   size="lg"
                 >
@@ -400,3 +419,4 @@ export default function JpgToPdfPage() {
     </div>
   );
 }
+
