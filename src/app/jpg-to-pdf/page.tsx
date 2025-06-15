@@ -81,7 +81,7 @@ export default function JpgToPdfPage() {
           file: file,
           dataUri: dataUri,
           name: file.name,
-          // width: img.width, 
+          // width: img.width,
           // height: img.height,
         });
       } catch (e: any) {
@@ -99,7 +99,7 @@ export default function JpgToPdfPage() {
 
   const handleFilesSelected = async (newFilesFromInput: File[], insertAt: number | null) => {
     if (newFilesFromInput.length === 0) return;
-    
+
     const processedNewImageItems = await processFiles(newFilesFromInput);
     if (processedNewImageItems.length === 0 && newFilesFromInput.length > 0) {
         // All files might have been skipped (e.g., wrong type, duplicates)
@@ -150,6 +150,11 @@ export default function JpgToPdfPage() {
       [...prevItems].sort((a, b) => a.name.localeCompare(b.name))
     );
     toast({ description: "Images sorted by name." });
+  };
+
+  const handleDownloadOriginalJpg = (item: SelectedImageItem) => {
+    downloadDataUri(item.dataUri, item.name);
+    toast({ description: `Downloading original image: ${item.name}` });
   };
 
   const handleCombineAndDownload = async () => {
@@ -289,8 +294,8 @@ export default function JpgToPdfPage() {
                           >
                             <X className="h-4 w-4" />
                           </Button>
-                          <div 
-                            className="flex justify-center items-center w-full bg-slate-100 dark:bg-slate-800 rounded-md border" 
+                          <div
+                            className="flex justify-center items-center w-full bg-slate-100 dark:bg-slate-800 rounded-md border"
                             style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_JPG_TO_PDF}px`, height: `${PREVIEW_TARGET_HEIGHT_JPG_TO_PDF}px` }}
                            >
                             <img
@@ -304,6 +309,15 @@ export default function JpgToPdfPage() {
                         <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={imgItem.name}>
                           {imgItem.name}
                         </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-2"
+                          onClick={() => handleDownloadOriginalJpg(imgItem)}
+                          disabled={isConverting}
+                        >
+                          <Download className="mr-1.5 h-3.5 w-3.5" /> Download JPG
+                        </Button>
                         <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1.5" aria-hidden="true" />
                       </Card>
                     );
