@@ -36,15 +36,24 @@ export async function convertJpgsToPdfAction(input: ConvertJpgsToPdfInput): Prom
     for (const jpgItem of input.jpgsToConvert) {
       if (!jpgItem.dataUri.startsWith('data:image/jpeg;base64,')) {
         console.error('Invalid data URI format for a JPG image (batch):', jpgItem.dataUri.substring(0, 100));
-        return { error: `Invalid JPG data format for one of the images. Please ensure all files are valid JPGs.` };
+        // Skip this item or return error for the whole batch
+        // For robustness, let's skip and try to process others. An error message could be aggregated.
+        console.warn(`Skipping ${jpgItem.filename} due to invalid data URI.`);
+        continue;
       }
       const jpgBytes = Buffer.from(jpgItem.dataUri.split(',')[1], 'base64');
       const jpgImage = await pdfDoc.embedJpg(jpgBytes);
 
+      if (jpgImage.width <= 0 || jpgImage.height <= 0) {
+        console.warn(`Skipping image ${jpgItem.filename} due to invalid embedded dimensions: ${jpgImage.width}x${jpgImage.height}`);
+        continue; 
+      }
+
       const page = pdfDoc.addPage(defaultPageSize);
       const { width: pageWidth, height: pageHeight } = page.getSize();
 
-      const jpgDims = jpgImage.scale(1);
+      // Use the embedded image's dimensions, not jpgImage.scale(1) for this check
+      const jpgDims = { width: jpgImage.width, height: jpgImage.height };
 
       const scale = Math.min(pageWidth / jpgDims.width, pageHeight / jpgDims.height);
       const scaledWidth = jpgDims.width * scale;
@@ -57,12 +66,9 @@ export async function convertJpgsToPdfAction(input: ConvertJpgsToPdfInput): Prom
     }
 
     if (pdfDoc.getPageCount() === 0) {
-        return { error: "The PDF could not be created as no valid images were processed."}
+        return { error: "The PDF could not be created as no valid images were processed or all images had issues."}
     }
 
-    // pdf-lib's save method applies structural optimizations.
-    // The user-selected compressionLevel here is a hint; direct re-compression of embedded JPGs
-    // with varying quality levels isn't a simple save() option. useObjectStreams is generally good.
     const pdfBytes = await pdfDoc.save({ useObjectStreams: true });
     const pdfDataUri = `data:application/pdf;base64,${Buffer.from(pdfBytes).toString('base64')}`;
 
@@ -81,7 +87,7 @@ export async function convertJpgsToPdfAction(input: ConvertJpgsToPdfInput): Prom
 // --- Action for converting a SINGLE JPG to a PDF ---
 export interface ConvertSingleJpgToPdfInput {
   jpgDataUri: string;
-  filename: string; // Original filename to use for the PDF
+  filename: string; 
   compressionLevel: CompressionLevel;
 }
 
@@ -111,10 +117,15 @@ export async function convertSingleJpgToPdfAction(input: ConvertSingleJpgToPdfIn
     const jpgBytes = Buffer.from(input.jpgDataUri.split(',')[1], 'base64');
     const jpgImage = await pdfDoc.embedJpg(jpgBytes);
 
+    if (jpgImage.width <= 0 || jpgImage.height <= 0) {
+      return { error: `The image ${input.filename} has invalid embedded dimensions (${jpgImage.width}x${jpgImage.height}) and cannot be processed into a PDF.` };
+    }
+
     const page = pdfDoc.addPage(defaultPageSize);
     const { width: pageWidth, height: pageHeight } = page.getSize();
-
-    const jpgDims = jpgImage.scale(1);
+    
+    // Use the embedded image's dimensions
+    const jpgDims = { width: jpgImage.width, height: jpgImage.height };
 
     const scale = Math.min(pageWidth / jpgDims.width, pageHeight / jpgDims.height);
     const scaledWidth = jpgDims.width * scale;
