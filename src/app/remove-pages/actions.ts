@@ -77,6 +77,9 @@ export async function removeSelectedPagesAction(input: RemovePagesInput): Promis
 
   } catch (error: any) {
     console.error("Error removing PDF pages:", error);
+    if (error.message && error.message.toLowerCase().includes('encrypted') && !error.message.toLowerCase().includes('ignoreencryption')) {
+        return { error: "The PDF is encrypted with restrictions that prevent modification. Please provide decrypted PDFs."}
+    }
     return { error: error.message || "An unexpected error occurred while processing the PDF." };
   }
 }

@@ -47,7 +47,7 @@ export default function RemovePagesPage() {
           toast({ title: "Error loading PDF", description: result.error, variant: "destructive" });
           setPdfDataUri(null); setFile(null);
         } else if (result.pages) {
-          setPages(result.pages.map(p => ({ ...p, isMarkedForDeletion: false, rotation: 0 /* Rotation not used here but part of PageData */ })));
+          setPages(result.pages.map(p => ({ ...p, isMarkedForDeletion: false, rotation: p.rotation || 0 })));
         }
       } catch (e: any) {
         setError(e.message || "Failed to read or process file.");
@@ -61,10 +61,10 @@ export default function RemovePagesPage() {
     }
   };
 
-  const handleTogglePageDeletion = (index: number) => {
+  const handleTogglePageDeletion = (idToToggle: string) => {
     setPages(currentPages =>
-      currentPages.map((page, i) =>
-        i === index ? { ...page, isMarkedForDeletion: !page.isMarkedForDeletion } : page
+      currentPages.map((page) =>
+        page.id === idToToggle ? { ...page, isMarkedForDeletion: !page.isMarkedForDeletion } : page
       )
     );
   };
@@ -81,8 +81,8 @@ export default function RemovePagesPage() {
     }
 
     const pagesToKeepIndices = pages
-      .map((page, index) => (!page.isMarkedForDeletion ? page.originalIndex : -1))
-      .filter(index => index !== -1);
+      .filter(page => !page.isMarkedForDeletion)
+      .map(page => page.originalIndex);
 
     if (pagesToKeepIndices.length === 0) {
       toast({ title: "No Pages to Keep", description: "All pages are marked for deletion. Cannot create an empty PDF.", variant: "destructive" });
@@ -110,11 +110,6 @@ export default function RemovePagesPage() {
       setIsProcessing(false);
     }
   };
-
-  const getDisplayedPageIndex = (currentIndex: number): number => {
-    // This is the original page number
-    return pages[currentIndex].originalIndex + 1;
-  }
   
   const countKeptPages = pages.filter(p => !p.isMarkedForDeletion).length;
   const countMarkedPages = pages.filter(p => p.isMarkedForDeletion).length;
@@ -167,10 +162,10 @@ export default function RemovePagesPage() {
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[500px] p-1 border rounded-md bg-muted/20">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-2">
-                {pages.map((page, index) => (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-2">
+                {pages.map((page) => (
                   <Card 
-                    key={`${page.id}-${index}`} 
+                    key={page.id} 
                     className={cn(
                         "transition-all shadow-sm bg-card relative overflow-hidden", 
                         page.isMarkedForDeletion && "ring-2 ring-destructive border-destructive"
@@ -190,18 +185,18 @@ export default function RemovePagesPage() {
                              <PdfPagePreview
                                pdfDataUri={pdfDataUri}
                                pageIndex={page.originalIndex}
-                               rotation={0} // Fixed rotation for this tool
+                               rotation={page.rotation || 0}
                                targetHeight={PREVIEW_TARGET_HEIGHT}
                              />
                           )}
                        </div>
                       <p className="text-xs text-muted-foreground mb-1.5 text-center">
-                        Page {getDisplayedPageIndex(index)}
+                        Page {page.originalIndex + 1}
                       </p>
                       <Button 
                         variant={page.isMarkedForDeletion ? "outline" : "destructive"} 
                         size="sm" 
-                        onClick={() => handleTogglePageDeletion(index)} 
+                        onClick={() => handleTogglePageDeletion(page.id)} 
                         className="w-full"
                         title={page.isMarkedForDeletion ? "Keep this page" : "Mark to delete this page"}
                         disabled={isLoading || isProcessing}
@@ -219,7 +214,7 @@ export default function RemovePagesPage() {
               </ScrollArea>
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
-                <Button variant="outline" onClick={handleResetSelections} disabled={isProcessing || isLoading}>
+                <Button variant="outline" onClick={handleResetSelections} disabled={isProcessing || isLoading || pages.length === 0}>
                     <RefreshCcw className="mr-2 h-4 w-4" /> Reset Deletions
                 </Button>
                 <Button
