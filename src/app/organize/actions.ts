@@ -60,7 +60,8 @@ export async function getInitialPageDataAction(input: GetInitialPageDataInput): 
     const pdfBytes = Buffer.from(input.pdfDataUri.split(',')[1], 'base64');
 
     const arrayBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    // Modified to disable worker for server-side execution
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, disableWorker: true });
     const pdfDoc: PDFJSInternalDocumentProxy = await loadingTask.promise;
 
     const pagesData: PageData[] = [];
