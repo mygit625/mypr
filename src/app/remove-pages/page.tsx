@@ -11,12 +11,14 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { FileMinus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, RotateCcw, RotateCw, Trash2, Undo2 } from 'lucide-react';
+import { FileMinus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, Trash2, Undo2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { getInitialPageDataAction } from './actions'; // For initial PDF processing
-import { assembleIndividualPagesAction } from '../organize/actions'; // For final assembly
+// getInitialPageDataAction is re-exported from ./actions
+import { getInitialPageDataAction } from './actions';
+// assembleIndividualPagesAction is used for the final PDF creation
+import { assembleIndividualPagesAction } from '../organize/actions';
 import { cn } from '@/lib/utils';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
@@ -31,8 +33,8 @@ interface SelectedPdfPageItem {
   pageIndexInOriginalFile: number;
   totalPagesInOriginalFile: number;
   displayName: string;
-  rotation: number;
-  isMarkedForDeletion: boolean; // Added
+  rotation: number; // Keep for potential future use or consistency, but no UI to change it now
+  isMarkedForDeletion: boolean;
 }
 
 interface DisplayItem {
@@ -43,7 +45,7 @@ interface DisplayItem {
   insertAtIndex?: number;
 }
 
-const PREVIEW_TARGET_HEIGHT_REMOVE = 160; // Adjusted for more buttons
+const PREVIEW_TARGET_HEIGHT_REMOVE = 160;
 
 export default function RemovePagesPage() {
   const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfPageItem[]>([]);
@@ -80,8 +82,6 @@ export default function RemovePagesPage() {
           pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
         }
 
-        // Use getInitialPageDataAction to leverage server-side parsing if complex, or keep client-side for consistency with organize
-        // For now, keeping client-side parsing as in 'organize' for direct feature parity before this step.
         const pdfDoc: PDFDocumentProxy = await pdfjsLib.getDocument({ data: pdfDataArray }).promise;
         const numPages = pdfDoc.numPages;
 
@@ -94,7 +94,7 @@ export default function RemovePagesPage() {
             pageIndexInOriginalFile: i,
             totalPagesInOriginalFile: numPages,
             displayName: `${file.name} (Page ${i + 1} of ${numPages})`,
-            rotation: 0,
+            rotation: 0, // Initialize rotation to 0
             isMarkedForDeletion: false,
           });
         }
@@ -113,7 +113,6 @@ export default function RemovePagesPage() {
 
   const handleFilesSelected = async (newFilesFromInput: File[], insertAt: number | null) => {
     if (newFilesFromInput.length === 0) return;
-    // Allow multiple files to be processed if 'multiple' is true for FileUploadZone
     const processedNewPageItems = await processFiles(newFilesFromInput);
 
     setSelectedPdfItems((prevItems) => {
@@ -162,18 +161,6 @@ export default function RemovePagesPage() {
     toast({ description: "Pages sorted by name." });
   };
 
-  const handleRotatePage = (pageId: string, direction: 'cw' | 'ccw') => {
-    setSelectedPdfItems(prevItems =>
-      prevItems.map(item => {
-        if (item.id === pageId) {
-          const newRotation = (item.rotation + (direction === 'cw' ? 90 : -90) + 360) % 360;
-          return { ...item, rotation: newRotation };
-        }
-        return item;
-      })
-    );
-  };
-
   const handleTogglePageDeletion = (pageId: string) => {
     setSelectedPdfItems(prevItems =>
       prevItems.map(item =>
@@ -185,14 +172,23 @@ export default function RemovePagesPage() {
   const handleProcessAndDownload = async () => {
     const pagesToKeep = selectedPdfItems.filter(item => !item.isMarkedForDeletion);
 
-    if (pagesToKeep.length < 1) {
+    if (pagesToKeep.length < 1 && selectedPdfItems.length > 0) {
       toast({
         title: "No Pages to Keep",
-        description: "Please ensure at least one page is not marked for deletion.",
+        description: "All pages are marked for deletion. Please unmark at least one page to proceed.",
         variant: "destructive",
       });
       return;
     }
+     if (selectedPdfItems.length === 0) {
+      toast({
+        title: "No Pages Loaded",
+        description: "Please upload PDF files first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
 
     setIsProcessing(true);
     setError(null);
@@ -201,7 +197,7 @@ export default function RemovePagesPage() {
       const pagesToAssemble = pagesToKeep.map(item => ({
         sourcePdfDataUri: item.originalFileDataUri,
         pageIndexToCopy: item.pageIndexInOriginalFile,
-        rotation: item.rotation,
+        rotation: item.rotation, // Pass rotation even if not actively changed by UI
       }));
 
       const result = await assembleIndividualPagesAction({ orderedPagesToAssemble: pagesToAssemble });
@@ -213,13 +209,13 @@ export default function RemovePagesPage() {
           description: result.error,
           variant: "destructive",
         });
-      } else if (result.organizedPdfDataUri) { // Note: 'organizedPdfDataUri' is the field from the reused action
+      } else if (result.organizedPdfDataUri) {
         downloadDataUri(result.organizedPdfDataUri, "removed_pages_document.pdf");
         toast({
           title: "Processing Successful!",
           description: "Your PDF has been processed and download has started.",
         });
-        setSelectedPdfItems([]); // Clear items after successful processing
+        setSelectedPdfItems([]);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during processing.";
@@ -246,7 +242,6 @@ export default function RemovePagesPage() {
 
   const displayItems: DisplayItem[] = [];
   if (selectedPdfItems.length > 0 || isLoadingPreviews) {
-    // No initial plus button on the very left
     selectedPdfItems.forEach((pageItem, index) => {
       displayItems.push({ type: 'pdf_page', id: pageItem.id, data: pageItem, originalItemIndex: index });
       displayItems.push({ type: 'add_button', id: `add-slot-${index + 1}`, insertAtIndex: index + 1 });
@@ -261,7 +256,7 @@ export default function RemovePagesPage() {
         <FileMinus2 className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Remove PDF Pages</h1>
         <p className="text-muted-foreground mt-2">
-          Upload PDFs. Mark pages for deletion, rotate, reorder, and then download the modified document.
+          Upload PDFs. Mark pages for deletion, reorder, and then download the modified document.
         </p>
       </header>
 
@@ -281,7 +276,7 @@ export default function RemovePagesPage() {
           type="file"
           ref={fileInputRef}
           onChange={handleHiddenInputChange}
-          multiple={true} // Allow adding pages from multiple files via '+' button
+          multiple={true}
           accept="application/pdf"
           className="hidden"
       />
@@ -297,7 +292,7 @@ export default function RemovePagesPage() {
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-grow lg:w-3/4">
             <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
-              <div className="flex flex-wrap items-start gap-3 p-2"> {/* Use items-start for consistent top alignment */}
+              <div className="flex flex-wrap items-start gap-3 p-2">
                 {displayItems.map((item) => {
                   if (item.type === 'pdf_page' && item.data) {
                     const pageItem = item.data;
@@ -310,7 +305,7 @@ export default function RemovePagesPage() {
                         onDragEnd={handleDragEnd}
                         onDragOver={handleDragOver}
                         className={cn(
-                          "flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-all cursor-grab active:cursor-grabbing bg-card h-full justify-between w-48", // Slightly wider for more buttons
+                          "flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-all cursor-grab active:cursor-grabbing bg-card h-full justify-between w-48",
                           pageItem.isMarkedForDeletion && "opacity-60 ring-2 ring-destructive border-destructive"
                         )}
                       >
@@ -330,30 +325,25 @@ export default function RemovePagesPage() {
                             <X className="h-4 w-4" />
                           </Button>
                           <div className="flex justify-center space-x-1 mb-1.5">
-                            <Button variant="outline" size="xs" onClick={() => handleRotatePage(pageItem.id, 'ccw')} aria-label="Rotate Left" disabled={pageItem.isMarkedForDeletion}>
-                              <RotateCcw className="h-3 w-3" />
-                            </Button>
-                            <Button variant="outline" size="xs" onClick={() => handleRotatePage(pageItem.id, 'cw')} aria-label="Rotate Right" disabled={pageItem.isMarkedForDeletion}>
-                              <RotateCw className="h-3 w-3" />
-                            </Button>
                              <Button 
                                 variant={pageItem.isMarkedForDeletion ? "outline" : "destructive"} 
                                 size="xs" 
                                 onClick={() => handleTogglePageDeletion(pageItem.id)}
-                                className={cn(pageItem.isMarkedForDeletion && "border-green-500 hover:bg-green-100")}
+                                className={cn("w-full", pageItem.isMarkedForDeletion && "border-green-500 hover:bg-green-100")}
                                 title={pageItem.isMarkedForDeletion ? "Keep this page" : "Mark to delete this page"}
                               >
                                 {pageItem.isMarkedForDeletion ? 
-                                    <Undo2 className="h-3 w-3 text-green-600" /> : 
-                                    <Trash2 className="h-3 w-3" />
+                                    <Undo2 className="h-3 w-3 mr-1 text-green-600" /> : 
+                                    <Trash2 className="h-3 w-3 mr-1" />
                                 }
+                                {pageItem.isMarkedForDeletion ? "Keep" : "Delete"}
                               </Button>
                           </div>
                           <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_REMOVE + 20}px`}}>
                             <PdfPagePreview
                                 pdfDataUri={pageItem.originalFileDataUri}
                                 pageIndex={pageItem.pageIndexInOriginalFile}
-                                rotation={pageItem.rotation}
+                                rotation={pageItem.rotation} // Rotation data still passed to preview
                                 targetHeight={PREVIEW_TARGET_HEIGHT_REMOVE}
                                 className={cn("border rounded", pageItem.isMarkedForDeletion && "opacity-50")}
                             />
@@ -367,7 +357,7 @@ export default function RemovePagesPage() {
                     );
                   } else if (item.type === 'add_button') {
                     return (
-                      <div key={item.id} className="flex items-center justify-center self-stretch h-auto w-12"> {/* Ensure it stretches and aligns */}
+                      <div key={item.id} className="flex items-center justify-center self-stretch h-auto w-12">
                         <Button
                           variant="outline"
                           size="icon"
@@ -406,7 +396,7 @@ export default function RemovePagesPage() {
                 <Alert variant="default" className="text-sm p-3">
                   <Info className="h-4 w-4" />
                   <AlertDescription>
-                    Mark pages for deletion using the <Trash2 className="inline h-3 w-3" /> icon. Rotate, reorder, and add more pages as needed.
+                    Mark pages for deletion using the <Trash2 className="inline h-3 w-3" /> icon. Reorder and add more pages as needed.
                     Kept pages: <span className="font-semibold text-green-600">{keptPagesCount}</span>.
                     Marked: <span className="font-semibold text-destructive">{selectedPdfItems.length - keptPagesCount}</span>.
                   </AlertDescription>
@@ -418,7 +408,7 @@ export default function RemovePagesPage() {
               <CardFooter>
                 <Button
                   onClick={handleProcessAndDownload}
-                  disabled={selectedPdfItems.length < 1 || keptPagesCount < 1 || isProcessing || isLoadingPreviews}
+                  disabled={selectedPdfItems.length < 1 || (selectedPdfItems.length > 0 && keptPagesCount < 1) || isProcessing || isLoadingPreviews}
                   className="w-full"
                   size="lg"
                 >
@@ -445,4 +435,4 @@ export default function RemovePagesPage() {
     </div>
   );
 }
-
+    
