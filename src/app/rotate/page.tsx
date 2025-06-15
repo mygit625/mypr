@@ -32,14 +32,14 @@ interface SelectedPdfFileItem {
 }
 
 interface DisplayItem {
-  type: 'pdf_file' | 'add_button'; // Changed from pdf_page
+  type: 'pdf_file' | 'add_button';
   id: string;
   data?: SelectedPdfFileItem;
   originalItemIndex?: number;
   insertAtIndex?: number;
 }
 
-const PREVIEW_TARGET_HEIGHT_ROTATE = 220; // Adjusted for potentially larger single preview
+const PREVIEW_TARGET_HEIGHT_ROTATE = 220;
 
 export default function RotatePdfPage() {
   const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfFileItem[]>([]);
@@ -82,7 +82,7 @@ export default function RotatePdfPage() {
           dataUri: dataUri,
           name: file.name,
           numPages: pdfDoc.numPages,
-          rotation: 0, // Initial rotation for the whole file
+          rotation: 0, 
         });
       } catch (e: any) {
         console.error("Error processing file for rotation:", file.name, e);
@@ -104,7 +104,6 @@ export default function RotatePdfPage() {
 
     setSelectedPdfItems((prevItems) => {
       const updatedItems = [...prevItems];
-      // Filter out already existing files based on name and size to prevent duplicates
       const uniqueNewItems = processedNewFileItems.filter(newItem => 
         !prevItems.some(existingItem => existingItem.name === newItem.name && existingItem.file.size === newItem.file.size)
       );
@@ -165,6 +164,16 @@ export default function RotatePdfPage() {
     );
   };
 
+  const handleRotateAllFiles = (direction: 'cw' | 'ccw') => {
+    setSelectedPdfItems(prevItems =>
+      prevItems.map(item => {
+        const newRotation = (item.rotation + (direction === 'cw' ? 90 : -90) + 360) % 360;
+        return { ...item, rotation: newRotation };
+      })
+    );
+    toast({ description: `All files rotated ${direction === 'cw' ? 'right' : 'left'}.` });
+  };
+
   const handleApplyChangesAndDownload = async () => {
     if (selectedPdfItems.length < 1) {
       toast({
@@ -213,7 +222,7 @@ export default function RotatePdfPage() {
         });
     }
     if (successCount === selectedPdfItems.length) {
-        setSelectedPdfItems([]); // Clear list if all successful
+        setSelectedPdfItems([]);
     }
     setIsProcessing(false);
   };
@@ -259,6 +268,29 @@ export default function RotatePdfPage() {
         <p className="text-muted-foreground mt-2">
           Upload PDF files. Set rotation for each file, reorder if needed, and then download.
         </p>
+        <div className="mt-6">
+          <p className="text-lg font-medium text-foreground mb-2">Rotate all Pages of All PDF files</p>
+          <div className="flex justify-center space-x-2">
+            <Button
+              variant="outline"
+              size="default"
+              onClick={() => handleRotateAllFiles('ccw')}
+              disabled={selectedPdfItems.length === 0 || isProcessing || isLoadingPreviews}
+              aria-label="Rotate All Files Left"
+            >
+              <RotateCcw className="h-5 w-5 mr-2" /> Rotate All Left
+            </Button>
+            <Button
+              variant="outline"
+              size="default"
+              onClick={() => handleRotateAllFiles('cw')}
+              disabled={selectedPdfItems.length === 0 || isProcessing || isLoadingPreviews}
+              aria-label="Rotate All Files Right"
+            >
+              <RotateCw className="h-5 w-5 mr-2" /> Rotate All Right
+            </Button>
+          </div>
+        </div>
       </header>
 
       {selectedPdfItems.length === 0 && !isLoadingPreviews && (
@@ -277,7 +309,7 @@ export default function RotatePdfPage() {
           type="file"
           ref={fileInputRef}
           onChange={handleHiddenInputChange}
-          multiple={true} // Allow multiple for "+" button
+          multiple={true}
           accept="application/pdf"
           className="hidden"
       />
@@ -292,7 +324,7 @@ export default function RotatePdfPage() {
       {(selectedPdfItems.length > 0 || (isLoadingPreviews && selectedPdfItems.length > 0)) && (
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-grow lg:w-3/4">
-            <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
+            <ScrollArea className="h-[calc(100vh-380px)] p-1 border rounded-md bg-muted/10"> {/* Adjusted height */}
               <div className="flex flex-wrap items-center gap-px p-1">
                 {displayItems.map((item) => {
                   if (item.type === 'pdf_file' && item.data) {
@@ -305,7 +337,7 @@ export default function RotatePdfPage() {
                         onDragEnter={() => handleDragEnter(item.originalItemIndex!)}
                         onDragEnd={handleDragEnd}
                         onDragOver={handleDragOver}
-                        className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between w-56" // Increased width
+                        className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between w-56"
                       >
                         <div className="relative w-full mb-1">
                            <Button
@@ -338,8 +370,8 @@ export default function RotatePdfPage() {
                           <div className="flex justify-center items-center w-full h-auto border rounded" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_ROTATE + 20}px`}}>
                             <PdfPagePreview
                                 pdfDataUri={fileItem.dataUri}
-                                pageIndex={0} // Always show first page
-                                rotation={fileItem.rotation} // Apply file-level rotation to preview
+                                pageIndex={0}
+                                rotation={fileItem.rotation}
                                 targetHeight={PREVIEW_TARGET_HEIGHT_ROTATE}
                                 className="bg-white"
                             />
@@ -434,3 +466,5 @@ export default function RotatePdfPage() {
     </div>
   );
 }
+
+    
