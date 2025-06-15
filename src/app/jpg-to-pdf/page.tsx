@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ImagePlus, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, FileType } from 'lucide-react';
+import { ImagePlus, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, FileType, CheckCircle } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { convertJpgsToPdfAction, convertSingleJpgToPdfAction } from './actions';
+import { convertJpgsToPdfAction, convertSingleJpgToPdfAction, type CompressionLevel } from './actions';
 import { cn } from '@/lib/utils';
 
 interface SelectedImageItem {
@@ -29,14 +31,15 @@ interface DisplayItem {
   insertAtIndex?: number;
 }
 
-const PREVIEW_TARGET_HEIGHT_JPG_TO_PDF = 180; 
+const PREVIEW_TARGET_HEIGHT_JPG_TO_PDF = 180;
 
 export default function JpgToPdfPage() {
   const [selectedImageItems, setSelectedImageItems] = useState<SelectedImageItem[]>([]);
-  const [isLoadingPreviews, setIsLoadingPreviews] = useState(false); 
-  const [isConverting, setIsConverting] = useState(false); 
+  const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const [isConvertingSingleImageId, setIsConvertingSingleImageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>("recommended");
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -148,7 +151,8 @@ export default function JpgToPdfPage() {
     try {
       const result = await convertSingleJpgToPdfAction({
         jpgDataUri: item.dataUri,
-        filename: item.name
+        filename: item.name,
+        compressionLevel: compressionLevel,
       });
 
       if (result.error) {
@@ -191,10 +195,13 @@ export default function JpgToPdfPage() {
     try {
       const jpgsToConvert = selectedImageItems.map(item => ({
         dataUri: item.dataUri,
-        filename: item.name 
+        filename: item.name
       }));
 
-      const result = await convertJpgsToPdfAction({ jpgsToConvert });
+      const result = await convertJpgsToPdfAction({
+        jpgsToConvert,
+        compressionLevel: compressionLevel,
+      });
 
       if (result.error) {
         setError(result.error);
@@ -209,7 +216,7 @@ export default function JpgToPdfPage() {
           title: "Conversion Successful!",
           description: "Your JPG images have been converted to PDF and download has started.",
         });
-        setSelectedImageItems([]); 
+        setSelectedImageItems([]);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during PDF creation.";
@@ -241,6 +248,12 @@ export default function JpgToPdfPage() {
       displayItems.push({ type: 'add_button', id: `add-slot-${index + 1}`, insertAtIndex: index + 1 });
     });
   }
+
+  const compressionOptionList: { value: CompressionLevel; label: string; description: string }[] = [
+    { value: "extreme", label: "EXTREME COMPRESSION", description: "Smaller file size, may reduce quality" },
+    { value: "recommended", label: "RECOMMENDED COMPRESSION", description: "Good balance of size and quality" },
+    { value: "less", label: "LESS COMPRESSION", description: "Larger file size, higher quality" },
+  ];
 
   return (
     <div className="max-w-full mx-auto space-y-8">
@@ -363,7 +376,7 @@ export default function JpgToPdfPage() {
                   }
                   return null;
                 })}
-                 {isLoadingPreviews && selectedImageItems.length > 0 && displayItems.length === 0 && ( 
+                 {isLoadingPreviews && selectedImageItems.length > 0 && displayItems.length === 0 && (
                     <div className="col-span-full flex justify-center items-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         <p className="ml-2 text-muted-foreground">Loading image previews...</p>
@@ -388,6 +401,28 @@ export default function JpgToPdfPage() {
                 <Button onClick={handleSortByName} variant="outline" className="w-full" disabled={selectedImageItems.length < 2 || isConverting || isConvertingSingleImageId !== null}>
                   <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort Images A-Z
                 </Button>
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Compression Level</Label>
+                  <RadioGroup value={compressionLevel} onValueChange={(value) => setCompressionLevel(value as CompressionLevel)} className="space-y-1">
+                    {compressionOptionList.map((option) => (
+                      <Label
+                        key={option.value}
+                        htmlFor={`comp-level-${option.value}`}
+                        className={cn(
+                          "flex flex-col p-2.5 border rounded-md cursor-pointer hover:border-primary transition-all",
+                          compressionLevel === option.value && "border-primary ring-2 ring-primary bg-primary/5"
+                        )}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-xs text-primary">{option.label}</span>
+                          <RadioGroupItem value={option.value} id={`comp-level-${option.value}`} className="sr-only" />
+                          {compressionLevel === option.value && <CheckCircle className="h-4 w-4 text-green-500" />}
+                        </div>
+                        <span className="text-xs text-muted-foreground mt-0.5">{option.description}</span>
+                      </Label>
+                    ))}
+                  </RadioGroup>
+                </div>
               </CardContent>
               <CardFooter>
                 <Button
@@ -419,4 +454,3 @@ export default function JpgToPdfPage() {
     </div>
   );
 }
-

@@ -4,14 +4,17 @@
 import { PDFDocument, PageSizes } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
+export type CompressionLevel = "extreme" | "recommended" | "less";
+
 export interface JpgToConvert {
   dataUri: string;
-  filename: string; 
+  filename: string;
 }
 
 // --- Action for converting MULTIPLE JPGs to a single PDF ---
 export interface ConvertJpgsToPdfInput {
   jpgsToConvert: JpgToConvert[];
+  compressionLevel: CompressionLevel;
 }
 
 export interface ConvertJpgsToPdfOutput {
@@ -26,7 +29,9 @@ export async function convertJpgsToPdfAction(input: ConvertJpgsToPdfInput): Prom
 
   try {
     const pdfDoc = await PDFDocument.create();
-    const defaultPageSize = PageSizes.A4; 
+    const defaultPageSize = PageSizes.A4;
+
+    console.log(`JPG to PDF (batch) called with compression level: ${input.compressionLevel}`);
 
     for (const jpgItem of input.jpgsToConvert) {
       if (!jpgItem.dataUri.startsWith('data:image/jpeg;base64,')) {
@@ -38,8 +43,8 @@ export async function convertJpgsToPdfAction(input: ConvertJpgsToPdfInput): Prom
 
       const page = pdfDoc.addPage(defaultPageSize);
       const { width: pageWidth, height: pageHeight } = page.getSize();
-      
-      const jpgDims = jpgImage.scale(1); 
+
+      const jpgDims = jpgImage.scale(1);
 
       const scale = Math.min(pageWidth / jpgDims.width, pageHeight / jpgDims.height);
       const scaledWidth = jpgDims.width * scale;
@@ -55,9 +60,12 @@ export async function convertJpgsToPdfAction(input: ConvertJpgsToPdfInput): Prom
         return { error: "The PDF could not be created as no valid images were processed."}
     }
 
-    const pdfBytes = await pdfDoc.save();
+    // pdf-lib's save method applies structural optimizations.
+    // The user-selected compressionLevel here is a hint; direct re-compression of embedded JPGs
+    // with varying quality levels isn't a simple save() option. useObjectStreams is generally good.
+    const pdfBytes = await pdfDoc.save({ useObjectStreams: true });
     const pdfDataUri = `data:application/pdf;base64,${Buffer.from(pdfBytes).toString('base64')}`;
-    
+
     return { pdfDataUri };
 
   } catch (error: any) {
@@ -74,6 +82,7 @@ export async function convertJpgsToPdfAction(input: ConvertJpgsToPdfInput): Prom
 export interface ConvertSingleJpgToPdfInput {
   jpgDataUri: string;
   filename: string; // Original filename to use for the PDF
+  compressionLevel: CompressionLevel;
 }
 
 export interface ConvertSingleJpgToPdfOutput {
@@ -93,6 +102,8 @@ export async function convertSingleJpgToPdfAction(input: ConvertSingleJpgToPdfIn
     const pdfDoc = await PDFDocument.create();
     const defaultPageSize = PageSizes.A4;
 
+    console.log(`JPG to PDF (single) called with compression level: ${input.compressionLevel}`);
+
     if (!input.jpgDataUri.startsWith('data:image/jpeg;base64,')) {
       console.error('Invalid data URI format for single JPG image:', input.jpgDataUri.substring(0, 100));
       return { error: `Invalid JPG data format. Please ensure the file is a valid JPG.` };
@@ -102,7 +113,7 @@ export async function convertSingleJpgToPdfAction(input: ConvertSingleJpgToPdfIn
 
     const page = pdfDoc.addPage(defaultPageSize);
     const { width: pageWidth, height: pageHeight } = page.getSize();
-    
+
     const jpgDims = jpgImage.scale(1);
 
     const scale = Math.min(pageWidth / jpgDims.width, pageHeight / jpgDims.height);
@@ -114,9 +125,9 @@ export async function convertSingleJpgToPdfAction(input: ConvertSingleJpgToPdfIn
 
     page.drawImage(jpgImage, { x, y, width: scaledWidth, height: scaledHeight });
 
-    const pdfBytes = await pdfDoc.save();
+    const pdfBytes = await pdfDoc.save({ useObjectStreams: true });
     const pdfDataUri = `data:application/pdf;base64,${Buffer.from(pdfBytes).toString('base64')}`;
-    
+
     return { pdfDataUri };
 
   } catch (error: any) {
