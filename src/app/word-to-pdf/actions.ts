@@ -7,12 +7,12 @@ import type { Buffer } from 'buffer';
 import fs from 'fs'; // For reading the font file
 import path from 'path'; // For constructing the font file path
 
-interface ConvertWordToPdfInput {
+export interface ConvertWordToPdfInput {
   docxFileBase64: string;
   originalFileName: string;
 }
 
-interface ConvertWordToPdfOutput {
+export interface ConvertWordToPdfOutput {
   pdfDataUri?: string;
   error?: string;
 }
@@ -25,23 +25,27 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
   console.log(`Attempting to convert Word file: ${input.originalFileName} using Mammoth + PDFKit with custom font.`);
 
   // ---- FONT LOADING ----
-  let fontBuffer: Buffer;
-  const fontPath = path.join(process.cwd(), 'src', 'assets', 'fonts', 'DejaVuSans.ttf');
-  console.log(`Attempting to load font from: ${fontPath}`);
+  let fontBuffer: Buffer | null = null;
+  const fontFileName = 'DejaVuSans.ttf';
+  const fontPath = path.join(process.cwd(), 'src', 'assets', 'fonts', fontFileName);
+  let customFontLoaded = false;
 
   try {
-    fontBuffer = fs.readFileSync(fontPath);
-  } catch (fontError: any) {
-    console.error(`Error loading font: ${fontPath}`, fontError);
-    let userErrorMessage = `Failed to load font for PDF generation (${path.basename(fontPath)}). Please ensure the font file exists at 'src/assets/fonts/${path.basename(fontPath)}'.`;
-    if (fontError.code === 'ENOENT') {
-        userErrorMessage = `Font file not found at '${fontPath}'. Please ensure 'DejaVuSans.ttf' is placed in the 'src/assets/fonts/' directory.`;
+    if (fs.existsSync(fontPath)) {
+      fontBuffer = fs.readFileSync(fontPath);
+      customFontLoaded = true;
+      console.log(`Successfully loaded font: ${fontPath}`);
     } else {
-        userErrorMessage += ` Original error: ${fontError.message}`;
+      console.warn(`Custom font not found at: ${fontPath}. Proceeding with default PDFKit font. Extended character support will be limited.`);
+      // No critical error here, will proceed with PDFKit's default font
     }
-    return { error: userErrorMessage };
+  } catch (fontError: any) {
+    // This catch is for errors during readFileSync if existsSync passed (unlikely but defensive)
+    console.error(`Error reading font file: ${fontPath}`, fontError);
+    // Proceeding without custom font, but log the attempt error.
   }
   // ---- END FONT LOADING ----
+
 
   try {
     const docxFileBuffer = Buffer.from(input.docxFileBase64, 'base64');
@@ -60,10 +64,9 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
       convertImage: mammoth.images.imgElement(async (image) => {
         const imageBuffer = await image.read();
         images.push({ buffer: imageBuffer, contentType: image.contentType });
-        return {}; // Required return for imgElement, but we don't use the element itself
+        return {}; // Required return for imgElement
       }),
     };
-    // We run convertToHtml mainly for its side effect of calling our image converter
     await mammoth.convertToHtml({ buffer: docxFileBuffer }, imageConvertOptions);
 
     // 3. Create PDF with PDFKit
@@ -75,7 +78,13 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
     pdfDoc.addPage();
 
     // ---- SET FONT ----
-    pdfDoc.font(fontBuffer); // Use the loaded font buffer
+    if (customFontLoaded && fontBuffer) {
+      pdfDoc.font(fontBuffer);
+      console.log("Custom font DejaVuSans.ttf applied to PDF.");
+    } else {
+      // pdfkit will use its default (Helvetica)
+      console.log("Proceeding with PDFKit default font.");
+    }
     // ---- END SET FONT ----
 
     pdfDoc.fontSize(12).text(textContent, {
@@ -95,12 +104,15 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
             });
           } else {
             console.warn(`Skipping image with unsupported content type: ${img.contentType} in file ${input.originalFileName}`);
-            // Optionally add placeholder text if font is available and set
-            pdfDoc.font(fontBuffer).fontSize(10).text(`[Unsupported image type: ${img.contentType}]`, {align: 'center'});
+            if (customFontLoaded && fontBuffer) pdfDoc.font(fontBuffer); // Ensure font is set for placeholder
+            else pdfDoc.font('Helvetica'); // Fallback if custom font not loaded
+            pdfDoc.fontSize(10).text(`[Unsupported image type: ${img.contentType}]`, {align: 'center'});
           }
         } catch (imgError: any) {
           console.error(`Error embedding image in PDFKit for ${input.originalFileName}:`, imgError);
-           pdfDoc.font(fontBuffer).fontSize(10).text(`[Error embedding image: ${imgError.message}]`, {align: 'center'});
+           if (customFontLoaded && fontBuffer) pdfDoc.font(fontBuffer);
+           else pdfDoc.font('Helvetica');
+           pdfDoc.fontSize(10).text(`[Error embedding image: ${imgError.message}]`, {align: 'center'});
         }
       }
     }
@@ -109,7 +121,7 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
       pdfDoc.on('end', () => {
         const pdfBytes = Buffer.concat(pdfChunks);
         const pdfDataUri = `data:application/pdf;base64,${pdfBytes.toString('base64')}`;
-        console.log(`PDF conversion with Mammoth + PDFKit (custom font) successful for ${input.originalFileName}.`);
+        console.log(`PDF conversion with Mammoth + PDFKit (font: ${customFontLoaded ? 'DejaVuSans.ttf' : 'default'}) successful for ${input.originalFileName}.`);
         resolve({ pdfDataUri });
       });
 
