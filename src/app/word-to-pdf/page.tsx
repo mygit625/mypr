@@ -9,10 +9,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { FileCode, Loader2, Info, Download, CheckCircle, Plus, ArrowRightCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { readFileAsArrayBuffer } from '@/lib/file-utils';
+import { readFileAsArrayBuffer, readFileAsDataURL } from '@/lib/file-utils'; // readFileAsDataURL might not be needed for this action
 import { downloadDataUri } from '@/lib/download-utils';
 import { convertWordToPdfAction } from './actions';
 import { cn } from '@/lib/utils';
+import html2canvas from 'html2canvas';
 
 const PREVIEW_CONTAINER_ID = 'docx-preview-container';
 
@@ -30,22 +31,22 @@ export default function WordToPdfPage() {
     if (!docxFile) return;
     if (!previewContainerRef.current) {
         console.warn("Preview container not ready for DOCX preview.");
-        setIsLoadingPreview(false); // Ensure loading state is reset
+        setIsLoadingPreview(false);
         return;
     }
     setIsLoadingPreview(true);
     setError(null);
-    previewContainerRef.current.innerHTML = '';
+    previewContainerRef.current.innerHTML = ''; // Clear previous preview
 
     try {
       const arrayBuffer = await readFileAsArrayBuffer(docxFile);
       await docx.renderAsync(arrayBuffer, previewContainerRef.current, undefined, {
-        className: "docx-preview-content",
+        className: "docx-preview-content", // This class helps scope our styles
         inWrapper: true,
         ignoreWidth: false,
         ignoreHeight: false,
         ignoreFonts: false,
-        breakPages: true,
+        breakPages: true, // Important for page separation
         experimental: false,
         debug: false,
         useMathMLPolyfill: true,
@@ -72,20 +73,17 @@ export default function WordToPdfPage() {
         });
         setFile(null);
         if (previewContainerRef.current) previewContainerRef.current.innerHTML = '';
-        setError(null); // Clear previous errors
-        setConvertedPdfUri(null); // Clear previous conversion results
+        setError(null);
+        setConvertedPdfUri(null);
         return;
       }
       setFile(selectedFile);
       setConvertedPdfUri(null);
       setError(null);
-      // Only call renderPreview if the ref is available
       if (previewContainerRef.current) {
          await renderPreview(selectedFile);
       } else {
-        // If ref is not available yet, wait for next render cycle
-        // This might happen on initial load if file is pre-selected
-        setIsLoadingPreview(true); // Show loading until preview can be rendered
+        setIsLoadingPreview(true);
       }
     } else {
       setFile(null);
@@ -94,8 +92,7 @@ export default function WordToPdfPage() {
       setConvertedPdfUri(null);
     }
   };
-  
-  // Effect to render preview if file is set and previewContainerRef becomes available
+
   useEffect(() => {
     if (file && previewContainerRef.current && isLoadingPreview) {
         renderPreview(file);
@@ -107,9 +104,8 @@ export default function WordToPdfPage() {
     if (event.target.files) {
       handleFileSelected(Array.from(event.target.files));
     }
-     // Reset the file input value to allow selecting the same file again
     if (event.target) {
-      event.target.value = "";
+      event.target.value = ""; // Reset file input value
     }
   };
 
@@ -129,8 +125,8 @@ export default function WordToPdfPage() {
     toast({ title: "Processing Document", description: "Converting your Word document to PDF..." });
 
     try {
-      const docxFileArrayBuffer = await readFileAsArrayBuffer(file);
-      const docxFileBase64 = Buffer.from(docxFileArrayBuffer).toString('base64');
+      const arrayBuffer = await readFileAsArrayBuffer(file);
+      const docxFileBase64 = Buffer.from(arrayBuffer).toString('base64');
 
       const result = await convertWordToPdfAction({ docxFileBase64, originalFileName: file.name });
 
@@ -155,8 +151,9 @@ export default function WordToPdfPage() {
     }
   };
 
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-0"> {/* Added padding for small screens */}
+    <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-0">
       <style jsx global>{`
         .docx-preview-content .docx-wrapper {
           background-color: transparent !important;
@@ -165,25 +162,35 @@ export default function WordToPdfPage() {
           box-shadow: none !important;
         }
         .docx-preview-content .docx-wrapper > section.docx {
-          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important; /* Softer shadow */
+          display: none; /* Hide all pages by default */
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important;
           margin: 10px auto !important;
           background-color: white !important;
           overflow: visible !important; /* Allow content to not be clipped if needed */
-          max-width: 100%; /* Ensure it fits parent */
+          max-width: 100%; 
         }
-        .docx-preview-content p { color: #333 !important; }
-        .docx-preview-content h1, .docx-preview-content h2, .docx-preview-content h3 { color: #111 !important; }
+        .docx-preview-content .docx-wrapper > section.docx:first-child {
+          display: block !important; /* Show only the first page */
+        }
+        /* Ensure content within visible page is styled (example) */
+        .docx-preview-content .docx-wrapper > section.docx:first-child p {
+           color: #333 !important; 
+        }
+        .docx-preview-content .docx-wrapper > section.docx:first-child h1,
+        .docx-preview-content .docx-wrapper > section.docx:first-child h2,
+        .docx-preview-content .docx-wrapper > section.docx:first-child h3 {
+           color: #111 !important;
+        }
       `}</style>
       <header className="text-center pt-8 pb-4">
         <FileCode className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Word to PDF</h1>
         <p className="text-muted-foreground mt-2 text-base md:text-lg">
-          Upload your .docx file to convert it into a PDF document.
+          Upload your .docx file to convert it into a PDF document. Preview shows the first page.
         </p>
       </header>
 
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-        {/* Left Panel: File Upload / Preview */}
         <div className="lg:w-2/3 relative min-h-[400px] lg:min-h-[500px] flex flex-col items-center justify-center bg-card border rounded-lg shadow-md p-4 sm:p-6">
           {!file && !isLoadingPreview && (
             <div className="w-full max-w-md">
@@ -206,22 +213,21 @@ export default function WordToPdfPage() {
                 id={PREVIEW_CONTAINER_ID}
                 ref={previewContainerRef}
                 className={cn(
-                    "w-full h-full flex-grow border rounded-md bg-slate-50 dark:bg-slate-800 overflow-y-auto p-1 min-h-[300px]",
-                    isLoadingPreview && "opacity-50" // Dim preview while loading
+                    "w-full h-full flex-grow border rounded-md bg-slate-50 dark:bg-slate-800 overflow-y-auto p-1 min-h-[300px] docx-preview-content", // Added docx-preview-content class for scoping
+                    isLoadingPreview && "opacity-50"
                 )}
-                // Ensure parent has defined height for h-full to work or set explicit height
               >
                 {!isLoadingPreview && !previewContainerRef.current?.hasChildNodes() && !error && (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
                         <FileCode size={48} className="mb-2"/>
-                        <p>Preview will appear here.</p>
+                        <p>Preview of the first page will appear here.</p>
                         {file && <p className="text-xs mt-1">File: {file.name}</p>}
                     </div>
                 )}
               </div>
             </>
           )}
-          {error && !isLoadingPreview && previewContainerRef.current && !previewContainerRef.current.hasChildNodes() && (
+           {error && !isLoadingPreview && previewContainerRef.current && !previewContainerRef.current.hasChildNodes() && (
              <Alert variant="destructive" className="mt-4 w-full max-w-md text-sm">
                 <Info className="h-4 w-4"/>
                 <AlertTitle>Preview Error</AlertTitle>
@@ -247,9 +253,8 @@ export default function WordToPdfPage() {
           />
         </div>
 
-        {/* Right Panel: Options & Action */}
         <div className="lg:w-1/3">
-          <Card className="shadow-lg h-full flex flex-col sticky top-24"> {/* Added sticky top for consistent positioning */}
+          <Card className="shadow-lg h-full flex flex-col sticky top-24">
             <CardHeader className="text-center pb-4">
               <CardTitle className="text-xl font-semibold">Word to PDF</CardTitle>
             </CardHeader>
@@ -258,10 +263,9 @@ export default function WordToPdfPage() {
                 <Info className="h-4 w-4" />
                 <AlertTitle>How to Convert</AlertTitle>
                 <AlertDescription>
-                  1. Upload your .docx file using the panel on the left or the '+' button.
-                  2. A preview of your document will be displayed.
-                  3. Click the "Convert to PDF" button below to start the conversion.
-                  The resulting PDF will extract text and images. Font styles and complex layouts may be simplified.
+                  1. Upload your .docx file. The first page will be previewed.
+                  2. Click "Convert to PDF". The resulting PDF will extract text and images.
+                  Font styles and complex layouts may be simplified.
                 </AlertDescription>
               </Alert>
             </CardContent>
@@ -301,7 +305,7 @@ export default function WordToPdfPage() {
           </AlertDescription>
         </Alert>
       )}
-       {error && !isConverting && !isLoadingPreview && !previewContainerRef.current?.hasChildNodes() && (
+       {error && !isConverting && !isLoadingPreview && !(previewContainerRef.current && previewContainerRef.current.hasChildNodes()) && (
          <Alert variant="destructive" className="mt-8 max-w-lg mx-auto">
             <Info className="h-4 w-4"/>
             <AlertTitle>Process Error</AlertTitle>
@@ -311,5 +315,3 @@ export default function WordToPdfPage() {
     </div>
   );
 }
-
-    
