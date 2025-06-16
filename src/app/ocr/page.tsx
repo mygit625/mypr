@@ -14,7 +14,7 @@ if (typeof Promise.withResolvers !== 'function') {
   };
 }
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
 import Tesseract, { createWorker } from 'tesseract.js';
@@ -27,7 +27,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { ScanText, Loader2, Info, Download, CheckSquare, Square, BrainCircuit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
@@ -64,41 +63,70 @@ export default function OcrPdfPage() {
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const { toast } = useToast();
+  
   const [tesseractWorker, setTesseractWorker] = useState<Tesseract.Worker | null>(null);
+  const [isInitializingWorker, setIsInitializingWorker] = useState(false);
+  const workerInitializingRef = useRef(false); // To prevent multiple initialization attempts
 
+  // Effect to initialize Tesseract worker when a PDF file is loaded
   useEffect(() => {
-    // Initialize Tesseract worker
-    const initializeWorker = async () => {
-      const worker = await createWorker({
-        logger: m => {
-          if (m.status === 'recognizing text' && typeof m.progress === 'number') {
-            const activePage = pagesToOcr.find(p => p.isProcessing && !p.extractedText);
-            if (activePage) {
-              setPagesToOcr(prev => prev.map(p => p.id === activePage.id ? {...p, ocrProgress: Math.round(m.progress * 100)} : p));
+    const initialize = async () => {
+      if (workerInitializingRef.current) return; // Already attempting to initialize
+      workerInitializingRef.current = true;
+      setIsInitializingWorker(true);
+      setGlobalError(null); // Clear previous errors specific to worker init
+      console.log("Attempting to initialize Tesseract worker...");
+      try {
+        const worker = await createWorker({
+          logger: m => {
+            // Update OCR progress based on Tesseract logs
+            if (m.status === 'recognizing text' && typeof m.progress === 'number') {
+              setPagesToOcr(prev => {
+                const activePage = prev.find(p => p.isProcessing && !p.extractedText);
+                if (activePage) {
+                  return prev.map(p => p.id === activePage.id ? {...p, ocrProgress: Math.round(m.progress * 100)} : p);
+                }
+                return prev;
+              });
             }
-          }
-        },
-        // Optional: Specify paths if not using CDN for worker/core/lang data
-        // workerPath: '/path/to/tesseract/worker.min.js',
-        // corePath: '/path/to/tesseract/tesseract-core.wasm.js',
-        // langPath: '/path/to/lang-data/'
-      });
-      await worker.loadLanguage('eng');
-      await worker.initialize('eng');
-      setTesseractWorker(worker);
+          },
+        });
+        await worker.loadLanguage('eng');
+        await worker.initialize('eng');
+        setTesseractWorker(worker);
+        console.log("Tesseract worker initialized successfully.");
+      } catch (error: any) {
+        console.error("Failed to initialize Tesseract worker:", error);
+        setGlobalError("Failed to initialize OCR engine: " + error.message + ". Please try reloading the page or ensure your internet connection is stable if loading models remotely.");
+        toast({ title: "OCR Engine Error", description: "Could not initialize Tesseract.js: " + error.message, variant: "destructive" });
+        setTesseractWorker(null); // Ensure worker is null on failure
+      } finally {
+        setIsInitializingWorker(false);
+        workerInitializingRef.current = false;
+      }
     };
-    initializeWorker();
 
+    if (pdfFile && !tesseractWorker && !isInitializingWorker) {
+      initialize();
+    }
+  }, [pdfFile, tesseractWorker, isInitializingWorker, toast]);
+
+  // Effect for Tesseract worker cleanup on component unmount
+  useEffect(() => {
     return () => {
-      tesseractWorker?.terminate();
+      if (tesseractWorker) {
+        console.log("Terminating Tesseract worker on component unmount.");
+        tesseractWorker.terminate();
+      }
     };
-  }, []); // Runs once on mount
+  }, [tesseractWorker]);
+
 
   const processUploadedPdf = async (file: File) => {
     setIsLoadingPdf(true);
     setGlobalError(null);
     setPagesToOcr([]);
-    setPdfFile(file);
+    setPdfFile(file); // This will trigger the worker initialization useEffect if worker not ready
 
     try {
       const dataUri = await readFileAsDataURL(file);
@@ -149,12 +177,22 @@ export default function OcrPdfPage() {
 
   const handleFileSelected = (selectedFiles: File[]) => {
     if (selectedFiles.length > 0) {
+      // If a worker exists from a previous PDF, terminate it before processing a new one
+      if (tesseractWorker) {
+        tesseractWorker.terminate();
+        setTesseractWorker(null);
+      }
+      workerInitializingRef.current = false; // Reset flag for new file
       processUploadedPdf(selectedFiles[0]);
     } else {
       setPdfFile(null);
       setPdfDataUri(null);
       setPagesToOcr([]);
       setGlobalError(null);
+      if (tesseractWorker) { // Terminate worker if file is deselected
+        tesseractWorker.terminate();
+        setTesseractWorker(null);
+      }
     }
   };
 
@@ -216,8 +254,8 @@ export default function OcrPdfPage() {
       toast({ title: "No Pages Selected", description: "Please select at least one page to process.", variant: "destructive" });
       return;
     }
-    if (!tesseractWorker) {
-      toast({ title: "OCR Not Ready", description: "Tesseract.js worker is not initialized. Please wait.", variant: "destructive" });
+    if (!tesseractWorker || isInitializingWorker) {
+      toast({ title: "OCR Not Ready", description: "Tesseract.js worker is not initialized or still initializing. Please wait.", variant: "destructive" });
       return;
     }
 
@@ -271,7 +309,7 @@ export default function OcrPdfPage() {
         <h1 className="text-3xl font-bold tracking-tight">OCR PDF (Extract Text Locally)</h1>
         <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
           Upload a PDF. The tool will convert pages to images and use client-side Tesseract.js to extract text in your browser.
-          No API key needed.
+          No API key needed. The OCR engine will initialize after you upload a file.
         </p>
       </header>
 
@@ -298,12 +336,12 @@ export default function OcrPdfPage() {
           <p className="ml-3 text-lg text-muted-foreground">Loading PDF pages...</p>
         </div>
       )}
-
-      {!tesseractWorker && !isLoadingPdf && !pdfFile && (
-        <Alert variant="default" className="text-center">
+      
+      {pdfFile && isInitializingWorker && !tesseractWorker && (
+         <Alert variant="default" className="text-center">
             <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary mb-2" />
             <AlertTitle>Initializing OCR Engine</AlertTitle>
-            <AlertDescription>Please wait while Tesseract.js (the local OCR engine) loads. This might take a moment on first visit.</AlertDescription>
+            <AlertDescription>Please wait while Tesseract.js (the local OCR engine) loads. This might take a moment.</AlertDescription>
         </Alert>
       )}
 
@@ -375,22 +413,22 @@ export default function OcrPdfPage() {
             <CardFooter className="flex-col items-stretch space-y-3">
               <Button
                 onClick={handleExtractText}
-                disabled={isProcessingOcr || selectedCount === 0 || !tesseractWorker}
+                disabled={isProcessingOcr || selectedCount === 0 || !tesseractWorker || isInitializingWorker}
                 className="w-full"
                 size="lg"
               >
-                {isProcessingOcr ? (
+                {isProcessingOcr || (isInitializingWorker && !tesseractWorker) ? (
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 ) : (
                   <ScanText className="mr-2 h-5 w-5" />
                 )}
-                Extract Text from Selected Pages ({selectedCount})
+                { (isInitializingWorker && !tesseractWorker) ? 'OCR Engine Loading...' : `Extract Text from Selected Pages (${selectedCount})` }
               </Button>
               <Button
                 onClick={handleDownloadText}
                 variant="outline"
                 className="w-full"
-                disabled={isProcessingOcr || pagesToOcr.every(p => !p.extractedText)}
+                disabled={isProcessingOcr || pagesToOcr.every(p => !p.extractedText) || isInitializingWorker}
               >
                 <Download className="mr-2 h-4 w-4" /> Download All Extracted Text
               </Button>
@@ -401,3 +439,4 @@ export default function OcrPdfPage() {
     </div>
   );
 }
+
