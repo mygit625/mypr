@@ -6,7 +6,7 @@ import mammoth from 'mammoth';
 import type { Buffer } from 'buffer';
 
 interface ConvertWordToPdfInput {
-  docxFileBuffer: Buffer; // Expecting a Buffer directly
+  docxFileBase64: string; // Changed from Buffer to base64 string
   originalFileName: string;
 }
 
@@ -16,31 +16,33 @@ interface ConvertWordToPdfOutput {
 }
 
 export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Promise<ConvertWordToPdfOutput> {
-  if (!input.docxFileBuffer || input.docxFileBuffer.length === 0) {
+  if (!input.docxFileBase64) {
     return { error: "No DOCX file data provided for conversion." };
   }
 
   console.log(`Attempting to convert Word file: ${input.originalFileName} using Mammoth + PDFKit`);
 
   try {
+    const docxFileBuffer = Buffer.from(input.docxFileBase64, 'base64'); // Convert base64 back to Buffer
+
+    if (docxFileBuffer.length === 0) {
+        return { error: "Empty DOCX file data received after base64 decoding." };
+    }
+
     // 1. Extract raw text
-    const rawTextResult = await mammoth.extractRawText({ buffer: input.docxFileBuffer });
+    const rawTextResult = await mammoth.extractRawText({ buffer: docxFileBuffer });
     const textContent = rawTextResult.value;
 
     // 2. Extract images
-    // We'll store image buffers and their content types
     const images: { buffer: Buffer; contentType: string }[] = [];
     const imageConvertOptions = {
       convertImage: mammoth.images.imgElement(async (image) => {
         const imageBuffer = await image.read();
         images.push({ buffer: imageBuffer, contentType: image.contentType });
-        // For HTML conversion, you might return a placeholder, but we don't need HTML for this approach.
-        // We are primarily using this to populate the `images` array.
-        return {}; // Return an empty object as we are not constructing HTML here.
+        return {}; 
       }),
     };
-    // Run convertToHtml primarily to trigger the image extraction via convertImage
-    await mammoth.convertToHtml({ buffer: input.docxFileBuffer }, imageConvertOptions);
+    await mammoth.convertToHtml({ buffer: docxFileBuffer }, imageConvertOptions);
 
     // 3. Create PDF with PDFKit
     const pdfDoc = new PDFDocument({ autoFirstPage: false, margins: { top: 72, bottom: 72, left: 72, right: 72 } });
@@ -48,25 +50,19 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
     const pdfChunks: Buffer[] = [];
     pdfDoc.on('data', (chunk) => pdfChunks.push(chunk as Buffer));
     
-    // Add a first page
     pdfDoc.addPage();
-
-    // Add extracted text
     pdfDoc.font('Helvetica').fontSize(12).text(textContent, {
       align: 'justify',
       lineGap: 4,
     });
 
-    // Add extracted images, each on a new page for simplicity or scaled
     if (images.length > 0) {
       for (const img of images) {
         pdfDoc.addPage();
         try {
-          // Attempt to embed the image. PDFKit supports JPG and PNG.
-          // Mammoth usually gives 'image/png' or 'image/jpeg'.
           if (img.contentType === 'image/jpeg' || img.contentType === 'image/png') {
             pdfDoc.image(img.buffer, {
-              fit: [pdfDoc.page.width - 144, pdfDoc.page.height - 144], // fit within margins
+              fit: [pdfDoc.page.width - 144, pdfDoc.page.height - 144], 
               align: 'center',
               valign: 'center',
             });

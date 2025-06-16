@@ -33,7 +33,7 @@ export default function WordToPdfPage() {
         return;
     }
     setIsLoadingPreview(true);
-    setError(null); // Clear previous errors related to preview
+    setError(null); 
     previewContainerRef.current.innerHTML = ''; 
     
     try {
@@ -97,15 +97,14 @@ export default function WordToPdfPage() {
 
     setIsConverting(true);
     setConvertedPdfUri(null);
-    setError(null); // Clear previous general errors
+    setError(null); 
     toast({ title: "Processing Document", description: "Converting your Word document to PDF..." });
 
     try {
       const docxFileArrayBuffer = await readFileAsArrayBuffer(file);
-      // Convert ArrayBuffer to Node.js Buffer for the server action
-      const docxFileBuffer = Buffer.from(docxFileArrayBuffer);
+      const docxFileBase64 = Buffer.from(docxFileArrayBuffer).toString('base64');
 
-      const result = await convertWordToPdfAction({ docxFileBuffer, originalFileName: file.name });
+      const result = await convertWordToPdfAction({ docxFileBase64, originalFileName: file.name });
 
       if (result.error) {
         setError(result.error);
@@ -188,7 +187,7 @@ export default function WordToPdfPage() {
                     </div>
                 )}
               </div>
-               {error && !isLoadingPreview && ( // Show preview-related error specifically
+               {error && !isLoadingPreview && ( 
                  <Alert variant="destructive" className="mt-2 text-sm">
                     <Info className="h-4 w-4"/>
                     <AlertTitle>Preview Error</AlertTitle>
@@ -220,7 +219,7 @@ export default function WordToPdfPage() {
         </CardFooter>
       </Card>
 
-      {convertedPdfUri && !error && ( // Only show if conversion succeeded
+      {convertedPdfUri && !error && ( 
         <Alert variant="default" className="bg-green-50 border-green-200">
           <CheckCircle className="h-4 w-4 text-green-600" />
           <AlertTitle className="text-green-700">PDF Ready!</AlertTitle>
@@ -232,7 +231,7 @@ export default function WordToPdfPage() {
           </AlertDescription>
         </Alert>
       )}
-       {error && !isConverting && ( // Show general error if not converting and error exists (and it's not a preview error already shown)
+       {error && !isConverting && !isLoadingPreview && ( // Show general error if not converting/loading preview and error exists
          <Alert variant="destructive" className="mt-4">
             <Info className="h-4 w-4"/>
             <AlertTitle>Conversion Error</AlertTitle>
