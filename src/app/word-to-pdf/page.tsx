@@ -3,13 +3,14 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import * as docx from 'docx-preview';
+import html2canvas from 'html2canvas';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
-import { FileCode, Loader2, Info, Download, FileText, ExternalLink } from 'lucide-react';
+import { FileCode, Loader2, Info, Download, FileText, ExternalLink, Image, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { readFileAsDataURL, readFileAsArrayBuffer } from '@/lib/file-utils'; // Assuming readFileAsArrayBuffer exists
+import { readFileAsArrayBuffer } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { convertWordToPdfAction } from './actions';
 
@@ -23,6 +24,7 @@ export default function WordToPdfPage() {
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const { toast } = useToast();
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const [isCapturingImages, setIsCapturingImages] = useState(false);
 
   const renderPreview = useCallback(async (docxFile: File) => {
     if (!docxFile) return;
@@ -32,30 +34,29 @@ export default function WordToPdfPage() {
     }
     setIsLoadingPreview(true);
     setError(null);
-    // Clear previous preview
-    previewContainerRef.current.innerHTML = '';
+    previewContainerRef.current.innerHTML = ''; // Clear previous preview
     
     try {
       const arrayBuffer = await readFileAsArrayBuffer(docxFile);
       await docx.renderAsync(arrayBuffer, previewContainerRef.current, undefined, {
-        className: "docx-preview-content", // for styling
-        inWrapper: true, // Renders a wrapper around the content
+        className: "docx-preview-content",
+        inWrapper: true,
         ignoreWidth: false, 
         ignoreHeight: false,
         ignoreFonts: false,
-        breakPages: true, // Attempt to show page breaks
+        breakPages: true, // Important for page segmentation
         experimental: false,
         debug: false,
+        useMathMLPolyfill: true, // To render equations if any
       });
     } catch (e: any) {
       console.error("Error rendering DOCX preview:", e);
-      setError("Could not render preview for this DOCX file. It might be corrupted or an unsupported format.");
+      setError("Could not render preview. The DOCX file might be corrupted or use unsupported features.");
       previewContainerRef.current.innerHTML = '<p class="text-destructive text-center p-4">Preview not available.</p>';
     } finally {
       setIsLoadingPreview(false);
     }
   }, []);
-
 
   const handleFileSelected = async (selectedFiles: File[]) => {
     if (selectedFiles.length > 0) {
@@ -83,32 +84,66 @@ export default function WordToPdfPage() {
   };
 
   const handleConvert = async () => {
-    if (!file) {
+    if (!file || !previewContainerRef.current) {
       toast({
-        title: "No file selected",
-        description: "Please select a .docx file to convert.",
+        title: "No file or preview",
+        description: "Please select a .docx file and ensure its preview is loaded.",
         variant: "destructive",
       });
       return;
     }
 
     setIsConverting(true);
+    setIsCapturingImages(true);
     setConvertedPdfUri(null);
     setError(null);
+    toast({ title: "Processing Document", description: "Capturing page images, this may take a moment..." });
 
     try {
-      const wordDataUri = await readFileAsDataURL(file); // We send data URI, though action uses placeholder logic
-      const result = await convertWordToPdfAction({ wordDataUri, originalFileName: file.name });
+      const pageElements = Array.from(
+        previewContainerRef.current.querySelectorAll('.docx-preview-content .docx')
+      ) as HTMLElement[];
+
+      if (pageElements.length === 0) {
+        throw new Error("Could not find rendered pages in the preview. Ensure the DOCX rendered correctly.");
+      }
+      
+      const pageImageUris: string[] = [];
+      for (let i = 0; i < pageElements.length; i++) {
+        const element = pageElements[i];
+        try {
+            const canvas = await html2canvas(element, {
+            scale: 2, // Increase scale for better quality
+            useCORS: true, // If images are from external sources
+            logging: false,
+            });
+            pageImageUris.push(canvas.toDataURL('image/jpeg', 0.9)); // Use JPEG for smaller size
+            toast({ description: `Captured page ${i + 1} of ${pageElements.length}`});
+        } catch (canvasError: any) {
+            console.error(`Error capturing page ${i+1} with html2canvas:`, canvasError);
+            // Optionally skip this page or add a placeholder error image
+            toast({title: "Page Capture Error", description: `Could not capture page ${i+1}. It will be skipped.`, variant: "destructive"});
+        }
+      }
+      setIsCapturingImages(false);
+
+      if (pageImageUris.length === 0) {
+        throw new Error("No page images could be captured from the document.");
+      }
+
+      toast({ title: "Finalizing PDF", description: "Sending images to create your PDF..." });
+      const result = await convertWordToPdfAction({ pageImageUris, originalFileName: file.name });
 
       if (result.error) {
         setError(result.error);
         toast({ title: "Conversion Error", description: result.error, variant: "destructive" });
       } else if (result.pdfDataUri) {
         setConvertedPdfUri(result.pdfDataUri);
-        downloadDataUri(result.pdfDataUri, `${file.name.replace(/\.docx$/, '')}_placeholder.pdf`);
+        downloadDataUri(result.pdfDataUri, `${file.name.replace(/\.docx$/, '')}.pdf`);
         toast({
-          title: "Placeholder PDF Generated!",
-          description: "A placeholder PDF has been generated and download has started.",
+          title: "Conversion Successful!",
+          description: "Your Word document has been converted to an image-based PDF.",
+          variant: "default", // Use default for success
         });
       }
     } catch (e: any) {
@@ -117,6 +152,7 @@ export default function WordToPdfPage() {
       toast({ title: "Conversion Failed", description: errorMessage, variant: "destructive" });
     } finally {
       setIsConverting(false);
+      setIsCapturingImages(false);
     }
   };
 
@@ -124,27 +160,26 @@ export default function WordToPdfPage() {
     <div className="max-w-4xl mx-auto space-y-8">
       <style jsx global>{`
         .docx-preview-content .docx-wrapper {
-          background-color: white !important;
-          padding: 20px !important;
+          background-color: transparent !important; /* Allow parent bg to show */
+          padding: 0px !important; /* Minimal padding */
           margin-bottom: 0 !important;
-          box-shadow: 0 0 10px rgba(0,0,0,0.1) !important;
+          box-shadow: none !important; /* Remove wrapper shadow */
         }
         .docx-preview-content .docx-wrapper > section.docx {
-            box-shadow: none !important;
-            margin-bottom: 0 !important;
+          box-shadow: 0 0 10px rgba(0,0,0,0.15) !important; /* Shadow per page */
+          margin: 10px auto !important; /* Spacing between pages */
+          background-color: white !important; /* White background for each page */
+          overflow: hidden; /* Ensure content stays within page bounds */
+          max-width: 100%; /* Ensure it's responsive within its container */
         }
-        .docx-preview-content p {
-          color: #333 !important; /* Example for paragraph text color */
-        }
-        .docx-preview-content h1, .docx-preview-content h2, .docx-preview-content h3 {
-          color: #111 !important; /* Example for heading colors */
-        }
+        .docx-preview-content p { color: #333 !important; }
+        .docx-preview-content h1, .docx-preview-content h2, .docx-preview-content h3 { color: #111 !important; }
       `}</style>
       <header className="text-center py-8">
         <FileCode className="mx-auto h-16 w-16 text-primary mb-4" />
-        <h1 className="text-3xl font-bold tracking-tight">Word to PDF</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Word to PDF (as Images)</h1>
         <p className="text-muted-foreground mt-2">
-          Upload a .docx file to preview it and convert it to a (placeholder) PDF.
+          Upload a .docx file to preview it and convert it to a PDF where each page is an image.
         </p>
       </header>
 
@@ -171,15 +206,13 @@ export default function WordToPdfPage() {
               <div 
                 id={PREVIEW_CONTAINER_ID} 
                 ref={previewContainerRef} 
-                className="border rounded-md bg-slate-50 min-h-[300px] max-h-[500px] overflow-y-auto p-1"
+                className="border rounded-md bg-slate-100 dark:bg-slate-800 min-h-[300px] max-h-[500px] overflow-y-auto p-1"
                 style={{ display: isLoadingPreview ? 'none' : 'block' }}
               >
-                {/* DOCX content will be rendered here by docx.renderAsync */}
-                 {!isLoadingPreview && !previewContainerRef.current?.hasChildNodes() && (
+                 {!isLoadingPreview && !previewContainerRef.current?.hasChildNodes() && !error && (
                     <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
                         <FileText size={48} className="mb-2"/>
-                        <p>Preview will appear here.</p>
-                        {error && <p className="text-destructive mt-2">{error}</p>}
+                        <p>Preview will appear here once the file is processed.</p>
                     </div>
                 )}
               </div>
@@ -203,34 +236,34 @@ export default function WordToPdfPage() {
             {isConverting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Converting...
+                {isCapturingImages ? "Capturing Pages..." : "Converting..."}
               </>
             ) : (
               <>
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Convert to PDF (Placeholder)
+                <Image className="mr-2 h-4 w-4" />
+                Convert to Image PDF
               </>
             )}
           </Button>
         </CardFooter>
       </Card>
 
-      {convertedPdfUri && (
+      {convertedPdfUri && !error && (
         <Alert variant="default" className="bg-green-50 border-green-200">
           <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertTitle className="text-green-700">Placeholder PDF Ready!</AlertTitle>
+          <AlertTitle className="text-green-700">PDF Ready!</AlertTitle>
           <AlertDescription className="text-green-600">
-            Your placeholder PDF has been generated. The download should have started automatically.
-            <Button variant="link" size="sm" onClick={() => downloadDataUri(convertedPdfUri, `${file?.name.replace(/\.docx$/, '')}_placeholder.pdf`)} className="text-green-700 hover:text-green-800 p-0 h-auto ml-2">
+            Your Word document has been converted. The download should have started.
+            <Button variant="link" size="sm" onClick={() => downloadDataUri(convertedPdfUri, `${file?.name.replace(/\.docx$/, '')}.pdf`)} className="text-green-700 hover:text-green-800 p-0 h-auto ml-2">
               Download Again
             </Button>
           </AlertDescription>
         </Alert>
       )}
-       {error && !isConverting && !isLoadingPreview && !file && (
+       {error && !isConverting && ( // Show general error if not converting and error exists
          <Alert variant="destructive" className="mt-4">
             <Info className="h-4 w-4"/>
-            <AlertTitle>Error</AlertTitle>
+            <AlertTitle>Conversion Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
          </Alert>
        )}
