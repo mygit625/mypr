@@ -4,7 +4,7 @@ import {
   Combine, Split, FileText, Minimize2, FileCode, FileSpreadsheet,
   FileImage, Edit3, PenTool, Droplets, RotateCcw, Globe, Unlock, Lock, LayoutGrid,
   Archive, Wrench, ListOrdered, ScanText, FileType, Presentation, Table2, ImagePlus, BarChart3,
-  Crop, Diff, Paintbrush, PanelTop, FileMinus2, FilePlus2, FlaskConical
+  Crop, Diff, Paintbrush, PanelTop, FileMinus2, FilePlus2, FlaskConical, BrainCircuit
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -46,7 +46,7 @@ const featuresByCategory: FeatureCategory[] = [
   {
     name: 'Convert to PDF',
     features: [
-      { title: 'Word to PDF', description: 'Make DOC and DOCX files easy to read by converting them to PDF.', href: '#', Icon: FileCode, iconColor: 'text-blue-700' },
+      { title: 'Word to PDF', description: 'Make DOCX files easy to read by converting them to PDF.', href: '/word-to-pdf', Icon: FileCode, iconColor: 'text-blue-700' },
       { title: 'PowerPoint to PDF', description: 'Make PPT and PPTX slideshows easy to view by converting to PDF.', href: '#', Icon: Presentation, iconColor: 'text-orange-700' },
       { title: 'Excel to PDF', description: 'Make Excel spreadsheets easy to read by converting them to PDF.', href: '#', Icon: Table2, iconColor: 'text-green-700' },
       { title: 'JPG to PDF', description: 'Convert JPG images to PDF. Adjust orientation and margins.', href: '/jpg-to-pdf', Icon: ImagePlus, iconColor: 'text-yellow-600' },
