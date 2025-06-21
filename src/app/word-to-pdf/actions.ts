@@ -4,8 +4,8 @@
 import PDFDocument from 'pdfkit';
 import mammoth from 'mammoth';
 import type { Buffer } from 'buffer';
-import fs from 'fs'; // For reading the font file
-import path from 'path'; // For constructing the font file path
+import fs from 'fs';
+import path from 'path';
 
 export interface ConvertWordToPdfInput {
   docxFileBase64: string;
@@ -22,13 +22,11 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
     return { error: "No DOCX file data provided for conversion." };
   }
 
-  console.log(`Attempting to convert Word file: ${input.originalFileName} using Mammoth + PDFKit with custom font.`);
+  console.log(`Attempting to convert Word file: ${input.originalFileName} using Mammoth (HTML) + PDFKit.`);
 
   // ---- FONT LOADING ----
-  // Using Noto Sans Simplified Chinese for broad CJK language support.
-  // The user MUST place this font file in the specified directory.
   let fontBuffer: Buffer | null = null;
-  const fontFileName = 'NotoSansSC-Regular.otf'; // Switched to Noto Sans SC for CJK support
+  const fontFileName = 'NotoSansSC-Regular.otf';
   const fontPath = path.join(process.cwd(), 'src', 'assets', 'fonts', fontFileName);
   let customFontLoaded = false;
 
@@ -38,15 +36,12 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
       customFontLoaded = true;
       console.log(`Successfully loaded font: ${fontPath}`);
     } else {
-      console.warn(`Custom font not found at: ${fontPath}. Will use default PDFKit font. CJK and other special characters may not render correctly.`);
-      // Proceed with PDFKit's default font (Helvetica) if Noto font is not found.
+      console.warn(`Custom font not found at: ${fontPath}. CJK characters will not render correctly. Please add the font file to src/assets/fonts/`);
     }
   } catch (fontError: any) {
     console.error(`Error reading font file: ${fontPath}`, fontError);
-    // Proceeding without custom font, but log the attempt error.
   }
   // ---- END FONT LOADING ----
-
 
   try {
     const docxFileBuffer = Buffer.from(input.docxFileBase64, 'base64');
@@ -55,9 +50,23 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
       return { error: "Empty DOCX file data received after base64 decoding." };
     }
 
-    // 1. Extract raw text
-    const rawTextResult = await mammoth.extractRawText({ buffer: docxFileBuffer });
-    const textContent = rawTextResult.value;
+    // 1. Convert to HTML, then to plain text to better preserve structure and encoding.
+    const htmlResult = await mammoth.convertToHtml({ buffer: docxFileBuffer });
+    const html = htmlResult.value;
+
+    // A simple conversion from HTML to text, preserving line breaks and basic formatting.
+    const textContent = html
+        .replace(/<li[^>]*>/gi, '\n• ') // Handle list items
+        .replace(/<\/p>/gi, '\n')     // Handle paragraph endings
+        .replace(/<br[^>]*>/gi, '\n')    // Handle line breaks
+        .replace(/<[^>]+>/g, '')      // Strip all other tags
+        .replace(/&nbsp;/g, ' ')      // Replace non-breaking spaces
+        .replace(/&amp;/g, '&')       // Replace ampersands
+        .replace(/&lt;/g, '<')        // Replace less-than
+        .replace(/&gt;/g, '>')        // Replace greater-than
+        .trim();
+        
+    console.log("Extracted text (first 100 chars):", textContent.substring(0, 100));
 
     // 2. Extract images
     const images: { buffer: Buffer; contentType: string }[] = [];
@@ -65,7 +74,7 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
       convertImage: mammoth.images.imgElement(async (image) => {
         const imageBuffer = await image.read();
         images.push({ buffer: imageBuffer, contentType: image.contentType });
-        return {}; // Required return for imgElement
+        return {};
       }),
     };
     await mammoth.convertToHtml({ buffer: docxFileBuffer }, imageConvertOptions);
@@ -83,14 +92,13 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
       pdfDoc.font(fontBuffer);
       console.log(`Custom font ${fontFileName} applied to PDF.`);
     } else {
-      // pdfkit will use its default (Helvetica)
       console.log("Proceeding with PDFKit default font.");
     }
     // ---- END SET FONT ----
 
     pdfDoc.fontSize(12).text(textContent, {
-      align: 'justify',
       lineGap: 4,
+      // Removed align: 'justify' as it can cause issues with complex scripts
     });
 
     if (images.length > 0) {
@@ -99,20 +107,18 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
         try {
           if (img.contentType === 'image/jpeg' || img.contentType === 'image/png') {
             pdfDoc.image(img.buffer, {
-              fit: [pdfDoc.page.width - 144, pdfDoc.page.height - 144], // Fit within margins
+              fit: [pdfDoc.page.width - 144, pdfDoc.page.height - 144],
               align: 'center',
               valign: 'center',
             });
           } else {
             console.warn(`Skipping image with unsupported content type: ${img.contentType} in file ${input.originalFileName}`);
-            if (customFontLoaded && fontBuffer) pdfDoc.font(fontBuffer); // Ensure font is set for placeholder
-            else pdfDoc.font('Helvetica'); // Fallback if custom font not loaded
+            if (customFontLoaded && fontBuffer) pdfDoc.font(fontBuffer); else pdfDoc.font('Helvetica');
             pdfDoc.fontSize(10).text(`[Unsupported image type: ${img.contentType}]`, {align: 'center'});
           }
         } catch (imgError: any) {
           console.error(`Error embedding image in PDFKit for ${input.originalFileName}:`, imgError);
-           if (customFontLoaded && fontBuffer) pdfDoc.font(fontBuffer);
-           else pdfDoc.font('Helvetica');
+           if (customFontLoaded && fontBuffer) pdfDoc.font(fontBuffer); else pdfDoc.font('Helvetica');
            pdfDoc.fontSize(10).text(`[Error embedding image: ${imgError.message}]`, {align: 'center'});
         }
       }
@@ -122,7 +128,7 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
       pdfDoc.on('end', () => {
         const pdfBytes = Buffer.concat(pdfChunks);
         const pdfDataUri = `data:application/pdf;base64,${pdfBytes.toString('base64')}`;
-        console.log(`PDF conversion with Mammoth + PDFKit (font: ${customFontLoaded ? fontFileName : 'default'}) successful for ${input.originalFileName}.`);
+        console.log(`PDF conversion successful for ${input.originalFileName}.`);
         resolve({ pdfDataUri });
       });
 
@@ -135,7 +141,7 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
     });
 
   } catch (e: any) {
-    console.error(`Error converting DOCX ${input.originalFileName} with Mammoth + PDFKit:`, e);
+    console.error(`Error converting DOCX ${input.originalFileName}:`, e);
     let errorMessage = "Failed to convert Word document. " + e.message;
     if (e.message && e.message.includes("Unrecognised Office Open XML")) {
         errorMessage = "The uploaded file does not appear to be a valid .docx file or is corrupted.";
