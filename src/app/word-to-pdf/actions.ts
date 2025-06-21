@@ -33,8 +33,12 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
   try {
     if (fs.existsSync(fontPath)) {
       fontBuffer = fs.readFileSync(fontPath);
-      customFontLoaded = true;
-      console.log(`Successfully loaded font: ${fontPath}`);
+      if (fontBuffer.length > 0) {
+        customFontLoaded = true;
+        console.log(`Successfully loaded font: ${fontFileName}. Size: ${fontBuffer.length} bytes.`);
+      } else {
+        console.warn(`Font file found at ${fontPath}, but it is empty.`);
+      }
     } else {
       console.warn(`Custom font not found at: ${fontPath}. CJK characters will not render correctly. Please add the font file to src/assets/fonts/`);
     }
@@ -54,7 +58,6 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
     const htmlResult = await mammoth.convertToHtml({ buffer: docxFileBuffer });
     const html = htmlResult.value;
 
-    // A simple conversion from HTML to text, preserving line breaks and basic formatting.
     const textContent = html
         .replace(/<li[^>]*>/gi, '\n• ') // Handle list items
         .replace(/<\/p>/gi, '\n')     // Handle paragraph endings
@@ -89,22 +92,31 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
 
     // ---- SET FONT ----
     if (customFontLoaded && fontBuffer) {
-      pdfDoc.font(fontBuffer);
-      console.log(`Custom font ${fontFileName} applied to PDF.`);
+      // **Explicitly register the font and then use it.** This is more robust.
+      pdfDoc.registerFont('NotoSansSC', fontBuffer);
+      pdfDoc.font('NotoSansSC');
+      console.log(`Custom font '${fontFileName}' registered and applied as 'NotoSansSC'.`);
     } else {
-      console.log("Proceeding with PDFKit default font.");
+      pdfDoc.font('Helvetica');
+      console.log("Proceeding with PDFKit default font 'Helvetica'.");
     }
     // ---- END SET FONT ----
 
     pdfDoc.fontSize(12).text(textContent, {
       lineGap: 4,
-      // Removed align: 'justify' as it can cause issues with complex scripts
     });
 
     if (images.length > 0) {
       for (const img of images) {
         pdfDoc.addPage();
         try {
+          // Re-apply font for any text on image pages
+          if (customFontLoaded) {
+             pdfDoc.font('NotoSansSC');
+          } else {
+             pdfDoc.font('Helvetica');
+          }
+
           if (img.contentType === 'image/jpeg' || img.contentType === 'image/png') {
             pdfDoc.image(img.buffer, {
               fit: [pdfDoc.page.width - 144, pdfDoc.page.height - 144],
@@ -113,12 +125,10 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
             });
           } else {
             console.warn(`Skipping image with unsupported content type: ${img.contentType} in file ${input.originalFileName}`);
-            if (customFontLoaded && fontBuffer) pdfDoc.font(fontBuffer); else pdfDoc.font('Helvetica');
             pdfDoc.fontSize(10).text(`[Unsupported image type: ${img.contentType}]`, {align: 'center'});
           }
         } catch (imgError: any) {
           console.error(`Error embedding image in PDFKit for ${input.originalFileName}:`, imgError);
-           if (customFontLoaded && fontBuffer) pdfDoc.font(fontBuffer); else pdfDoc.font('Helvetica');
            pdfDoc.fontSize(10).text(`[Error embedding image: ${imgError.message}]`, {align: 'center'});
         }
       }
