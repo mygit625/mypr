@@ -25,9 +25,11 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
   console.log(`Attempting to convert Word file: ${input.originalFileName} using Mammoth (HTML) + PDFKit.`);
 
   // ---- FONT LOADING ----
-  let fontBuffer: Buffer | null = null;
-  const fontFileName = 'NotoSansSC-Regular.otf';
+  // Switching back to DejaVuSans as it has better support for Azerbaijani and other Latin-extended scripts.
+  // The user will need to ensure this font file exists in the specified path.
+  const fontFileName = 'DejaVuSans.ttf';
   const fontPath = path.join(process.cwd(), 'src', 'assets', 'fonts', fontFileName);
+  let fontBuffer: Buffer | null = null;
   let customFontLoaded = false;
 
   try {
@@ -40,7 +42,7 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
         console.warn(`Font file found at ${fontPath}, but it is empty.`);
       }
     } else {
-      console.warn(`Custom font not found at: ${fontPath}. CJK characters will not render correctly. Please add the font file to src/assets/fonts/`);
+      console.warn(`Custom font not found at: ${fontPath}. Special characters (e.g., Azerbaijani, Chinese) may not render correctly. Please add the font file to src/assets/fonts/`);
     }
   } catch (fontError: any) {
     console.error(`Error reading font file: ${fontPath}`, fontError);
@@ -93,9 +95,9 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
     // ---- SET FONT ----
     if (customFontLoaded && fontBuffer) {
       // **Explicitly register the font and then use it.** This is more robust.
-      pdfDoc.registerFont('NotoSansSC', fontBuffer);
-      pdfDoc.font('NotoSansSC');
-      console.log(`Custom font '${fontFileName}' registered and applied as 'NotoSansSC'.`);
+      pdfDoc.registerFont('CustomFont', fontBuffer);
+      pdfDoc.font('CustomFont');
+      console.log(`Custom font '${fontFileName}' registered and applied as 'CustomFont'.`);
     } else {
       pdfDoc.font('Helvetica');
       console.log("Proceeding with PDFKit default font 'Helvetica'.");
@@ -112,7 +114,7 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
         try {
           // Re-apply font for any text on image pages
           if (customFontLoaded) {
-             pdfDoc.font('NotoSansSC');
+             pdfDoc.font('CustomFont');
           } else {
              pdfDoc.font('Helvetica');
           }
