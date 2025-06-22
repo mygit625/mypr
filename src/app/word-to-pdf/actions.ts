@@ -6,6 +6,7 @@ import mammoth from 'mammoth';
 import type { Buffer } from 'buffer';
 import fs from 'fs';
 import path from 'path';
+import { franc } from 'franc';
 
 export interface ConvertWordToPdfInput {
   docxFileBase64: string;
@@ -22,140 +23,125 @@ export async function convertWordToPdfAction(input: ConvertWordToPdfInput): Prom
     return { error: "No DOCX file data provided for conversion." };
   }
 
-  console.log(`Attempting to convert Word file: ${input.originalFileName} using Mammoth (HTML) + PDFKit.`);
-
-  // ---- FONT LOADING ----
-  // Switching back to DejaVuSans as it has better support for Azerbaijani and other Latin-extended scripts.
-  // The user will need to ensure this font file exists in the specified path.
-  const fontFileName = 'DejaVuSans.ttf';
-  const fontPath = path.join(process.cwd(), 'src', 'assets', 'fonts', fontFileName);
-  let fontBuffer: Buffer | null = null;
-  let customFontLoaded = false;
-
-  try {
-    if (fs.existsSync(fontPath)) {
-      fontBuffer = fs.readFileSync(fontPath);
-      if (fontBuffer.length > 0) {
-        customFontLoaded = true;
-        console.log(`Successfully loaded font: ${fontFileName}. Size: ${fontBuffer.length} bytes.`);
-      } else {
-        console.warn(`Font file found at ${fontPath}, but it is empty.`);
-      }
-    } else {
-      console.warn(`Custom font not found at: ${fontPath}. Special characters (e.g., Azerbaijani, Chinese) may not render correctly. Please add the font file to src/assets/fonts/`);
-    }
-  } catch (fontError: any) {
-    console.error(`Error reading font file: ${fontPath}`, fontError);
-  }
-  // ---- END FONT LOADING ----
+  console.log(`Attempting to convert Word file: ${input.originalFileName}.`);
 
   try {
     const docxFileBuffer = Buffer.from(input.docxFileBase64, 'base64');
-
     if (docxFileBuffer.length === 0) {
       return { error: "Empty DOCX file data received after base64 decoding." };
     }
 
-    // 1. Convert to HTML, then to plain text to better preserve structure and encoding.
+    // 1. Convert to HTML and then to plain text
     const htmlResult = await mammoth.convertToHtml({ buffer: docxFileBuffer });
     const html = htmlResult.value;
-
     const textContent = html
-        .replace(/<li[^>]*>/gi, '\n• ') // Handle list items
-        .replace(/<\/p>/gi, '\n')     // Handle paragraph endings
-        .replace(/<br[^>]*>/gi, '\n')    // Handle line breaks
-        .replace(/<[^>]+>/g, '')      // Strip all other tags
-        .replace(/&nbsp;/g, ' ')      // Replace non-breaking spaces
-        .replace(/&amp;/g, '&')       // Replace ampersands
-        .replace(/&lt;/g, '<')        // Replace less-than
-        .replace(/&gt;/g, '>')        // Replace greater-than
+        .replace(/<li[^>]*>/gi, '\n• ')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<br[^>]*>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
         .trim();
-        
-    console.log("Extracted text (first 100 chars):", textContent.substring(0, 100));
 
-    // 2. Extract images
+    // 2. Detect language from extracted text
+    const lang = franc(textContent, { minLength: 3, only: ['cmn', 'aze'] });
+    console.log(`Detected language code: ${lang}`);
+
+    // 3. Choose font based on language
+    let fontFileName: string;
+    let fontNameForRegistration: string;
+    
+    // ISO 639-3 code for Mandarin Chinese is 'cmn'
+    if (lang === 'cmn') {
+      fontFileName = 'NotoSansSC-Regular.otf';
+      fontNameForRegistration = 'NotoSansSC';
+      console.log('Chinese detected, selecting Noto Sans SC font.');
+    } else {
+      // Default to DejaVuSans for Azerbaijani and others
+      fontFileName = 'DejaVuSans.ttf';
+      fontNameForRegistration = 'DejaVuSans';
+      console.log('Defaulting to DejaVu Sans font.');
+    }
+
+    // 4. Load the chosen font
+    const fontPath = path.join(process.cwd(), 'src', 'assets', 'fonts', fontFileName);
+    let fontBuffer: Buffer | null = null;
+    let customFontLoaded = false;
+    if (fs.existsSync(fontPath)) {
+      fontBuffer = fs.readFileSync(fontPath);
+      if (fontBuffer.length > 0) {
+        customFontLoaded = true;
+        console.log(`Successfully loaded font: ${fontFileName}`);
+      } else {
+        console.warn(`Font file found at ${fontPath}, but it is empty.`);
+      }
+    } else {
+      const errorMessage = `Font file not found at '${fontPath}'. Please ensure '${fontFileName}' is placed in the 'src/assets/fonts/' directory.`;
+      console.error(errorMessage);
+      return { error: errorMessage };
+    }
+
+    // 5. Extract images
     const images: { buffer: Buffer; contentType: string }[] = [];
-    const imageConvertOptions = {
+    await mammoth.convertToHtml({ buffer: docxFileBuffer }, {
       convertImage: mammoth.images.imgElement(async (image) => {
         const imageBuffer = await image.read();
         images.push({ buffer: imageBuffer, contentType: image.contentType });
         return {};
       }),
-    };
-    await mammoth.convertToHtml({ buffer: docxFileBuffer }, imageConvertOptions);
+    });
 
-    // 3. Create PDF with PDFKit
+    // 6. Create PDF with PDFKit and the selected font
     const pdfDoc = new PDFDocument({ autoFirstPage: false, margins: { top: 72, bottom: 72, left: 72, right: 72 } });
-    
     const pdfChunks: Buffer[] = [];
     pdfDoc.on('data', (chunk) => pdfChunks.push(chunk as Buffer));
-    
     pdfDoc.addPage();
 
-    // ---- SET FONT ----
     if (customFontLoaded && fontBuffer) {
-      // **Explicitly register the font and then use it.** This is more robust.
-      pdfDoc.registerFont('CustomFont', fontBuffer);
-      pdfDoc.font('CustomFont');
-      console.log(`Custom font '${fontFileName}' registered and applied as 'CustomFont'.`);
+      pdfDoc.registerFont(fontNameForRegistration, fontBuffer);
+      pdfDoc.font(fontNameForRegistration);
+      console.log(`Custom font '${fontNameForRegistration}' registered and applied.`);
     } else {
       pdfDoc.font('Helvetica');
       console.log("Proceeding with PDFKit default font 'Helvetica'.");
     }
-    // ---- END SET FONT ----
 
-    pdfDoc.fontSize(12).text(textContent, {
-      lineGap: 4,
-    });
+    pdfDoc.fontSize(12).text(textContent, { lineGap: 4 });
 
-    if (images.length > 0) {
-      for (const img of images) {
-        pdfDoc.addPage();
-        try {
-          // Re-apply font for any text on image pages
-          if (customFontLoaded) {
-             pdfDoc.font('CustomFont');
-          } else {
-             pdfDoc.font('Helvetica');
-          }
-
-          if (img.contentType === 'image/jpeg' || img.contentType === 'image/png') {
-            pdfDoc.image(img.buffer, {
-              fit: [pdfDoc.page.width - 144, pdfDoc.page.height - 144],
-              align: 'center',
-              valign: 'center',
-            });
-          } else {
-            console.warn(`Skipping image with unsupported content type: ${img.contentType} in file ${input.originalFileName}`);
-            pdfDoc.fontSize(10).text(`[Unsupported image type: ${img.contentType}]`, {align: 'center'});
-          }
-        } catch (imgError: any) {
-          console.error(`Error embedding image in PDFKit for ${input.originalFileName}:`, imgError);
-           pdfDoc.fontSize(10).text(`[Error embedding image: ${imgError.message}]`, {align: 'center'});
+    for (const img of images) {
+      pdfDoc.addPage();
+      if (customFontLoaded) {
+        pdfDoc.font(fontNameForRegistration);
+      } else {
+        pdfDoc.font('Helvetica');
+      }
+      try {
+        if (img.contentType === 'image/jpeg' || img.contentType === 'image/png') {
+          pdfDoc.image(img.buffer, { fit: [pdfDoc.page.width - 144, pdfDoc.page.height - 144], align: 'center', valign: 'center' });
+        } else {
+          console.warn(`Skipping unsupported image type: ${img.contentType}`);
         }
+      } catch (imgError: any) {
+        console.error(`Error embedding image:`, imgError);
+        pdfDoc.text(`[Error embedding image: ${imgError.message}]`, { align: 'center' });
       }
     }
-    
+
     return new Promise<ConvertWordToPdfOutput>((resolve, reject) => {
       pdfDoc.on('end', () => {
         const pdfBytes = Buffer.concat(pdfChunks);
-        const pdfDataUri = `data:application/pdf;base64,${pdfBytes.toString('base64')}`;
-        console.log(`PDF conversion successful for ${input.originalFileName}.`);
-        resolve({ pdfDataUri });
+        resolve({ pdfDataUri: `data:application/pdf;base64,${pdfBytes.toString('base64')}` });
       });
-
-      pdfDoc.on('error', (err) => {
-        console.error(`Error during PDFKit stream finalization for ${input.originalFileName}:`, err);
-        reject({ error: "Failed to finalize PDF document. " + err.message });
-      });
-      
+      pdfDoc.on('error', (err) => reject({ error: "Failed to finalize PDF document. " + err.message }));
       pdfDoc.end();
     });
 
   } catch (e: any) {
     console.error(`Error converting DOCX ${input.originalFileName}:`, e);
     let errorMessage = "Failed to convert Word document. " + e.message;
-    if (e.message && e.message.includes("Unrecognised Office Open XML")) {
+    if (e.message?.includes("Unrecognised Office Open XML")) {
         errorMessage = "The uploaded file does not appear to be a valid .docx file or is corrupted.";
     }
     return { error: errorMessage };
