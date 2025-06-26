@@ -135,14 +135,14 @@ export default function PowerPointToPdfPage() {
           const script = document.createElement('script');
           script.src = src;
           script.onload = () => resolve();
-          script.onerror = () => reject(new Error(`Failed to load a required script from the network: ${src}. Please check your internet connection.`));
+          script.onerror = () => reject(new Error(`Failed to load a required script: ${src}. This can be a network issue or a script execution error.`));
           document.body.appendChild(script);
       });
 
-      // Load dependencies from CDN in the correct order
-      await loadScript('https://code.jquery.com/jquery-3.7.1.min.js');
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js');
+      // Load dependencies from CDN in the correct order with versions compatible with pptx-preview
+      await loadScript('https://code.jquery.com/jquery-3.5.0.min.js');
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.5.0/jszip.min.js');
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/d3/5.16.0/d3.min.js');
       await loadScript('https://cdn.jsdelivr.net/npm/pptx-preview@0.0.6/dist/pptx-preview.min.js');
       
       const render = (window as any).pptx?.render;
