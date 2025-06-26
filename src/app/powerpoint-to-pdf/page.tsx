@@ -128,7 +128,14 @@ export default function PowerPointToPdfPage() {
     toast({ description: "Conversion started. This may take a moment...", duration: 5000 });
 
     try {
-      const { render } = await import('pptx-preview');
+      const PptxPreview = await import('pptx-preview');
+      const render = PptxPreview.render;
+
+      if (typeof render !== 'function') {
+        console.error('The "render" function could not be loaded from the pptx-preview library.', PptxPreview);
+        throw new Error('The PowerPoint conversion library failed to load correctly.');
+      }
+
       const pdfDoc = await PDFDocument.create();
       
       for (const item of selectedItems) {
