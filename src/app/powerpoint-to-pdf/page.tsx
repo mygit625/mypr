@@ -139,12 +139,11 @@ export default function PowerPointToPdfPage() {
           document.body.appendChild(script);
       });
 
-      // Load jQuery first, as pptx-preview depends on it.
+      // Load dependencies from CDN in the correct order
       await loadScript('https://code.jquery.com/jquery-3.7.1.min.js');
-      
-      // Now load the pptx-preview library
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
       await loadScript('https://cdn.jsdelivr.net/npm/pptx-preview@0.0.6/dist/pptx-preview.min.js');
-
+      
       const render = (window as any).pptx?.render;
 
       if (typeof render !== 'function') {
