@@ -142,6 +142,7 @@ export default function PowerPointToPdfPage() {
       // Load dependencies from CDN in the correct order
       await loadScript('https://code.jquery.com/jquery-3.7.1.min.js');
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js');
       await loadScript('https://cdn.jsdelivr.net/npm/pptx-preview@0.0.6/dist/pptx-preview.min.js');
       
       const render = (window as any).pptx?.render;
@@ -185,6 +186,10 @@ export default function PowerPointToPdfPage() {
             height: jpgImage.height,
           });
         }
+      }
+
+      if (pdfDoc.getPageCount() === 0) {
+        throw new Error("Conversion resulted in an empty PDF. No slides could be processed.");
       }
 
       const pdfBytes = await pdfDoc.save();
