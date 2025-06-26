@@ -2,6 +2,10 @@
 "use client";
 
 import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
+import { render as renderPptx } from 'pptx-preview';
+import { PDFDocument } from 'pdf-lib';
+import html2canvas from 'html2canvas';
+
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -10,9 +14,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Presentation, Loader2, Info, Plus, ArrowRightCircle, X, GripVertical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { readFileAsDataURL } from '@/lib/file-utils';
+import { readFileAsDataURL, readFileAsArrayBuffer } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { convertPptxToPdfAction } from './actions';
 import { cn } from '@/lib/utils';
 
 interface SelectedPptxItem {
@@ -40,6 +43,7 @@ export default function PowerPointToPdfPage() {
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const renderContainerRef = useRef<HTMLDivElement>(null);
   const insertAtIndexRef = useRef<number | null>(null);
   const dragItemIndex = useRef<number | null>(null);
   const dragOverItemIndex = useRef<number | null>(null);
@@ -122,25 +126,63 @@ export default function PowerPointToPdfPage() {
     
     setIsConverting(true);
     setError(null);
+    toast({ description: "Conversion started. This may take a moment...", duration: 5000 });
 
     try {
-      const result = await convertPptxToPdfAction({ 
-        pptxFiles: selectedItems.map(item => ({ dataUri: item.dataUri, filename: item.name }))
-      });
+      const pdfDoc = await PDFDocument.create();
+      
+      for (const item of selectedItems) {
+        if (!renderContainerRef.current) throw new Error("Render container not found.");
+        
+        // Clear previous render
+        renderContainerRef.current.innerHTML = "";
 
-      if (result.error) {
-        setError(result.error);
-        toast({ title: "Conversion Error", description: result.error, variant: "destructive", duration: 8000 });
-      } else if (result.pdfDataUri) { // This part is for a potential future implementation
-        downloadDataUri(result.pdfDataUri, "converted_presentation.pdf");
-        toast({ title: "Conversion Successful!", description: "Your presentation has been converted." });
-        setSelectedItems([]);
+        const arrayBuffer = await readFileAsArrayBuffer(item.file);
+        // Render all slides into the hidden container
+        await renderPptx(arrayBuffer, renderContainerRef.current, undefined, {
+          useFixedSlideSizes: true,
+        });
+
+        // Find all rendered slide elements
+        const slideElements = renderContainerRef.current.querySelectorAll('.slide-container');
+        if (slideElements.length === 0) {
+          console.warn(`No slides rendered for ${item.name}`);
+          continue;
+        }
+
+        // Capture each slide as an image and add to PDF
+        for (let i = 0; i < slideElements.length; i++) {
+          const slideElement = slideElements[i] as HTMLElement;
+          const canvas = await html2canvas(slideElement, { logging: false, scale: 2 });
+          const jpgDataUri = canvas.toDataURL('image/jpeg', 0.9);
+          const jpgImage = await pdfDoc.embedJpg(jpgDataUri);
+          const page = pdfDoc.addPage([jpgImage.width, jpgImage.height]);
+          page.drawImage(jpgImage, {
+            x: 0,
+            y: 0,
+            width: jpgImage.width,
+            height: jpgImage.height,
+          });
+        }
       }
+
+      const pdfBytes = await pdfDoc.save();
+      const pdfDataUri = `data:application/pdf;base64,${Buffer.from(pdfBytes).toString('base64')}`;
+      downloadDataUri(pdfDataUri, "converted_presentation.pdf");
+      
+      toast({ title: "Conversion Successful!", description: "Your presentation has been converted to PDF." });
+      setSelectedItems([]);
+
     } catch (e: any) {
-      setError(e.message);
+      console.error("PPTX Conversion Error:", e);
+      setError(e.message || "An unknown error occurred during conversion.");
       toast({ title: "Conversion Failed", description: e.message, variant: "destructive" });
     } finally {
       setIsConverting(false);
+      // Clean up render container
+      if (renderContainerRef.current) {
+        renderContainerRef.current.innerHTML = "";
+      }
     }
   };
   
@@ -178,6 +220,9 @@ export default function PowerPointToPdfPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+       {/* Hidden container for rendering slides */}
+      <div ref={renderContainerRef} className="hidden" aria-hidden="true"></div>
+
       <header className="text-center py-8">
         <Presentation className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">PowerPoint to PDF</h1>
