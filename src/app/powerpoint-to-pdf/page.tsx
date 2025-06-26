@@ -128,21 +128,27 @@ export default function PowerPointToPdfPage() {
     toast({ description: "Conversion started. This may take a moment...", duration: 5000 });
 
     try {
-      // Dynamically load the pptx-preview script from CDN if it's not already loaded
-      if (!(window as any).pptx) {
-        await new Promise<void>((resolve, reject) => {
+      const loadScript = (src: string) => new Promise<void>((resolve, reject) => {
+          if (document.querySelector(`script[src="${src}"]`)) {
+            return resolve();
+          }
           const script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/pptx-preview@0.0.6/dist/pptx-preview.min.js';
+          script.src = src;
           script.onload = () => resolve();
-          script.onerror = () => reject(new Error('Failed to load the PowerPoint preview script from CDN.'));
+          script.onerror = () => reject(new Error(`Failed to load a required script from the network: ${src}. Please check your internet connection.`));
           document.body.appendChild(script);
-        });
-      }
+      });
+
+      // Load jQuery first, as pptx-preview depends on it.
+      await loadScript('https://code.jquery.com/jquery-3.7.1.min.js');
+      
+      // Now load the pptx-preview library
+      await loadScript('https://cdn.jsdelivr.net/npm/pptx-preview@0.0.6/dist/pptx-preview.min.js');
 
       const render = (window as any).pptx?.render;
 
       if (typeof render !== 'function') {
-        throw new Error('The PowerPoint conversion library failed to load or initialize correctly.');
+        throw new Error('The PowerPoint conversion library (pptx-preview) failed to initialize correctly after loading.');
       }
 
       const pdfDoc = await PDFDocument.create();
