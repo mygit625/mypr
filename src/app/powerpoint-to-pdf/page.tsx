@@ -128,12 +128,21 @@ export default function PowerPointToPdfPage() {
     toast({ description: "Conversion started. This may take a moment...", duration: 5000 });
 
     try {
-      const PptxPreview = await import('pptx-preview');
-      const render = PptxPreview.render;
+      // Dynamically load the pptx-preview script from CDN if it's not already loaded
+      if (!(window as any).pptx) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/pptx-preview@0.0.6/dist/pptx-preview.min.js';
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Failed to load the PowerPoint preview script from CDN.'));
+          document.body.appendChild(script);
+        });
+      }
+
+      const render = (window as any).pptx?.render;
 
       if (typeof render !== 'function') {
-        console.error('The "render" function could not be loaded from the pptx-preview library.', PptxPreview);
-        throw new Error('The PowerPoint conversion library failed to load correctly.');
+        throw new Error('The PowerPoint conversion library failed to load or initialize correctly.');
       }
 
       const pdfDoc = await PDFDocument.create();
