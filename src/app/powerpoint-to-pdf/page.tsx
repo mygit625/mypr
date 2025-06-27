@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
+import { renderPptx } from 'docx-preview';
 import { PDFDocument } from 'pdf-lib';
 import html2canvas from 'html2canvas';
 
@@ -128,51 +129,26 @@ export default function PowerPointToPdfPage() {
     toast({ description: "Conversion started. This may take a moment...", duration: 5000 });
 
     try {
-      const loadScript = (src: string) => new Promise<void>((resolve, reject) => {
-          if (document.querySelector(`script[src="${src}"]`)) {
-            return resolve();
-          }
-          const script = document.createElement('script');
-          script.src = src;
-          script.onload = () => resolve();
-          script.onerror = () => reject(new Error(`Failed to load a required script: ${src}. This can be a network issue or a script execution error.`));
-          document.body.appendChild(script);
-      });
-
-      // Load dependencies from CDN in the correct order with versions compatible with pptx-preview
-      await loadScript('https://code.jquery.com/jquery-3.5.0.min.js');
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.5.0/jszip.min.js');
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/d3/5.16.0/d3.min.js');
-      await loadScript('https://cdn.jsdelivr.net/npm/pptx-preview@0.0.6/dist/pptx-preview.min.js');
-      
-      const render = (window as any).pptx?.render;
-
-      if (typeof render !== 'function') {
-        throw new Error('The PowerPoint conversion library (pptx-preview) failed to initialize correctly after loading.');
-      }
-
       const pdfDoc = await PDFDocument.create();
       
       for (const item of selectedItems) {
         if (!renderContainerRef.current) throw new Error("Render container not found.");
         
-        // Clear previous render
         renderContainerRef.current.innerHTML = "";
 
         const arrayBuffer = await readFileAsArrayBuffer(item.file);
-        // Render all slides into the hidden container
-        await render(arrayBuffer, renderContainerRef.current, undefined, {
+        
+        // Use renderPptx from docx-preview library
+        await renderPptx(arrayBuffer, renderContainerRef.current, undefined, {
           useFixedSlideSizes: true,
         });
 
-        // Find all rendered slide elements
-        const slideElements = renderContainerRef.current.querySelectorAll('.slide-container');
+        const slideElements = renderContainerRef.current.querySelectorAll('.pptx-viewer-slide-container');
         if (slideElements.length === 0) {
           console.warn(`No slides rendered for ${item.name}`);
           continue;
         }
-
-        // Capture each slide as an image and add to PDF
+        
         for (let i = 0; i < slideElements.length; i++) {
           const slideElement = slideElements[i] as HTMLElement;
           const canvas = await html2canvas(slideElement, { logging: false, scale: 2 });
@@ -205,7 +181,6 @@ export default function PowerPointToPdfPage() {
       toast({ title: "Conversion Failed", description: e.message, variant: "destructive" });
     } finally {
       setIsConverting(false);
-      // Clean up render container
       if (renderContainerRef.current) {
         renderContainerRef.current.innerHTML = "";
       }
