@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
-import { renderPptx } from 'docx-preview';
 import { PDFDocument } from 'pdf-lib';
 import html2canvas from 'html2canvas';
 
@@ -129,6 +128,7 @@ export default function PowerPointToPdfPage() {
     toast({ description: "Conversion started. This may take a moment...", duration: 5000 });
 
     try {
+      const docx = await import('docx-preview');
       const pdfDoc = await PDFDocument.create();
       
       for (const item of selectedItems) {
@@ -138,8 +138,7 @@ export default function PowerPointToPdfPage() {
 
         const arrayBuffer = await readFileAsArrayBuffer(item.file);
         
-        // Use renderPptx from docx-preview library
-        await renderPptx(arrayBuffer, renderContainerRef.current, undefined, {
+        await docx.renderPptx(arrayBuffer, renderContainerRef.current, undefined, {
           useFixedSlideSizes: true,
         });
 
