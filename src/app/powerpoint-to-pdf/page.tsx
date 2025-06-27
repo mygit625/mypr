@@ -129,6 +129,12 @@ export default function PowerPointToPdfPage() {
 
     try {
       const docx = await import('docx-preview');
+      const renderPptx = docx.renderPptx || (docx.default ? docx.default.renderPptx : undefined);
+
+      if (typeof renderPptx !== 'function') {
+        throw new Error("The 'renderPptx' function could not be found in the docx-preview library. The library's structure might have changed.");
+      }
+
       const pdfDoc = await PDFDocument.create();
       
       for (const item of selectedItems) {
@@ -138,7 +144,7 @@ export default function PowerPointToPdfPage() {
 
         const arrayBuffer = await readFileAsArrayBuffer(item.file);
         
-        await docx.renderPptx(arrayBuffer, renderContainerRef.current, undefined, {
+        await renderPptx(arrayBuffer, renderContainerRef.current, undefined, {
           useFixedSlideSizes: true,
         });
 
