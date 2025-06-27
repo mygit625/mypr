@@ -1,4 +1,3 @@
-
 import { FeatureCard } from '@/components/feature/feature-card';
 import { 
   Combine, Split, FileText, Minimize2, FileCode, FileSpreadsheet,
@@ -50,7 +49,7 @@ const featuresByCategory: FeatureCategory[] = [
       { title: 'PowerPoint to PDF', description: 'Make PPT and PPTX slideshows easy to view by converting to PDF.', href: '/powerpoint-to-pdf', Icon: Presentation, iconColor: 'text-orange-700' },
       { title: 'Excel to PDF', description: 'Make Excel spreadsheets easy to read by converting them to PDF.', href: '/excel-to-pdf', Icon: Table2, iconColor: 'text-green-700' },
       { title: 'JPG to PDF', description: 'Convert JPG images to PDF. Adjust orientation and margins.', href: '/jpg-to-pdf', Icon: ImagePlus, iconColor: 'text-yellow-600' },
-      { title: 'HTML to PDF', description: 'Convert webpages in HTML to PDF. Copy and paste the URL.', href: '#', Icon: Globe, iconColor: 'text-sky-500' },
+      { title: 'HTML to PDF', description: 'Convert webpages in HTML to PDF. Copy and paste the URL.', href: '/html-to-pdf', Icon: Globe, iconColor: 'text-sky-500' },
     ],
   },
   {
