@@ -104,3 +104,11 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Attempt to hide AvePDF watermark. This may not work due to iframe security. */
+#avepdf-container-id a[href*="avepdf.com"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
