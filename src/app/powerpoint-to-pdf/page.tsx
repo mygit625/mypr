@@ -1,98 +1,86 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { Presentation, Rocket, Info } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useEffect, useRef } from 'react';
+import { Presentation } from 'lucide-react';
 
 export default function PowerPointToPdfPage() {
-  const { toast } = useToast();
-  const [isWidgetVisible, setIsWidgetVisible] = useState(false);
-  const widgetLoaded = useRef(false);
+  const widgetContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isWidgetVisible || widgetLoaded.current) {
+    // Check if the script has already been added to avoid duplicates
+    if (document.getElementById('avepdf-embed-script')) {
       return;
     }
 
-    const loadScript = (src: string, id: string, async: boolean = true): Promise<void> => {
-      return new Promise((resolve, reject) => {
-        if (document.getElementById(id)) {
-          resolve();
-          return;
-        }
-        const script = document.createElement('script');
-        script.src = src;
-        script.id = id;
-        script.async = async;
-        script.type = 'text/javascript';
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-        document.body.appendChild(script);
-      });
-    };
+    const script = document.createElement('script');
+    script.id = 'avepdf-embed-script';
+    script.src = 'https://avepdf.com/api/js/embedwidgets.js';
+    script.type = 'text/javascript';
+    script.async = true;
 
-    loadScript('https://avepdf.com/api/js/embedwidgets.js', 'avepdf-embed-script')
-      .then(() => {
-        if (typeof (window as any).loadAvePDFWidget === 'function') {
-          (window as any).loadAvePDFWidget('d9263667-adce-41ec-880e-26b4371a4fb0', 'auto', 'pptx-to-pdf', 'avepdf-container-id');
-          widgetLoaded.current = true;
-        } else {
-          throw new Error('AvePDF widget function not found after script load.');
-        }
-      })
-      .catch((error) => {
-        console.error(error);
-        toast({
-          title: "Error Loading Widget",
-          description: "The conversion widget could not be loaded. Please check your internet connection and try again.",
-          variant: "destructive",
-        });
-        setIsWidgetVisible(false);
-      });
-  }, [isWidgetVisible, toast]);
+    script.onload = () => {
+      // The script has loaded, now we can call the function it provides
+      if (typeof (window as any).loadAvePDFWidget === 'function') {
+        (window as any).loadAvePDFWidget('d9263667-adce-41ec-880e-26b4371a4fb0', 'auto', 'pptx-to-pdf', 'avepdf-container-id');
+      }
+    };
+    
+    // Append the script to the body to start loading it
+    document.body.appendChild(script);
+
+    // Cleanup function to remove the script when the component unmounts
+    return () => {
+      const existingScript = document.getElementById('avepdf-embed-script');
+      if (existingScript) {
+        document.body.removeChild(existingScript);
+      }
+    };
+  }, []); // Empty dependency array ensures this effect runs only once
+
+  const customCss = `
+    #avepdf-container-id {
+      padding: 0px;
+      height: 600px;
+      border: 0px solid lime;
+      overflow: hidden !important;
+      margin-bottom: -131px;
+    }
+    
+    hr.watermark-cover {
+      display: block;
+      background-color: var(--background-hsl);
+      height: 93px;
+      border-style: none;
+      margin-top: -60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    body:not(.dark) hr.watermark-cover {
+      --background-hsl: #FFFFFF;
+    }
+
+    body.dark hr.watermark-cover {
+      --background-hsl: hsl(240 10% 3.9%);
+    }
+  `;
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <style dangerouslySetInnerHTML={{ __html: customCss }} />
       <header className="text-center py-8">
         <Presentation className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">PowerPoint to PDF</h1>
         <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
-          Convert your PPTX or PPT files to PDF. This feature is provided by an embedded third-party widget.
+          Convert your PPTX or PPT files to PDF.
         </p>
       </header>
-
-      <div className="flex justify-center">
-        {!isWidgetVisible ? (
-          <Card className="w-full max-w-2xl text-center shadow-lg">
-            <CardHeader>
-              <CardTitle>Launch Converter</CardTitle>
-              <CardDescription>Click the button below to open the conversion tool.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>Third-Party Widget</AlertTitle>
-                <AlertDescription>
-                  This feature uses an embedded widget from AvePDF to provide reliable conversions. You will be interacting with their service.
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-            <CardFooter>
-              <Button size="lg" className="w-full" onClick={() => setIsWidgetVisible(true)}>
-                <Rocket className="mr-2 h-5 w-5" />
-                Launch PowerPoint to PDF Converter
-              </Button>
-            </CardFooter>
-          </Card>
-        ) : (
-          <div id="avepdf-container-id" className="w-full max-w-4xl min-h-[500px] shadow-lg rounded-lg overflow-hidden border">
-             {/* The AvePDF widget will be loaded here by the script */}
-          </div>
-        )}
-      </div>
+      <section>
+        <div id="avepdf-container-id" ref={widgetContainerRef}>
+          {/* AvePDF widget will be loaded here by the script */}
+        </div>
+        <hr className="watermark-cover" />
+      </section>
     </div>
   );
 }
