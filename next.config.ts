@@ -19,9 +19,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  experimental: {
-    serverComponentsExternalPackages: ['pdfkit', 'fontkit'],
-  },
 };
 
 export default nextConfig;
