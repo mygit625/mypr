@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { Logo } from '@/components/icons/logo';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LayoutGrid, Files } from 'lucide-react'; 
+import { Menu, LayoutGrid, Files, Scale } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/', label: 'All Tools', Icon: LayoutGrid },
   { href: '/pdf-tools', label: 'PDF Tools', Icon: Files },
+  { href: '/unit-converters', label: 'Unit Converters', Icon: Scale },
 ];
 
 // Placeholder for auth status, replace with actual auth logic
