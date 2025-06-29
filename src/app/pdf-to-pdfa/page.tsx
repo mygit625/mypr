@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef } from 'react';
@@ -9,7 +10,7 @@ export default function PdfToPdfAPage() {
   useEffect(() => {
     if (document.getElementById('avepdf-embed-script')) {
        if (typeof (window as any).loadAvePDFWidget === 'function') {
-        (window as any).loadAvePDFWidget('f6b881be-add7-47ad-b1bf-79caa7cf4730', 'auto', 'pdf-to-pdfa', 'avepdf-container-id');
+        (window as any).loadAvePDFWidget('d9263667-adce-41ec-880e-26b4371a4fb0', 'auto', 'convert-to-pdfa', 'avepdf-container-id');
        }
       return;
     }
@@ -22,7 +23,7 @@ export default function PdfToPdfAPage() {
 
     script.onload = () => {
       if (typeof (window as any).loadAvePDFWidget === 'function') {
-        (window as any).loadAvePDFWidget('f6b881be-add7-47ad-b1bf-79caa7cf4730', 'auto', 'pdf-to-pdfa', 'avepdf-container-id');
+        (window as any).loadAvePDFWidget('d9263667-adce-41ec-880e-26b4371a4fb0', 'auto', 'convert-to-pdfa', 'avepdf-container-id');
       }
     };
     
