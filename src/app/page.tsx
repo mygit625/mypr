@@ -58,7 +58,7 @@ const featuresByCategory: FeatureCategory[] = [
       { title: 'PDF to PowerPoint', description: 'Convert your PDFs into easy-to-edit PPT and PPTX slideshows.', href: '/pdf-to-powerpoint', Icon: BarChart3, iconColor: 'text-red-600' },
       { title: 'PDF to Excel', description: 'Pull data straight from PDFs into Excel spreadsheets in a few clicks.', href: '#', Icon: FileSpreadsheet, iconColor: 'text-green-600' },
       { title: 'PDF to JPG', description: 'Convert each PDF page into a JPG or extract all images in a PDF.', href: '/pdf-to-jpg', Icon: FileImage, iconColor: 'text-yellow-500' },
-      { title: 'PDF to PDF/A', description: 'Transform PDF to PDF/A for long-term archiving.', href: '#', Icon: Archive, iconColor: 'text-slate-500' },
+      { title: 'PDF to PDF/A', description: 'Transform PDF to PDF/A for long-term archiving.', href: '/pdf-to-pdfa', Icon: Archive, iconColor: 'text-slate-500' },
     ],
   },
   {
