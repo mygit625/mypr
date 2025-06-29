@@ -34,6 +34,7 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { addPageNumbersAction, type PageNumberPosition } from './actions';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -57,7 +58,8 @@ export default function AddPageNumbersPage() {
   // Form state
   const [position, setPosition] = useState<PageNumberPosition>('bottom-center');
   const [pageRange, setPageRange] = useState('');
-  const [textFormat, setTextFormat] = useState('Page {n} of {N}');
+  const [textFormat, setTextFormat] = useState('{n}');
+  const [formatPreset, setFormatPreset] = useState('{n}');
   const [fontSize, setFontSize] = useState(12);
   const [startingNumber, setStartingNumber] = useState(1);
 
@@ -236,13 +238,37 @@ export default function AddPageNumbersPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="text-format">Text format</Label>
-                  <Input
-                    id="text-format"
-                    value={textFormat}
-                    onChange={(e) => setTextFormat(e.target.value)}
+                  <Label htmlFor="text-format-select">Text format</Label>
+                  <Select
+                    value={formatPreset}
+                    onValueChange={(value) => {
+                      setFormatPreset(value);
+                      if (value !== 'custom') {
+                        setTextFormat(value);
+                      }
+                    }}
                     disabled={!file}
-                  />
+                  >
+                    <SelectTrigger id="text-format-select">
+                      <SelectValue placeholder="Select a format..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="{n}">Insert only page number (recommended)</SelectItem>
+                      <SelectItem value="Page {n}">Page {n}</SelectItem>
+                      <SelectItem value="Page {n} of {N}">Page {n} of {N}</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  {formatPreset === 'custom' && (
+                    <Input
+                      id="text-format-custom"
+                      value={textFormat}
+                      onChange={(e) => setTextFormat(e.target.value)}
+                      className="mt-2"
+                      disabled={!file}
+                    />
+                  )}
                   <p className="text-xs text-muted-foreground mt-1">Use {'{n}'} for page number and {'{N}'} for total pages.</p>
                 </div>
                 
