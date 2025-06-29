@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'PDFBox - Your PDF Toolkit',
-  description: 'Easily merge, split, summarize, convert, and manage your PDF documents.',
+  title: 'ToolsInn - A Collection of Free Online Tools',
+  description: 'Your one-stop destination for free online tools, including PDF tools, image editors, converters, calculators, and much more.',
 };
 
 export default function RootLayout({

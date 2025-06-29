@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { Logo } from '@/components/icons/logo';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LayoutGrid } from 'lucide-react'; 
-import { cn } from '@/lib/utils'; // Added missing import
+import { Menu, LayoutGrid, Files } from 'lucide-react'; 
+import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/', label: 'All PDF Tools', Icon: LayoutGrid },
+  { href: '/', label: 'All Tools', Icon: LayoutGrid },
+  { href: '/pdf-tools', label: 'PDF Tools', Icon: Files },
 ];
 
 // Placeholder for auth status, replace with actual auth logic
@@ -81,5 +82,3 @@ export default function Navbar() {
     </header>
   );
 }
-
-    

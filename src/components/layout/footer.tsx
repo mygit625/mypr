@@ -6,10 +6,10 @@ import { Github, Twitter, Linkedin, Globe } from 'lucide-react';
 
 const footerSections = [
   {
-    title: 'PDFBox',
+    title: 'ToolsInn',
     links: [
       { label: 'Home', href: '/' },
-      { label: 'All PDF Tools', href: '/' },
+      { label: 'PDF Tools', href: '/pdf-tools' },
       { label: 'About Us', href: '#' },
       { label: 'Contact', href: '#' },
     ],
@@ -59,7 +59,7 @@ export default function Footer() {
               <Logo />
             </Link>
             <p className="text-sm text-muted-foreground">
-              Making PDF management simple and accessible for everyone.
+              Making daily tasks simple and accessible for everyone.
             </p>
           </div>
           {footerSections.map((section) => (
@@ -80,7 +80,7 @@ export default function Footer() {
 
         <div className="border-t pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm text-muted-foreground mb-4 md:mb-0">
-            © <ClientFooterYear /> PDFBox. All rights reserved.
+            © <ClientFooterYear /> ToolsInn. All rights reserved.
           </p>
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
