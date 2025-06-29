@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowRightLeft, Scale } from 'lucide-react';
 import { categories, type Category, type Unit } from './conversions';
+import { Label } from '@/components/ui/label';
 
 export default function UnitConvertersPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>(Object.keys(categories)[0]);
