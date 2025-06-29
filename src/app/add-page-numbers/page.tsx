@@ -254,8 +254,8 @@ export default function AddPageNumbersPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="{n}">Insert only page number (recommended)</SelectItem>
-                      <SelectItem value="Page {n}">Page {n}</SelectItem>
-                      <SelectItem value="Page {n} of {N}">Page {n} of {N}</SelectItem>
+                      <SelectItem value="Page {n}">{'Page {n}'}</SelectItem>
+                      <SelectItem value="Page {n} of {N}">{'Page {n} of {N}'}</SelectItem>
                       <SelectItem value="custom">Custom</SelectItem>
                     </SelectContent>
                   </Select>
