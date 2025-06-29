@@ -65,7 +65,7 @@ const featuresByCategory: FeatureCategory[] = [
     name: 'Edit & Sign PDF',
     features: [
       { title: 'Edit PDF', description: 'Add text, images, shapes or freehand annotations to a PDF.', href: '/edit', Icon: Edit3, iconColor: 'text-pink-500' },
-      { title: 'Add Page Numbers', description: 'Add page numbers to your PDF documents with ease.', href: '#', Icon: ListOrdered, iconColor: 'text-cyan-500' },
+      { title: 'Add Page Numbers', description: 'Add page numbers to your PDF documents with ease.', href: '/add-page-numbers', Icon: ListOrdered, iconColor: 'text-cyan-500' },
       { title: 'Watermark', description: 'Stamp an image or text over your PDFs in seconds.', href: '#', Icon: Droplets, iconColor: 'text-blue-400' },
       { title: 'Sign PDF', description: 'Sign yourself or request electronic signatures from others.', href: '#', Icon: PenTool, iconColor: 'text-purple-600' },
       { title: 'Crop PDF', description: 'Select and crop areas of your PDF pages.', href: '#', Icon: Crop, iconColor: 'text-indigo-400' },
