@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -100,6 +101,28 @@ const systemHealth = [
 ];
 
 export default function AdminDashboard() {
+  const router = useRouter();
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'users':
+        router.push('/admin/users');
+        break;
+      case 'analytics':
+        router.push('/admin/analytics');
+        break;
+      case 'logs':
+        // For now, redirect to a placeholder or show a modal
+        alert('System logs functionality coming soon!');
+        break;
+      case 'settings':
+        router.push('/admin/settings');
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -196,19 +219,35 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Button variant="outline" className="h-20 flex-col gap-2">
+            <Button 
+              variant="outline" 
+              className="h-20 flex-col gap-2 hover:bg-accent hover:text-accent-foreground transition-colors"
+              onClick={() => handleQuickAction('users')}
+            >
               <Users className="h-5 w-5" />
               <span>Manage Users</span>
             </Button>
-            <Button variant="outline" className="h-20 flex-col gap-2">
+            <Button 
+              variant="outline" 
+              className="h-20 flex-col gap-2 hover:bg-accent hover:text-accent-foreground transition-colors"
+              onClick={() => handleQuickAction('analytics')}
+            >
               <BarChart3 className="h-5 w-5" />
               <span>View Analytics</span>
             </Button>
-            <Button variant="outline" className="h-20 flex-col gap-2">
+            <Button 
+              variant="outline" 
+              className="h-20 flex-col gap-2 hover:bg-accent hover:text-accent-foreground transition-colors"
+              onClick={() => handleQuickAction('logs')}
+            >
               <FileText className="h-5 w-5" />
               <span>System Logs</span>
             </Button>
-            <Button variant="outline" className="h-20 flex-col gap-2">
+            <Button 
+              variant="outline" 
+              className="h-20 flex-col gap-2 hover:bg-accent hover:text-accent-foreground transition-colors"
+              onClick={() => handleQuickAction('settings')}
+            >
               <Globe className="h-5 w-5" />
               <span>Site Settings</span>
             </Button>
