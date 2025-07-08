@@ -12,6 +12,7 @@ const navItems = [
   { href: '/', label: 'All Tools', Icon: LayoutGrid },
   { href: '/pdf-tools', label: 'PDF Tools', Icon: Files },
   { href: '/unit-converters', label: 'Unit Converters', Icon: Scale },
+  { href: '/admin', label: 'Admin', Icon: Settings },
 ];
 
 // Placeholder for auth status, replace with actual auth logic
