@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Logo } from '@/components/icons/logo';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LayoutGrid, Files, Scale } from 'lucide-react'; 
+import { Menu, LayoutGrid, Files, Scale, Settings } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 
 const navItems = [
