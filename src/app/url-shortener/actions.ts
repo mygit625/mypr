@@ -70,16 +70,20 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
     
     revalidatePath('/url-shortener');
 
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const shortUrl = `${baseUrl}/${code}`;
+
     return {
       message: 'Successfully created dynamic link!',
-      shortUrl: `${process.env.NEXT_PUBLIC_BASE_URL || ''}/${code}`,
+      shortUrl: shortUrl,
       error: null,
     };
   } catch (error) {
+    console.error("Error in createDynamicLinkAction:", error);
     return {
       message: null,
       shortUrl: null,
-      error: 'An unexpected error occurred. Please try again.',
+      error: 'An unexpected error occurred. Please ensure your Firebase credentials are set in the .env file.',
     };
   }
 }
