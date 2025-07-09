@@ -13,7 +13,7 @@ const navItems = [
   { href: '/pdf-tools', label: 'PDF Tools', Icon: Files },
   { href: '/unit-converters', label: 'Unit Converters', Icon: Scale },
   { href: '/qr-code', label: 'QR Generator', Icon: QrCode },
-  { href: '/url-shortener', label: 'URL Shortener', Icon: LinkIcon },
+  { href: '/url-shortener', label: 'Dynamic Links', Icon: LinkIcon },
   { href: '/admin', label: 'Admin', Icon: Settings },
 ];
 

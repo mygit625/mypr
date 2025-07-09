@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { SessionData, sessionOptions } from './lib/session';
-import { getUrlByCode } from './lib/url-shortener-db';
+import { getLinkByCode } from './lib/url-shortener-db';
 
 const protectedPaths = ['/admin'];
 
@@ -39,7 +39,7 @@ const knownPaths = [
   '/watermark',
   '/unit-converters',
   '/qr-code',
-  '/url-shortener', // Add the new page
+  '/url-shortener', // This is the page for creating links
 ];
 
 // Function to check if a path is a known page or a sub-path of a known page
@@ -63,14 +63,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // --- URL Shortener Redirection Logic ---
+  // --- Dynamic Link Redirection Logic ---
   if (!isKnownPath(pathname)) {
-    // Path is not a known page, treat it as a potential short code
     const code = pathname.substring(1); // Remove leading '/'
     if (code) {
-      const longUrl = await getUrlByCode(code);
-      if (longUrl) {
-        return NextResponse.redirect(longUrl);
+      const links = await getLinkByCode(code);
+      if (links) {
+        const userAgent = request.headers.get('user-agent')?.toLowerCase() || '';
+        
+        if (userAgent.includes('android') && links.android) {
+          return NextResponse.redirect(links.android);
+        }
+        if ((userAgent.includes('iphone') || userAgent.includes('ipad')) && links.ios) {
+          return NextResponse.redirect(links.ios);
+        }
+        // Fallback to desktop URL or any available URL
+        const fallbackUrl = links.desktop || links.android || links.ios;
+        if (fallbackUrl) {
+          return NextResponse.redirect(fallbackUrl);
+        }
       }
     }
   }
