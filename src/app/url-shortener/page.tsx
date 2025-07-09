@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useEffect, useState, useRef } from 'react';
+import { useFormStatus } from 'react-dom';
 import { createUrlAction, getUrlsAction, CreateUrlState } from './actions';
 import { ShortUrl } from '@/lib/url-shortener-db';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,7 @@ function SubmitButton() {
 
 export default function UrlShortenerPage() {
   const initialState: CreateUrlState = { message: null, shortUrl: null, error: null };
-  const [state, formAction] = useFormState(createUrlAction, initialState);
+  const [state, formAction] = useActionState(createUrlAction, initialState);
   const [recentUrls, setRecentUrls] = useState<ShortUrl[]>([]);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
