@@ -5,15 +5,22 @@ import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink } fro
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
-const UrlSchema = z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal(''));
+// New, more robust schema for validating an individual URL.
+// It allows the field to be empty, but if a value is present, it must be a valid URL.
+const UrlSchema = z.preprocess(
+  (val) => (val === "" ? undefined : val), // Treat empty strings as undefined
+  z.string().url({ message: "Please enter a valid URL if the field is not empty." }).optional()
+);
 
+// Schema for the entire form.
 const LinksSchema = z.object({
   desktopUrl: UrlSchema,
   androidUrl: UrlSchema,
   iosUrl: UrlSchema,
-}).refine(data => data.desktopUrl || data.androidUrl || data.iosUrl, {
+}).refine(data => !!data.desktopUrl || !!data.androidUrl || !!data.iosUrl, {
+  // This ensures at least one of the fields is filled out.
   message: "At least one URL (Desktop, Android, or iOS) must be provided.",
-  path: ["desktopUrl"], // You can associate the error with a specific field if you like
+  path: ["desktopUrl"], // Associate the error with the first field for display purposes.
 });
 
 
