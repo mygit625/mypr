@@ -338,51 +338,75 @@ export default function QrCodeGeneratorPage() {
         <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="item-1">
-            <AccordionTrigger>Are the generated QR codes free to use?</AccordionTrigger>
+            <AccordionTrigger>Are these QR codes free to use?</AccordionTrigger>
             <AccordionContent>
-              Absolutely. All QR codes created with our tool are 100% free for any purpose, including commercial projects. There are no hidden fees or usage limits.
+              Absolutely. All QR codes created with our generator are 100% free for both personal and commercial use. There are no subscriptions, no limits on the number of codes you can create, and no hidden fees.
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="item-2">
-            <AccordionTrigger>Do the QR codes expire?</AccordionTrigger>
+            <AccordionTrigger>Do the QR codes I create ever expire?</AccordionTrigger>
             <AccordionContent>
-              No, they do not. Our generator creates static QR codes, which means the data you enter is encoded directly into the image itself. It will work forever and will not stop functioning as long as the underlying data (like the website link) is still active.
+              No, they do not. We generate static QR codes, which means your data is encoded directly into the code itself. As long as the data it points to (like a website URL) is still valid, your QR code will work forever.
             </AccordionContent>
           </AccordionItem>
-           <AccordionItem value="item-5">
-            <AccordionTrigger>How do I create a QR code for a WiFi network?</AccordionTrigger>
+          <AccordionItem value="item-url">
+            <AccordionTrigger>How should I use the URL QR code generator?</AccordionTrigger>
             <AccordionContent>
-              Select the "WiFi" option, then enter your network's name (SSID) and password. Choose the correct encryption type (WPA/WPA2 is most common). When someone scans this code, their phone will prompt them to join your network automatically, without needing to manually type the password. It's perfect for homes, cafes, and offices.
+              The URL QR code is the most common type. Simply enter the full web address (e.g., `https://www.yourwebsite.com`) into the URL field. This is perfect for marketing materials, posters, business cards, or any situation where you want to seamlessly direct people to a website, landing page, or social media profile.
             </AccordionContent>
           </AccordionItem>
-           <AccordionItem value="item-6">
-            <AccordionTrigger>What is a vCard QR code used for?</AccordionTrigger>
+          <AccordionItem value="item-text">
+            <AccordionTrigger>When is a simple Text QR code useful?</AccordionTrigger>
             <AccordionContent>
-              A vCard QR code is a digital business card. You can fill in your name, contact number, email, company, and more. When someone scans it, they will be prompted to save all that information as a new contact directly in their phone's address book, making it incredibly easy to share your details.
+              A Text QR code simply displays the text you enter when scanned. It's useful for sharing information that doesn't need to be interactive, such as a product serial number, a unique coupon code, a short message, or important notes.
             </AccordionContent>
           </AccordionItem>
-           <AccordionItem value="item-7">
-            <AccordionTrigger>How does the "Calendar Event" QR code work?</AccordionTrigger>
+           <AccordionItem value="item-email">
+            <AccordionTrigger>How can I use the Email QR code generator effectively?</AccordionTrigger>
             <AccordionContent>
-             By filling in the event title, start and end times, location, and description, you create a QR code that contains all the details for a calendar entry. When scanned, it will open in the user's calendar app, allowing them to add it to their schedule with a single tap. It's great for invitations and scheduling.
+              Use the Email QR code to let people contact you instantly. Fill in the recipient's email address, a default subject line, and even a starting message. When someone scans it, their default email app will open with all these fields pre-filled, making it effortless for them to send you an email. It's great for customer support or contact pages.
             </AccordionContent>
           </AccordionItem>
-          <AccordionItem value="item-8">
-            <AccordionTrigger>Can I make a QR code that calls a number or sends an SMS?</AccordionTrigger>
+          <AccordionItem value="item-phone-sms">
+            <AccordionTrigger>What's the difference between the Phone and SMS QR codes?</AccordionTrigger>
             <AccordionContent>
-              Yes. Use the "Phone" option to create a code that, when scanned, will prompt the user to call the number you entered. Use the "SMS" option to pre-fill the recipient's phone number and a message. When a user scans it, their messaging app will open, ready to send your predefined text.
+              The **Phone** QR code, when scanned, will prompt the user to call the phone number you entered. It's a direct "tap-to-call" function. The **SMS** QR code lets you specify both a phone number and a message. When scanned, it opens the user's messaging app with your number and message already filled in, ready to be sent.
             </AccordionContent>
           </AccordionItem>
-          <AccordionItem value="item-3">
-            <AccordionTrigger>What is the difference between PNG and SVG?</AccordionTrigger>
+           <AccordionItem value="item-wifi">
+            <AccordionTrigger>How do I create a QR code to share my WiFi network?</AccordionTrigger>
             <AccordionContent>
-              PNG is a pixel-based image format (raster) that is great for digital use on websites or in emails. SVG is a vector-based format, which means it is made of mathematical paths instead of pixels. This allows you to scale an SVG to any size—from a tiny icon to a giant billboard—without any loss of quality, making it the best choice for printing.
+              Select the "WiFi" tab and enter your network's name (SSID) and password. Be sure to select the correct encryption type (WPA/WPA2 is the most common and secure). When guests scan this code, their device will automatically connect to your WiFi without them needing to manually find the network and type in the password. It's perfect for homes, cafes, and offices.
             </AccordionContent>
           </AccordionItem>
-           <AccordionItem value="item-4">
+           <AccordionItem value="item-vcard">
+            <AccordionTrigger>What is a vCard QR code and how do I use it?</AccordionTrigger>
+            <AccordionContent>
+              A vCard QR code is a powerful digital business card. Fill in your contact details like name, phone number, email, company, and website. When someone scans the code, their phone will prompt them to save all this information as a new contact in their address book. It's the fastest way to exchange contact information at networking events.
+            </AccordionContent>
+          </AccordionItem>
+           <AccordionItem value="item-event">
+            <AccordionTrigger>How does the Calendar Event QR code work?</AccordionTrigger>
+            <AccordionContent>
+             Create an event QR code by filling in the event title, start and end times, location, and a description. When a user scans this code, their calendar app will open with all the event details pre-filled, allowing them to add it to their schedule with a single tap. It's fantastic for invitations, flyers, and posters.
+            </AccordionContent>
+          </AccordionItem>
+           <AccordionItem value="item-location">
+            <AccordionTrigger>How do I find coordinates for a Location QR code?</AccordionTrigger>
+            <AccordionContent>
+             To create a QR code that opens a map to a specific spot, you need its latitude and longitude. You can easily find these using a tool like Google Maps. Right-click on any location on the map, and the coordinates will appear in the context menu for you to copy and paste into our generator.
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-png-svg">
+            <AccordionTrigger>What is the difference between PNG and SVG downloads?</AccordionTrigger>
+            <AccordionContent>
+              **PNG** is a pixel-based image format that is perfect for digital use, such as on websites, in emails, or in social media posts. **SVG** is a vector-based format, which means it's made of mathematical paths instead of pixels. This allows an SVG to be scaled to any size—from a tiny icon to a giant billboard—without losing quality, making it the ideal choice for high-quality printing.
+            </AccordionContent>
+          </AccordionItem>
+           <AccordionItem value="item-error-correction">
             <AccordionTrigger>What does "Error Correction Level" mean?</AccordionTrigger>
             <AccordionContent>
-              Error correction allows a QR code to be scanned successfully even if part of it is damaged, dirty, or covered up. There are four levels: Low (L), Medium (M), Quartile (Q), and High (H). A higher level adds more redundant data, making the code more robust but also more visually dense. For most standard uses, 'L' or 'M' is perfectly fine.
+              Error correction adds redundant data to the QR code, which allows it to be scanned successfully even if it's partially damaged, dirty, or obstructed. There are four levels: **Low (L)**, **Medium (M)**, **Quartile (Q)**, and **High (H)**. A higher level makes the code more robust but also increases its visual complexity. For most everyday uses, the default 'L' or 'M' is perfectly sufficient.
             </AccordionContent>
           </AccordionItem>
         </Accordion>
