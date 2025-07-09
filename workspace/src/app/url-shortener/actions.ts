@@ -49,7 +49,7 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
   const { desktopUrl, androidUrl, iosUrl } = validatedLinks.data;
 
   try {
-    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID === 'your_project_id') {
       throw new Error("Firebase configuration is missing. Please update your .env file with your project credentials.");
     }
 
