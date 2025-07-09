@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { Logo } from '@/components/icons/logo';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LayoutGrid, Files, Scale, Settings } from 'lucide-react'; 
+import { Menu, LayoutGrid, Files, Scale, Settings, QrCode } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/', label: 'All Tools', Icon: LayoutGrid },
   { href: '/pdf-tools', label: 'PDF Tools', Icon: Files },
   { href: '/unit-converters', label: 'Unit Converters', Icon: Scale },
+  { href: '/qr-code', label: 'QR Generator', Icon: QrCode },
   { href: '/admin', label: 'Admin', Icon: Settings },
 ];
 

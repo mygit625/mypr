@@ -15,7 +15,7 @@ interface ToolCategory {
 const toolCategories: ToolCategory[] = [
   { title: 'PDF Tools', description: 'Merge, split, compress, convert, and manage your PDF documents.', href: '/pdf-tools', Icon: Files, iconColor: 'text-red-500' },
   { title: 'Image Tools', description: 'Resize, compress, convert, and edit your images with ease.', href: '#', Icon: Image, iconColor: 'text-blue-500' },
-  { title: 'QR Code Generator', description: 'Create custom QR codes for URLs, text, Wi-Fi, and more.', href: '#', Icon: QrCode, iconColor: 'text-green-500' },
+  { title: 'QR Code Generator', description: 'Create custom QR codes for URLs, text, Wi-Fi, and more.', href: '/qr-code', Icon: QrCode, iconColor: 'text-green-500' },
   { title: 'Unit Converters', description: 'Quickly convert between different units of measurement.', href: '/unit-converters', Icon: Scale, iconColor: 'text-yellow-500' },
   { title: 'Calculators', description: 'Access a variety of calculators for daily use, like finance or baby gender.', href: '#', Icon: Calculator, iconColor: 'text-purple-500' },
   { title: 'Web Tools', description: 'A collection of useful web utilities for developers and designers.', href: '#', Icon: Globe, iconColor: 'text-sky-500' },
