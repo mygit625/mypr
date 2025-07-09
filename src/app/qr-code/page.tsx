@@ -340,25 +340,49 @@ export default function QrCodeGeneratorPage() {
           <AccordionItem value="item-1">
             <AccordionTrigger>Are the generated QR codes free to use?</AccordionTrigger>
             <AccordionContent>
-              Yes, all QR codes you create are completely free for both personal and commercial use. There are no restrictions.
+              Absolutely. All QR codes created with our tool are 100% free for any purpose, including commercial projects. There are no hidden fees or usage limits.
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="item-2">
             <AccordionTrigger>Do the QR codes expire?</AccordionTrigger>
             <AccordionContent>
-              No, the QR codes you generate are static and do not expire. They encode the data directly and will work as long as the data (like a website URL) is valid.
+              No, they do not. Our generator creates static QR codes, which means the data you enter is encoded directly into the image itself. It will work forever and will not stop functioning as long as the underlying data (like the website link) is still active.
+            </AccordionContent>
+          </AccordionItem>
+           <AccordionItem value="item-5">
+            <AccordionTrigger>How do I create a QR code for a WiFi network?</AccordionTrigger>
+            <AccordionContent>
+              Select the "WiFi" option, then enter your network's name (SSID) and password. Choose the correct encryption type (WPA/WPA2 is most common). When someone scans this code, their phone will prompt them to join your network automatically, without needing to manually type the password. It's perfect for homes, cafes, and offices.
+            </AccordionContent>
+          </AccordionItem>
+           <AccordionItem value="item-6">
+            <AccordionTrigger>What is a vCard QR code used for?</AccordionTrigger>
+            <AccordionContent>
+              A vCard QR code is a digital business card. You can fill in your name, contact number, email, company, and more. When someone scans it, they will be prompted to save all that information as a new contact directly in their phone's address book, making it incredibly easy to share your details.
+            </AccordionContent>
+          </AccordionItem>
+           <AccordionItem value="item-7">
+            <AccordionTrigger>How does the "Calendar Event" QR code work?</AccordionTrigger>
+            <AccordionContent>
+             By filling in the event title, start and end times, location, and description, you create a QR code that contains all the details for a calendar entry. When scanned, it will open in the user's calendar app, allowing them to add it to their schedule with a single tap. It's great for invitations and scheduling.
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-8">
+            <AccordionTrigger>Can I make a QR code that calls a number or sends an SMS?</AccordionTrigger>
+            <AccordionContent>
+              Yes. Use the "Phone" option to create a code that, when scanned, will prompt the user to call the number you entered. Use the "SMS" option to pre-fill the recipient's phone number and a message. When a user scans it, their messaging app will open, ready to send your predefined text.
             </AccordionContent>
           </AccordionItem>
           <AccordionItem value="item-3">
             <AccordionTrigger>What is the difference between PNG and SVG?</AccordionTrigger>
             <AccordionContent>
-              PNG is a pixel-based image format (raster), best for web use and digital applications where a fixed size is sufficient. SVG is a vector format, which means you can scale it to any size without losing quality, making it ideal for print and high-resolution displays.
+              PNG is a pixel-based image format (raster) that is great for digital use on websites or in emails. SVG is a vector-based format, which means it is made of mathematical paths instead of pixels. This allows you to scale an SVG to any size—from a tiny icon to a giant billboard—without any loss of quality, making it the best choice for printing.
             </AccordionContent>
           </AccordionItem>
            <AccordionItem value="item-4">
             <AccordionTrigger>What does "Error Correction Level" mean?</AccordionTrigger>
             <AccordionContent>
-              Error correction allows a QR code to be readable even if it's partially damaged or covered. A higher level (like 'H') allows for more damage to be corrected, but it also increases the density of the QR code. For most cases, the default 'L' (Low) or 'M' (Medium) level is sufficient.
+              Error correction allows a QR code to be scanned successfully even if part of it is damaged, dirty, or covered up. There are four levels: Low (L), Medium (M), Quartile (Q), and High (H). A higher level adds more redundant data, making the code more robust but also more visually dense. For most standard uses, 'L' or 'M' is perfectly fine.
             </AccordionContent>
           </AccordionItem>
         </Accordion>
