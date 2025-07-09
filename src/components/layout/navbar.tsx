@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Logo } from '@/components/icons/logo';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LayoutGrid, Files, Scale, Settings, QrCode } from 'lucide-react'; 
+import { Menu, LayoutGrid, Files, Scale, Settings, QrCode, Link as LinkIcon } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/pdf-tools', label: 'PDF Tools', Icon: Files },
   { href: '/unit-converters', label: 'Unit Converters', Icon: Scale },
   { href: '/qr-code', label: 'QR Generator', Icon: QrCode },
+  { href: '/url-shortener', label: 'URL Shortener', Icon: LinkIcon },
   { href: '/admin', label: 'Admin', Icon: Settings },
 ];
 
