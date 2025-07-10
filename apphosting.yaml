@@ -52,7 +52,7 @@ env:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: 'docuease-y40m1.firebasestorage.app'
+    value: 'docuease-y40m1.appspot.com'
     availability:
       - BUILD
       - RUNTIME
@@ -77,3 +77,8 @@ automaticScaling:
   memory: 1GiB
   requestsPerSecond: 100
   concurrency: 80
+
+# VPC settings to allow outbound network traffic.
+vpc:
+  # This setting allows the backend to connect to public services like Firestore.
+  egressSettings: ALL_TRAFFIC
