@@ -28,8 +28,8 @@ export interface DynamicLink {
 }
 
 function checkFirebaseConfig() {
-    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID.includes('your-project-id')) {
-      throw new Error("Firebase project not configured. Please check your environment variables.");
+    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID.includes('your-project-id') || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID.length < 4) {
+      throw new Error("Firebase Project ID is not configured. Please check your environment variables in apphosting.yaml or your local .env file.");
     }
 }
 

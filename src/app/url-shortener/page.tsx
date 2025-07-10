@@ -59,7 +59,10 @@ export default function DeviceAwareLinksPage() {
     if (state.message && state.shortUrl) {
       formRef.current?.reset();
     }
-    getLinksAction().then(setRecentLinks);
+    // Also fetch links when the component mounts
+    getLinksAction().then(setRecentLinks).catch(err => {
+        console.error("Failed to fetch recent links on mount:", err);
+    });
   }, [state]);
 
   return (
@@ -175,7 +178,7 @@ export default function DeviceAwareLinksPage() {
                     <span title={link.links.desktop}>{link.links.desktop || link.links.android || link.links.ios}</span>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
-                    {formatDistanceToNow(link.createdAt, { addSuffix: true })}
+                    {link.createdAt ? formatDistanceToNow(link.createdAt, { addSuffix: true }) : 'Just now'}
                   </TableCell>
                   <TableCell className="text-right">
                     <Popover>

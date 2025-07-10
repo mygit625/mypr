@@ -49,10 +49,6 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
   const { desktopUrl, androidUrl, iosUrl } = validatedLinks.data;
 
   try {
-    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID.includes('your-project-id')) {
-      throw new Error("Firebase configuration is missing or incomplete. Please update your .env file for local development or check your `apphosting.yaml` for deployment.");
-    }
-    
     if (!process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL.includes('your-project-id')) {
         throw new Error("The NEXT_PUBLIC_BASE_URL environment variable is not set. Please set it to your app's public domain in your .env or `apphosting.yaml` file.");
     }
@@ -97,5 +93,11 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
 }
 
 export async function getLinksAction(): Promise<DynamicLink[]> {
-    return getRecentLinks();
+  try {
+    return await getRecentLinks();
+  } catch (error: any) {
+    console.error("Error in getLinksAction:", error);
+    // Return empty array but maybe also toast an error on the client
+    return [];
+  }
 }
