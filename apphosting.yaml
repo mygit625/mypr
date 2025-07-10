@@ -30,39 +30,39 @@ env:
 
   # Public URL of your deployed application (e.g., https://your-project-id.web.app)
   - variable: NEXT_PUBLIC_BASE_URL
-    value: ''
+    value: 'https://studio--docuease-y40m1.us-central1.hosted.app'
     availability:
       - BUILD
       - RUNTIME
 
   # Firebase project configuration details
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: ''
+    value: 'AIzaSyAI_zg4k1jXSlY44KsI5RlwII76o5yPJIU'
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: ''
+    value: 'docuease-y40m1.firebaseapp.com'
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: ''
+    value: 'docuease-y40m1'
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: ''
+    value: 'docuease-y40m1.firebasestorage.app'
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: ''
+    value: '834408677872'
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: ''
+    value: '1:834408677872:web:8ce3834f619b9d5dbd1d35'
     availability:
       - BUILD
       - RUNTIME
