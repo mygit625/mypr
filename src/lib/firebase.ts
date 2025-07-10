@@ -19,6 +19,7 @@ if (getApps().length === 0) {
   app = getApp(appName);
 }
 
-const db = getFirestore(app);
+// Pass the databaseId to getFirestore
+const db = getFirestore(app, process.env.NEXT_PUBLIC_FIRESTORE_DATABASE_ID);
 
 export { app, db };
