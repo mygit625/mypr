@@ -84,10 +84,12 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
     };
   } catch (error: any) {
     console.error("Error in createDynamicLinkAction:", error);
+    // Return a more detailed error message for debugging
+    const errorMessage = `Failed to create link. Reason: ${error.message}.`;
     return {
       message: null,
       shortUrl: null,
-      error: error.message || 'An unexpected error occurred. Please try again.',
+      error: errorMessage,
     };
   }
 }
