@@ -10,16 +10,8 @@ const firebaseConfig: FirebaseOptions = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// A more robust way to initialize Firebase in a Next.js environment
-let app;
-const appName = 'ToolsInnClient';
-if (getApps().length === 0) {
-  app = initializeApp(firebaseConfig, appName);
-} else {
-  app = getApp(appName);
-}
-
-// Pass the databaseId to getFirestore
-const db = getFirestore(app, process.env.NEXT_PUBLIC_FIRESTORE_DATABASE_ID);
+// Initialize Firebase
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 export { app, db };
