@@ -1,0 +1,46 @@
+# Firebase App Hosting configuration file.
+# This file is used to configure the server-side rendering of your Next.js app.
+# See https://firebase.google.com/docs/hosting/frameworks/nextjs
+
+# The version of the App Hosting specification.
+specVersion: v1
+
+# The entry point for your Next.js application.
+run:
+  # The command to start your application.
+  command: npm run start
+
+# Define the environment variables required by your application.
+# For security, do not hardcode secret values here.
+# Instead, use the Firebase CLI to set the values:
+# firebase apphosting:backends:update --backend=<your-backend-id> --update-env-vars=SECRET_COOKIE_PASSWORD="YOUR_SECRET_VALUE_HERE"
+#
+# NEXT_PUBLIC_* variables can often be set directly here if they are not sensitive.
+# However, it's best practice to manage all environment-specific configurations
+# in the Firebase console or via the CLI.
+#
+# You will need to set values for all of these in your Firebase App Hosting backend settings.
+environmentVariables:
+  # Secret for encrypting session cookies. Must be a private string of at least 32 characters.
+  SECRET_COOKIE_PASSWORD: ''
+
+  # Public URL of your deployed application (e.g., https://your-project-id.web.app)
+  NEXT_PUBLIC_BASE_URL: ''
+
+  # Firebase project configuration details
+  NEXT_PUBLIC_FIREBASE_API_KEY: ''
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ''
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: ''
+  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ''
+  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ''
+  NEXT_PUBLIC_FIREBASE_APP_ID: ''
+
+# Automatic scaling settings for your backend.
+# These are the default values and can be adjusted as needed.
+automaticScaling:
+  minInstances: 0
+  maxInstances: 10
+  cpu: 0.5
+  memory: 1GiB
+  requestsPerSecond: 100
+  concurrency: 80
