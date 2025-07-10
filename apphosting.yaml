@@ -20,20 +20,53 @@ run:
 # in the Firebase console or via the CLI.
 #
 # You will need to set values for all of these in your Firebase App Hosting backend settings.
-environmentVariables:
+env:
   # Secret for encrypting session cookies. Must be a private string of at least 32 characters.
-  SECRET_COOKIE_PASSWORD: ''
+  - variable: SECRET_COOKIE_PASSWORD
+    value: 'default_secret_cookie_password_to_be_changed'
+    availability:
+      - BUILD
+      - RUNTIME
 
   # Public URL of your deployed application (e.g., https://your-project-id.web.app)
-  NEXT_PUBLIC_BASE_URL: ''
+  - variable: NEXT_PUBLIC_BASE_URL
+    value: ''
+    availability:
+      - BUILD
+      - RUNTIME
 
   # Firebase project configuration details
-  NEXT_PUBLIC_FIREBASE_API_KEY: ''
-  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ''
-  NEXT_PUBLIC_FIREBASE_PROJECT_ID: ''
-  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ''
-  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ''
-  NEXT_PUBLIC_FIREBASE_APP_ID: ''
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: ''
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: ''
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: ''
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: ''
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: ''
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: ''
+    availability:
+      - BUILD
+      - RUNTIME
+
 
 # Automatic scaling settings for your backend.
 # These are the default values and can be adjusted as needed.
