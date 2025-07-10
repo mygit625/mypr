@@ -21,22 +21,22 @@ const nextConfig: NextConfig = {
     ],
   },
   experimental: {
-    serverComponentsExternalPackages: ['pdfkit', 'fontkit'], // Keep this as it's good practice
+    // Keep pdfkit/fontkit and add firebase packages to prevent bundling issues on the server.
+    serverComponentsExternalPackages: ['pdfkit', 'fontkit', 'firebase'],
   },
   webpack: (
     config: WebpackConfiguration,
     { isServer }
   ) => {
     if (isServer) {
-      // Ensure pdfkit and fontkit are treated as externals.
+      // Ensure specific packages are treated as externals.
       // This forces Node.js to require() them from node_modules at runtime,
-      // which often helps with libraries that rely on __dirname or have
-      // complex asset loading mechanisms that don't work well when bundled.
+      // helping with libraries that have complex asset loading needs.
       const existingExternals = Array.isArray(config.externals) 
         ? config.externals 
         : (config.externals ? [config.externals] : []);
       
-      config.externals = [...existingExternals, 'pdfkit', 'fontkit'];
+      config.externals = [...existingExternals, 'pdfkit', 'fontkit', 'firebase'];
     }
     return config;
   },
