@@ -52,6 +52,10 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
     if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID === 'your_project_id') {
       throw new Error("Firebase configuration is missing. Please update your .env file with your project credentials.");
     }
+    
+    if (!process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL.includes('your-project-id')) {
+        throw new Error("The NEXT_PUBLIC_BASE_URL environment variable is not set. Please set it to your app's public domain in the .env file.");
+    }
 
     let code = nanoid(7);
     let attempts = 0;
@@ -74,7 +78,7 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
     
     revalidatePath('/url-shortener');
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
     const shortUrl = `${baseUrl}/${code}`;
 
     return {
