@@ -40,6 +40,12 @@ export default function DeviceAwareLinksPage() {
   const [recentLinks, setRecentLinks] = useState<DynamicLink[]>([]);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
+  const [baseUrl, setBaseUrl] = useState('');
+
+  useEffect(() => {
+    // Set base URL on the client-side to ensure it's available for display
+    setBaseUrl(process.env.NEXT_PUBLIC_BASE_URL || window.location.origin);
+  }, []);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -161,8 +167,8 @@ export default function DeviceAwareLinksPage() {
               {recentLinks.map((link) => (
                 <TableRow key={link.id}>
                   <TableCell>
-                    <a href={`/${link.id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono">
-                      /{link.id}
+                    <a href={`${baseUrl}/${link.id}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono">
+                      {baseUrl.replace(/https?:\/\//, '')}/{link.id}
                     </a>
                   </TableCell>
                   <TableCell className="max-w-xs truncate">
@@ -178,7 +184,7 @@ export default function DeviceAwareLinksPage() {
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
                          <div className="p-2 space-y-1">
-                           <Button variant="ghost" className="w-full justify-start" size="sm" onClick={() => copyToClipboard(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/${link.id}`)}>
+                           <Button variant="ghost" className="w-full justify-start" size="sm" onClick={() => copyToClipboard(`${baseUrl}/${link.id}`)}>
                              <Copy className="h-4 w-4 mr-2" /> Copy Link
                            </Button>
                          </div>

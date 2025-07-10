@@ -49,6 +49,10 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
   const { desktopUrl, androidUrl, iosUrl } = validatedLinks.data;
 
   try {
+    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID === 'your_project_id') {
+      throw new Error("Firebase configuration is missing. Please update your .env file with your project credentials.");
+    }
+
     let code = nanoid(7);
     let attempts = 0;
     while (!(await isCodeUnique(code)) && attempts < 5) {
@@ -70,7 +74,10 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
     
     revalidatePath('/url-shortener');
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    if (!baseUrl) {
+      throw new Error("The NEXT_PUBLIC_BASE_URL environment variable is not set. Please set it to your app's public domain.");
+    }
     const shortUrl = `${baseUrl}/${code}`;
 
     return {
@@ -78,12 +85,12 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
       shortUrl: shortUrl,
       error: null,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in createDynamicLinkAction:", error);
     return {
       message: null,
       shortUrl: null,
-      error: 'An unexpected error occurred. Please ensure your Firebase credentials are set in the .env file.',
+      error: error.message || 'An unexpected error occurred. Please try again.',
     };
   }
 }
