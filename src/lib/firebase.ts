@@ -10,8 +10,15 @@ const firebaseConfig: FirebaseOptions = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// A more robust way to initialize Firebase in a Next.js environment
+let app;
+const appName = 'ToolsInnClient';
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig, appName);
+} else {
+  app = getApp(appName);
+}
+
 const db = getFirestore(app);
 
 export { app, db };
