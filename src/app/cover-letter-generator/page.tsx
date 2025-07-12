@@ -42,7 +42,7 @@ const testimonials = [
     name: 'Sarah J.',
     title: 'Software Engineer',
     quote: "I was struggling to write a cover letter that stood out. This tool helped me create a professional and personalized letter in minutes. I got three interview calls the same week!",
-    imageSrc: 'https://placehold.co/100x100.png?text=SJ',
+    imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'woman portrait',
   },
@@ -50,7 +50,7 @@ const testimonials = [
     name: 'Michael B.',
     title: 'Marketing Manager',
     quote: "The creativity slider is a game-changer. I landed a job at a top creative agency after my cover letter, which this tool helped me write, was mentioned as a key reason they called me in!",
-    imageSrc: 'https://placehold.co/100x100.png?text=MB',
+    imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'man portrait',
   },
@@ -58,7 +58,7 @@ const testimonials = [
     name: 'Emily C.',
     title: 'Recent Graduate',
     quote: "As a recent grad with little experience, writing cover letters was daunting. This generator highlighted my skills from my CV perfectly. It gave me the confidence boost I needed.",
-    imageSrc: 'https://placehold.co/100x100.png?text=EC',
+    imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'woman smiling',
   },
@@ -66,7 +66,7 @@ const testimonials = [
     name: 'David L.',
     title: 'UX Designer',
     quote: "I hate writing cover letters. This tool made it painless. It parsed my PDF resume and the job description perfectly, creating a draft that was 90% ready to go. Huge time saver.",
-    imageSrc: 'https://placehold.co/100x100.png?text=DL',
+    imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'man smiling',
   },
@@ -74,7 +74,7 @@ const testimonials = [
     name: 'Maria G.',
     title: 'Project Manager',
     quote: "Switching careers is tough. This generator helped me frame my transferable skills in a way that made sense for the new role. The result was a compelling narrative that I couldn't have written on my own.",
-    imageSrc: 'https://placehold.co/100x100.png?text=MG',
+    imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'woman professional',
   },
@@ -82,7 +82,7 @@ const testimonials = [
     name: 'Kevin H.',
     title: 'Data Analyst',
     quote: "The ability to generate a formal and data-centric cover letter was amazing. I used the 'low creativity' setting, and it produced a perfectly toned letter for the financial industry.",
-    imageSrc: 'https://placehold.co/100x100.png?text=KH',
+    imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'man glasses',
   },
@@ -90,7 +90,7 @@ const testimonials = [
     name: 'Jessica W.',
     title: 'HR Coordinator',
     quote: "As someone who reads cover letters for a living, I was skeptical. But the quality is outstanding. It avoids clichés and focuses on matching skills to the job. I now recommend it to friends.",
-    imageSrc: 'https://placehold.co/100x100.png?text=JW',
+    imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'woman business',
   },
@@ -98,7 +98,7 @@ const testimonials = [
     name: 'Tom P.',
     title: 'Student',
     quote: "Needed a cover letter for an internship and had no idea where to start. Uploaded my resume, pasted the description, and got a fantastic draft. It helped me land the position!",
-    imageSrc: 'https://placehold.co/100x100.png?text=TP',
+    imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'man student',
   },
@@ -106,7 +106,7 @@ const testimonials = [
     name: 'Linda K.',
     title: 'Graphic Designer',
     quote: "I'm a visual person, not a writer. This tool helped me articulate my value proposition clearly and creatively. The 'witty remark' option was a nice touch for a creative role.",
-    imageSrc: 'https://placehold.co/100x100.png?text=LK',
+    imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'woman artist',
   },
@@ -114,7 +114,7 @@ const testimonials = [
     name: 'Brian T.',
     title: 'Sales Executive',
     quote: "In sales, the first impression is everything. This tool helped me craft a powerful opening that grabbed the recruiter's attention immediately. Saved me hours of work.",
-    imageSrc: 'https://placehold.co/100x100.png?text=BT',
+    imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'man suit',
   },
@@ -369,7 +369,7 @@ export default function CoverLetterGeneratorPage() {
           ))}
         </div>
       </section>
-
+      
       <section className="max-w-4xl mx-auto text-center">
         <h2 className="text-3xl font-bold tracking-tight">Create a Winning Cover Letter in Seconds</h2>
         <div className="prose prose-lg text-muted-foreground mx-auto mt-4">
@@ -379,7 +379,7 @@ export default function CoverLetterGeneratorPage() {
         </div>
       </section>
       
-       <section className="max-w-4xl mx-auto py-12 px-4">
+      <section className="max-w-4xl mx-auto py-12 px-4">
         <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="item-1">
@@ -408,11 +408,11 @@ export default function CoverLetterGeneratorPage() {
           </AccordionItem>
         </Accordion>
       </section>
-
+      
       <section className="py-16 md:py-24">
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="text-3xl font-bold tracking-tight">What Our Users Say</h2>
-          <div className="mt-12 relative min-h-[250px] flex items-center justify-center">
+          <div className="mt-12 relative min-h-[300px] flex items-center justify-center">
             {testimonials.map((testimonial, index) => (
               <div
                 key={index}
@@ -455,3 +455,5 @@ export default function CoverLetterGeneratorPage() {
     </div>
   );
 }
+
+    
