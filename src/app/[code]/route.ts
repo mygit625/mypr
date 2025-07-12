@@ -1,6 +1,5 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { userAgent as nextUserAgent } from 'next/server';
 import { getLinkByCode, logClick } from '@/lib/url-shortener-db';
 
 // A more reliable function to determine the OS from the user agent string
@@ -15,10 +14,23 @@ function getOperatingSystem(request: NextRequest): string {
   if (/iPad|iPhone|iPod/.test(uaString) && !(global as any).MSStream) {
     return 'iOS';
   }
+  
+  // A simple check for windows
+  if (/windows/i.test(uaString)) {
+    return 'Windows';
+  }
 
-  // Fallback to Next.js's parser for desktop OS names
-  const { os } = nextUserAgent(request);
-  return os.name || 'Unknown';
+  // A simple check for mac
+  if (/macintosh|mac os x/i.test(uaString)) {
+    return 'macOS';
+  }
+  
+  // A simple check for linux
+  if (/linux/i.test(uaString)) {
+    return 'Linux';
+  }
+
+  return 'Unknown';
 }
 
 
