@@ -28,7 +28,8 @@ const toolPaths = [
   '/watermark',
   '/unit-converters',
   '/qr-code',
-  '/url-shortener'
+  '/url-shortener',
+  '/cover-letter-generator'
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
