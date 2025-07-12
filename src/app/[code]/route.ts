@@ -43,14 +43,10 @@ export async function GET(
   // Prioritized redirection logic using the reliable OS check
   if (osName === 'Android' && android) {
     return NextResponse.redirect(new URL(android));
-  } 
-  
-  if (osName === 'iOS' && ios) {
+  } else if (osName === 'iOS' && ios) {
     return NextResponse.redirect(new URL(ios));
-  }
-
-  // Fallback to desktop URL if it exists, otherwise go to home
-  if (desktop) {
+  } else if (desktop) {
+    // Fallback to desktop URL if it exists
     return NextResponse.redirect(new URL(desktop));
   }
 
