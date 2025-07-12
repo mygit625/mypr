@@ -412,12 +412,12 @@ export default function CoverLetterGeneratorPage() {
       <section className="py-16 md:py-24">
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="text-3xl font-bold tracking-tight">What Our Users Say</h2>
-          <div className="mt-12 relative h-64 overflow-hidden">
+          <div className="mt-12 relative min-h-[250px] flex items-center justify-center">
             {testimonials.map((testimonial, index) => (
               <div
                 key={index}
                 className={cn(
-                  'absolute inset-0 transition-opacity duration-1000 ease-in-out',
+                  'absolute inset-0 transition-opacity duration-1000 ease-in-out flex flex-col items-center justify-center',
                   index === currentTestimonialIndex ? 'opacity-100' : 'opacity-0'
                 )}
               >
@@ -435,10 +435,10 @@ export default function CoverLetterGeneratorPage() {
                       <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
                     ))}
                   </div>
-                  <blockquote className="text-lg italic text-foreground max-w-2xl">
+                  <blockquote className="text-lg italic text-foreground max-w-2xl px-4">
                     "{testimonial.quote}"
                   </blockquote>
-                  <div className="mt-4">
+                  <div className="mt-4 text-center">
                     <p className="font-semibold text-foreground">{testimonial.name}</p>
                     <p className="text-sm text-muted-foreground">{testimonial.title}</p>
                   </div>
