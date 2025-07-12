@@ -3,7 +3,7 @@
 
 import { useState, useRef, MouseEvent, DragEvent as ReactDragEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { CircleEllipsis, Crop, Download, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
