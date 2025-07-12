@@ -1,14 +1,28 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { userAgent } from 'next/server';
+import { userAgent as nextUserAgent } from 'next/server';
 import { getLinkByCode, logClick } from '@/lib/url-shortener-db';
+
+// A more reliable function to determine the OS from the user agent string
+function getOperatingSystem(request: NextRequest): string {
+  const uaString = request.headers.get('user-agent') || '';
+  if (/android/i.test(uaString)) {
+    return 'Android';
+  }
+  if (/iPad|iPhone|iPod/.test(uaString) && !(global as any).MSStream) {
+    return 'iOS';
+  }
+  // Fallback to Next.js's parser for desktop OS names
+  const { os } = nextUserAgent(request);
+  return os.name || 'Unknown';
+}
+
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { code: string } }
 ) {
-  const { os } = userAgent(request);
-  const osName = os.name || 'Unknown';
+  const osName = getOperatingSystem(request);
   const code = params.code;
 
   if (!code) {
@@ -26,13 +40,12 @@ export async function GET(
 
   const { desktop, android, ios } = linkData;
 
-  // Prioritized redirection logic
-  if (osName.toLowerCase().includes('android') && android) {
+  // Prioritized redirection logic using the reliable OS check
+  if (osName === 'Android' && android) {
     return NextResponse.redirect(new URL(android));
-  }
+  } 
   
-  // Use a stricter check for 'ios' to avoid matching 'Mac OS'
-  if (osName.toLowerCase() === 'ios' && ios) {
+  if (osName === 'iOS' && ios) {
     return NextResponse.redirect(new URL(ios));
   }
 
