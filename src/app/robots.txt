@@ -1,0 +1,9 @@
+# See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
+#
+# A good robots.txt file is important for SEO.
+# It tells search engine crawlers which pages or files the crawler can or can't request from your site.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://docuease-y40m1.web.app/sitemap.xml

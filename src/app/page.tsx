@@ -28,10 +28,10 @@ export default function HomePage() {
       <section className="text-center pt-12 pb-8 md:pt-16 md:pb-12">
         <div className="container mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-            Welcome to ToolsInn
+            Free Online Tools to Make Your Life Easier
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-            Your one-stop destination for free online tools. From PDF and image utilities to converters and calculators, we have the tools you need to get things done.
+            From PDF and image utilities to converters and calculators, DocuEase provides the tools you need to get things done, completely free.
           </p>
         </div>
       </section>
