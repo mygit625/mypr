@@ -49,12 +49,8 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
   const { desktopUrl, androidUrl, iosUrl } = validatedLinks.data;
 
   try {
-    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID === 'your_project_id') {
-      throw new Error("Firebase configuration is missing. Please update your .env file with your project credentials.");
-    }
-    
     if (!process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL.includes('your-project-id')) {
-        throw new Error("The NEXT_PUBLIC_BASE_URL environment variable is not set. Please set it to your app's public domain in the .env file.");
+        throw new Error("The NEXT_PUBLIC_BASE_URL environment variable is not set. Please set it to your app's public domain in your .env or `apphosting.yaml` file.");
     }
 
     let code = nanoid(7);
@@ -88,14 +84,22 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
     };
   } catch (error: any) {
     console.error("Error in createDynamicLinkAction:", error);
+    // Return a more detailed error message for debugging
+    const errorMessage = `Failed to create link. Reason: ${error.message}.`;
     return {
       message: null,
       shortUrl: null,
-      error: error.message || 'An unexpected error occurred. Please try again.',
+      error: errorMessage,
     };
   }
 }
 
 export async function getLinksAction(): Promise<DynamicLink[]> {
-    return getRecentLinks();
+  try {
+    return await getRecentLinks();
+  } catch (error: any) {
+    console.error("Error in getLinksAction:", error);
+    // Return empty array but maybe also toast an error on the client
+    return [];
+  }
 }

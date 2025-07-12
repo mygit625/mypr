@@ -13,7 +13,6 @@ import {
   getDocs,
   serverTimestamp,
   addDoc,
-  collectionGroup,
   getCountFromServer,
 } from 'firebase/firestore';
 
@@ -29,15 +28,9 @@ interface LinkBundle {
   ios: string;
 }
 
-export interface RawClickData {
-  detectedOs: string;
-  ip: string;
-  headers: Record<string, string>;
-}
-
 export interface ClickLog {
   id: string;
-  rawData: RawClickData;
+  deviceType: string;
   timestamp: Date;
 }
 
@@ -77,12 +70,12 @@ export async function isCodeUnique(code: string): Promise<boolean> {
   return !docSnap.exists();
 }
 
-export async function logClick(code: string, rawData: RawClickData): Promise<void> {
+export async function logClick(code: string, deviceType: string): Promise<void> {
   try {
     const db = getFirestoreInstance();
     const clicksCollectionRef = collection(db, 'short_urls', code, 'clicks');
     await addDoc(clicksCollectionRef, {
-      rawData,
+      deviceType: deviceType || 'Unknown',
       timestamp: serverTimestamp(),
     });
   } catch (error) {

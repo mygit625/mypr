@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, MouseEvent, DragEvent as ReactDragEvent, useEffect } from 'react';
+import { useState, useRef, MouseEvent, TouchEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
@@ -64,40 +64,38 @@ export default function CircleCropPage() {
     }
   };
 
-  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const target = e.target as HTMLElement;
+  const startInteraction = (clientX: number, clientY: number, target: HTMLElement) => {
     const container = containerRef.current;
     if (!container) return;
     
     const rect = container.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const localX = clientX - rect.left;
+    const localY = clientY - rect.top;
 
     if (target.dataset.resizeHandle) {
       setIsResizing(true);
     } else {
       // Check if click is inside the crop area
-      if (
-        mouseX >= crop.x &&
-        mouseX <= crop.x + crop.size &&
-        mouseY >= crop.y &&
-        mouseY <= crop.y + crop.size
-      ) {
+      const isInside = (
+        localX >= crop.x &&
+        localX <= crop.x + crop.size &&
+        localY >= crop.y &&
+        localY <= crop.y + crop.size
+      );
+      if (isInside) {
         setIsDragging(true);
-        setDragStart({ x: mouseX - crop.x, y: mouseY - crop.y });
+        setDragStart({ x: localX - crop.x, y: localY - crop.y });
       }
     }
-  };
+  }
 
-  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const container = containerRef.current;
+  const handleInteractionMove = (clientX: number, clientY: number) => {
+     const container = containerRef.current;
     if (!container) return;
 
     const rect = container.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
     
     const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
 
@@ -109,16 +107,51 @@ export default function CircleCropPage() {
       const newSize = clamp(Math.max(mouseX - crop.x, mouseY - crop.y), 50, Math.min(container.clientWidth - crop.x, container.clientHeight - crop.y));
       setCrop(c => ({ ...c, size: newSize }));
     }
+  }
+
+  const endInteraction = () => {
+    setIsDragging(false);
+    setIsResizing(false);
+  }
+
+  // Mouse Handlers
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    startInteraction(e.clientX, e.clientY, e.target as HTMLElement);
+  };
+
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if(isDragging || isResizing) {
+        handleInteractionMove(e.clientX, e.clientY);
+    }
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
-    setIsResizing(false);
+    endInteraction();
   };
   
   const handleMouseLeave = () => {
-    setIsDragging(false);
-    setIsResizing(false);
+    endInteraction();
+  };
+  
+  // Touch Handlers
+  const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 1) {
+      // e.preventDefault(); // This can sometimes prevent desired behaviors like scrolling. Use with caution.
+      startInteraction(e.touches[0].clientX, e.touches[0].clientY, e.target as HTMLElement);
+    }
+  };
+  
+  const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
+    if ((isDragging || isResizing) && e.touches.length === 1) {
+      e.preventDefault(); // Prevent scrolling while dragging/resizing
+      handleInteractionMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+  
+  const handleTouchEnd = () => {
+    endInteraction();
   };
 
   const handleCrop = () => {
@@ -192,6 +225,10 @@ export default function CircleCropPage() {
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseLeave}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
                 >
                     <img
                         ref={imageRef}
