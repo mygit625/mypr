@@ -11,9 +11,11 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, MoreVertical } from 'lucide-react';
+import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, MoreVertical, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { QRCodeCanvas } from 'qrcode.react';
+import { downloadDataUri } from '@/lib/download-utils';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -55,11 +57,29 @@ export default function DeviceAwareLinksPage() {
     });
   };
 
+  const downloadQrCode = () => {
+    const canvas = document.getElementById('qr-code-canvas') as HTMLCanvasElement;
+    if (canvas) {
+      const pngUrl = canvas
+        .toDataURL("image/png")
+        .replace("image/png", "image/octet-stream");
+      downloadDataUri(pngUrl, 'shortlink-qrcode.png');
+       toast({
+        title: 'QR Code Downloaded!',
+        description: 'The QR code has been saved as a PNG.',
+      });
+    }
+  };
+
   useEffect(() => {
     // Fetch links when the component mounts or a new link is created
     getLinksAction().then(setRecentLinks).catch(err => {
         console.error("Failed to fetch recent links on mount:", err);
     });
+
+    if(state.shortUrl) {
+      formRef.current?.reset();
+    }
   }, [state]);
 
   return (
@@ -133,14 +153,30 @@ export default function DeviceAwareLinksPage() {
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertTitle className="text-green-700">Dynamic Link Created!</AlertTitle>
             <AlertDescription>
-                <div className="flex items-center justify-between mt-2">
-                    <a href={state.shortUrl} target="_blank" rel="noopener noreferrer" className="font-mono text-green-800 hover:underline">
-                        {state.shortUrl}
-                    </a>
-                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(state.shortUrl!)}>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy
-                    </Button>
+                <div className="flex flex-col sm:flex-row items-center justify-between mt-2 gap-4">
+                    <div className="flex-grow">
+                      <a href={state.shortUrl} target="_blank" rel="noopener noreferrer" className="font-mono text-green-800 hover:underline break-all">
+                          {state.shortUrl}
+                      </a>
+                      <Button variant="ghost" size="sm" onClick={() => copyToClipboard(state.shortUrl!)} className="w-full sm:w-auto mt-2 sm:mt-0 justify-start">
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy Link
+                      </Button>
+                    </div>
+                    <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                      <div className="bg-white p-2 rounded-md border">
+                        <QRCodeCanvas
+                          id="qr-code-canvas"
+                          value={state.shortUrl}
+                          size={128}
+                          level={"H"}
+                        />
+                      </div>
+                      <Button onClick={downloadQrCode} variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Download QR
+                      </Button>
+                    </div>
                 </div>
             </AlertDescription>
         </Alert>
