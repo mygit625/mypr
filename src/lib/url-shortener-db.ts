@@ -30,6 +30,7 @@ interface LinkBundle {
 export interface ClickLog {
   id: string;
   os: string;
+  userAgent: string;
   timestamp: Date;
 }
 
@@ -69,12 +70,13 @@ export async function isCodeUnique(code: string): Promise<boolean> {
   return !docSnap.exists();
 }
 
-export async function logClick(code: string, osName: string): Promise<void> {
+export async function logClick(code: string, osName: string, userAgent: string): Promise<void> {
   try {
     const db = getFirestoreInstance();
     const clicksCollectionRef = collection(db, 'short_urls', code, 'clicks');
     await addDoc(clicksCollectionRef, {
       os: osName,
+      userAgent: userAgent,
       timestamp: serverTimestamp(),
     });
   } catch (error) {
@@ -106,6 +108,7 @@ export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]>
       clicks.push({
         id: clickDoc.id,
         os: clickData.os,
+        userAgent: clickData.userAgent,
         timestamp: clickData.timestamp?.toDate() ?? new Date(),
       });
     });

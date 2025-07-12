@@ -27,14 +27,15 @@ export async function GET(
   { params }: { params: { code: string } }
 ) {
   const osName = getOperatingSystem(request);
+  const uaString = request.headers.get('user-agent') || 'Unknown User Agent';
   const code = params.code;
 
   if (!code) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // Asynchronously log the click without waiting for it to complete
-  logClick(code, osName).catch(console.error);
+  // Asynchronously log the click with the user agent string
+  logClick(code, osName, uaString).catch(console.error);
 
   const linkData = await getLinkByCode(code);
 

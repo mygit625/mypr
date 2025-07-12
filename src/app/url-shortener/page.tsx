@@ -37,14 +37,34 @@ function SubmitButton() {
   );
 }
 
-function DeviceIcon({ os }: { os: string }) {
+function DeviceInfo({ os, userAgent }: { os: string, userAgent?: string }) {
     const osLower = os.toLowerCase();
-    if (osLower.includes('android')) return <Smartphone className="h-4 w-4 text-green-500" title="Android" />;
-    if (osLower === 'ios') return <Apple className="h-4 w-4 text-gray-500" title="iOS" />;
-    if (osLower.includes('windows') || osLower.includes('mac os') || osLower.includes('linux')) {
-        return <Laptop className="h-4 w-4 text-blue-500" title="Desktop" />;
+    let Icon;
+    let title = userAgent || os;
+
+    if (osLower.includes('android')) {
+        Icon = () => <Smartphone className="h-4 w-4 text-green-500" title="Android" />;
+    } else if (osLower === 'ios') {
+        Icon = () => <Apple className="h-4 w-4 text-gray-500" title="iOS" />;
+    } else if (osLower.includes('windows') || osLower.includes('mac os') || osLower.includes('linux')) {
+        Icon = () => <Laptop className="h-4 w-4 text-blue-500" title="Desktop" />;
+    } else {
+        Icon = () => <Laptop className="h-4 w-4 text-muted-foreground" title={os} />;
     }
-    return <Laptop className="h-4 w-4 text-muted-foreground" title={os} />;
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <button className="flex items-center gap-1 cursor-pointer"><Icon /></button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 text-xs">
+                <p className="font-bold">Detected OS:</p>
+                <p className="mb-2">{os}</p>
+                <p className="font-bold">Full User Agent:</p>
+                <p className="break-all">{userAgent}</p>
+            </PopoverContent>
+        </Popover>
+    );
 }
 
 
@@ -218,7 +238,7 @@ export default function DeviceAwareLinksPage() {
               <TableRow>
                 <TableHead>Short URL</TableHead>
                 <TableHead>Destination Links</TableHead>
-                <TableHead>Devices</TableHead>
+                <TableHead>Clicks &amp; Devices</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -263,9 +283,9 @@ export default function DeviceAwareLinksPage() {
                         <MousePointerClick className="h-4 w-4 text-muted-foreground"/>
                         <span className="font-mono text-sm">{link.clickCount ?? 0}</span>
                         {(link.clicks && link.clicks.length > 0) && <div className="h-4 w-px bg-border mx-1"></div>}
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5 flex-wrap max-w-[200px]">
                             {link.clicks?.map(click => (
-                                <DeviceIcon key={click.id} os={click.os} />
+                                <DeviceInfo key={click.id} os={click.os} userAgent={click.userAgent} />
                             ))}
                         </div>
                     </div>
