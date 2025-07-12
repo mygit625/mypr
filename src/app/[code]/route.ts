@@ -1,7 +1,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { userAgent } from 'next/server';
-import { getLinkByCode } from '@/lib/url-shortener-db';
+import { getLinkByCode, logClick } from '@/lib/url-shortener-db';
 
 export async function GET(
   request: NextRequest,
@@ -9,61 +9,38 @@ export async function GET(
 ) {
   const { os } = userAgent(request);
   const osName = os.name || 'Unknown';
+  const code = params.code;
 
-  // --- Debugging View ---
-  // Instead of redirecting, we now return a simple HTML page
-  // that displays the detected operating system.
+  if (!code) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
 
-  const html = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Device Detection Debug</title>
-      <style>
-        body { 
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-          display: flex; 
-          justify-content: center; 
-          align-items: center; 
-          height: 100vh; 
-          margin: 0; 
-          background-color: #f0f2f5; 
-          color: #1c1e21;
-        }
-        .container { 
-          text-align: center; 
-          padding: 40px; 
-          border-radius: 12px; 
-          background-color: #ffffff; 
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        h1 { 
-          font-size: 24px; 
-          color: #333; 
-          margin-bottom: 8px;
-        }
-        p { 
-          font-size: 36px; 
-          font-weight: bold; 
-          color: #e53935; /* Primary color from theme */
-          margin: 0; 
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1>Detected Operating System:</h1>
-        <p>${osName}</p>
-      </div>
-    </body>
-    </html>
-  `;
+  // Asynchronously log the click without waiting for it to complete
+  logClick(code, osName).catch(console.error);
 
-  return new NextResponse(html, {
-    headers: {
-      'Content-Type': 'text/html',
-    },
-  });
+  const linkData = await getLinkByCode(code);
+
+  if (!linkData) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  const { desktop, android, ios } = linkData;
+
+  // Prioritized redirection logic
+  if (osName.toLowerCase().includes('android') && android) {
+    return NextResponse.redirect(new URL(android));
+  }
+  
+  // Use a stricter check for 'ios' to avoid matching 'Mac OS'
+  if (osName.toLowerCase() === 'ios' && ios) {
+    return NextResponse.redirect(new URL(ios));
+  }
+
+  // Fallback to desktop URL if it exists, otherwise go to home
+  if (desktop) {
+    return NextResponse.redirect(new URL(desktop));
+  }
+
+  // If no suitable link is found, redirect to the homepage
+  return NextResponse.redirect(new URL('/', request.url));
 }

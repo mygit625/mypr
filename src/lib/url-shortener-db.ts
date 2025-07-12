@@ -12,6 +12,7 @@ import {
   limit,
   getDocs,
   serverTimestamp,
+  addDoc,
 } from 'firebase/firestore';
 
 // Helper function to get the collection reference with a valid DB instance
@@ -26,10 +27,18 @@ interface LinkBundle {
   ios: string;
 }
 
+export interface ClickLog {
+  id: string;
+  os: string;
+  timestamp: Date;
+}
+
 export interface DynamicLink {
   id: string;
   links: LinkBundle;
   createdAt: Date;
+  clicks?: ClickLog[];
+  clickCount?: number;
 }
 
 export async function createDynamicLink(code: string, links: LinkBundle): Promise<void> {
@@ -60,6 +69,20 @@ export async function isCodeUnique(code: string): Promise<boolean> {
   return !docSnap.exists();
 }
 
+export async function logClick(code: string, osName: string): Promise<void> {
+  try {
+    const db = getFirestoreInstance();
+    const clicksCollectionRef = collection(db, 'short_urls', code, 'clicks');
+    await addDoc(clicksCollectionRef, {
+      os: osName,
+      timestamp: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error(`Failed to log click for code ${code}:`, error);
+    // Fail silently to not block the redirect
+  }
+}
+
 
 export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]> {
   const urlsCollection = getUrlsCollection();
@@ -67,15 +90,39 @@ export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]>
   const querySnapshot = await getDocs(q);
   
   const links: DynamicLink[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    links.push({
-      id: doc.id,
-      links: data.links,
-      // Convert Firestore Timestamp to JS Date
-      createdAt: data.createdAt?.toDate() ?? new Date(),
+  
+  for (const docSnap of querySnapshot.docs) {
+    const data = docSnap.data();
+    
+    // Fetch recent clicks for each link
+    const db = getFirestoreInstance();
+    const clicksCollectionRef = collection(db, 'short_urls', docSnap.id, 'clicks');
+    const clicksQuery = query(clicksCollectionRef, orderBy('timestamp', 'desc'), limit(5)); // Get last 5 clicks
+    const clicksSnapshot = await getDocs(clicksQuery);
+
+    const clicks: ClickLog[] = [];
+    clicksSnapshot.forEach(clickDoc => {
+      const clickData = clickDoc.data();
+      clicks.push({
+        id: clickDoc.id,
+        os: clickData.os,
+        timestamp: clickData.timestamp?.toDate() ?? new Date(),
+      });
     });
-  });
+    
+    // For total count, we would ideally use a counter field updated with transactions.
+    // For simplicity here, we'll just show the count of recent clicks fetched.
+    // A more scalable solution would be to add a clickCount field to the main link document.
+    const clickCount = clicksSnapshot.size;
+
+    links.push({
+      id: docSnap.id,
+      links: data.links,
+      createdAt: data.createdAt?.toDate() ?? new Date(),
+      clicks: clicks,
+      clickCount: clickCount, // This is not a total count, but a count of recent clicks.
+    });
+  }
 
   return links;
 }

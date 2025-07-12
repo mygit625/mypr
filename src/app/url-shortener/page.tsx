@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useActionState, useEffect, useState, useRef } from 'react';
@@ -11,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, MoreVertical, Download } from 'lucide-react';
+import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, MoreVertical, Download, MousePointerClick } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -35,6 +36,17 @@ function SubmitButton() {
     </Button>
   );
 }
+
+function DeviceIcon({ os }: { os: string }) {
+    const osLower = os.toLowerCase();
+    if (osLower.includes('android')) return <Smartphone className="h-4 w-4 text-green-500" title="Android" />;
+    if (osLower === 'ios') return <Apple className="h-4 w-4 text-gray-500" title="iOS" />;
+    if (osLower.includes('windows') || osLower.includes('mac os') || osLower.includes('linux')) {
+        return <Laptop className="h-4 w-4 text-blue-500" title="Desktop" />;
+    }
+    return <Laptop className="h-4 w-4 text-muted-foreground" title={os} />;
+}
+
 
 export default function DeviceAwareLinksPage() {
   const initialState: CreateLinkState = { message: null, shortUrl: null, error: null };
@@ -73,17 +85,28 @@ export default function DeviceAwareLinksPage() {
 
   useEffect(() => {
     // Fetch links when the component mounts or a new link is created
-    getLinksAction().then(setRecentLinks).catch(err => {
-        console.error("Failed to fetch recent links on mount:", err);
-    });
+    const fetchLinks = () => {
+        getLinksAction().then(setRecentLinks).catch(err => {
+            console.error("Failed to fetch recent links:", err);
+            toast({ title: 'Error', description: 'Could not fetch recent links.', variant: 'destructive' });
+        });
+    };
+    fetchLinks();
 
     if(state.shortUrl) {
       formRef.current?.reset();
     }
-  }, [state]);
+    
+    // Set up polling to refresh links every 5 seconds
+    const intervalId = setInterval(fetchLinks, 5000);
+    
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
+
+  }, [state.shortUrl, toast]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8">
       <header className="text-center">
         <LinkIcon className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Device-Aware Links</h1>
@@ -186,7 +209,7 @@ export default function DeviceAwareLinksPage() {
         <CardHeader>
           <CardTitle>Recently Created Links</CardTitle>
           <CardDescription>
-            Here are the last 10 links that have been created.
+            Here are the last 10 links created. Data refreshes automatically.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -195,11 +218,19 @@ export default function DeviceAwareLinksPage() {
               <TableRow>
                 <TableHead>Short URL</TableHead>
                 <TableHead>Destination Links</TableHead>
+                <TableHead>Devices</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
+              {recentLinks.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        No links created yet.
+                    </TableCell>
+                </TableRow>
+              )}
               {recentLinks.map((link) => (
                 <TableRow key={link.id}>
                   <TableCell>
@@ -226,6 +257,18 @@ export default function DeviceAwareLinksPage() {
                         <span className="truncate" title={link.links.ios}>{link.links.ios}</span>
                       </div>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                        <MousePointerClick className="h-4 w-4 text-muted-foreground"/>
+                        <span className="font-mono text-sm">{link.clickCount ?? 0}</span>
+                        {(link.clicks && link.clicks.length > 0) && <div className="h-4 w-px bg-border mx-1"></div>}
+                        <div className="flex items-center gap-1">
+                            {link.clicks?.map(click => (
+                                <DeviceIcon key={click.id} os={click.os} />
+                            ))}
+                        </div>
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {link.createdAt ? formatDistanceToNow(link.createdAt, { addSuffix: true }) : 'Just now'}
