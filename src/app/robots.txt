@@ -6,4 +6,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://docuease-y40m1.web.app/sitemap.xml
+Sitemap: https://toolsinn.com/sitemap.xml

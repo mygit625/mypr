@@ -31,7 +31,7 @@ const toolPaths = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://docuease-y40m1.web.app';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://toolsinn.com';
 
   const toolUrls = toolPaths.map(path => ({
     url: `${baseUrl}${path}`,

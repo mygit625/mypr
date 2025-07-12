@@ -30,7 +30,7 @@ env:
 
   # Public URL of your deployed application (e.g., https://your-project-id.web.app)
   - variable: NEXT_PUBLIC_BASE_URL
-    value: 'https://docuease-y40m1.web.app'
+    value: 'https://toolsinn.com'
     availability:
       - BUILD
       - RUNTIME
