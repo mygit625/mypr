@@ -66,12 +66,6 @@ env:
     availability:
       - BUILD
       - RUNTIME
-  # Add the Firestore Database ID here. It's usually '(default)'.
-  - variable: NEXT_PUBLIC_FIRESTORE_DATABASE_ID
-    value: '(default)'
-    availability:
-      - BUILD
-      - RUNTIME
 
 
 # Automatic scaling settings for your backend.
