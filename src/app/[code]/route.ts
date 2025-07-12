@@ -16,33 +16,28 @@ export async function GET(
   }
 
   try {
-    const links = await getLinkByCode(code);
+    const linkData = await getLinkByCode(code);
 
-    if (links) {
+    if (linkData) {
       const userAgent = request.headers.get('user-agent') || '';
-      
-      // Determine the redirect URL based on the device
-      let destinationUrl = links.desktop || '/'; // Fallback to desktop URL or homepage
 
-      if (/android/i.test(userAgent) && links.android) {
-        destinationUrl = links.android;
-      } else if (/iphone|ipad|ipod/i.test(userAgent) && links.ios) {
-        destinationUrl = links.ios;
+      // Prioritize mobile URLs if they exist and match the user agent
+      if (/android/i.test(userAgent) && linkData.android) {
+        return NextResponse.redirect(new URL(linkData.android));
       }
-
-      // If the determined destination is empty, use the desktop URL as a final fallback.
-      if (!destinationUrl && links.desktop) {
-        destinationUrl = links.desktop;
+      if ((/iphone|ipad|ipod/i.test(userAgent)) && linkData.ios) {
+        return NextResponse.redirect(new URL(linkData.ios));
       }
       
-      // If still no URL, redirect to homepage
-      if (!destinationUrl) {
-         const homeUrl = new URL('/', request.url);
-         return NextResponse.redirect(homeUrl);
+      // Fallback to desktop URL if it exists
+      if (linkData.desktop) {
+        return NextResponse.redirect(new URL(linkData.desktop));
       }
+      
+      // As a final fallback, if only a mobile URL exists, use the first available one
+      if (linkData.android) return NextResponse.redirect(new URL(linkData.android));
+      if (linkData.ios) return NextResponse.redirect(new URL(linkData.ios));
 
-      // Perform the redirect
-      return NextResponse.redirect(new URL(destinationUrl));
     }
   } catch (error) {
     console.error(`Redirection error for code [${code}]:`, error);
@@ -51,7 +46,7 @@ export async function GET(
     return NextResponse.redirect(homeUrl);
   }
 
-  // If the code is not found, redirect to the homepage.
+  // If the code is not found, or no URLs are defined in the link data, redirect to the homepage.
   const notFoundUrl = new URL('/', request.url);
   return NextResponse.redirect(notFoundUrl);
 }
