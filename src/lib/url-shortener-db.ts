@@ -1,7 +1,7 @@
 
 'use server';
 
-import { db } from './firebase';
+import { getFirestoreInstance } from './firebase';
 import {
   collection,
   doc,
@@ -14,7 +14,11 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 
-const urlsCollection = collection(db, 'short_urls');
+// Helper function to get the collection reference with a valid DB instance
+function getUrlsCollection() {
+    const db = getFirestoreInstance();
+    return collection(db, 'short_urls');
+}
 
 interface LinkBundle {
   desktop: string;
@@ -29,6 +33,7 @@ export interface DynamicLink {
 }
 
 export async function createDynamicLink(code: string, links: LinkBundle): Promise<void> {
+  const urlsCollection = getUrlsCollection();
   const urlDocRef = doc(urlsCollection, code);
   await setDoc(urlDocRef, {
     links,
@@ -37,6 +42,7 @@ export async function createDynamicLink(code: string, links: LinkBundle): Promis
 }
 
 export async function getLinkByCode(code: string): Promise<LinkBundle | null> {
+  const urlsCollection = getUrlsCollection();
   const urlDocRef = doc(urlsCollection, code);
   const docSnap = await getDoc(urlDocRef);
 
@@ -48,6 +54,7 @@ export async function getLinkByCode(code: string): Promise<LinkBundle | null> {
 }
 
 export async function isCodeUnique(code: string): Promise<boolean> {
+  const urlsCollection = getUrlsCollection();
   const urlDocRef = doc(urlsCollection, code);
   const docSnap = await getDoc(urlDocRef);
   return !docSnap.exists();
@@ -55,6 +62,7 @@ export async function isCodeUnique(code: string): Promise<boolean> {
 
 
 export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]> {
+  const urlsCollection = getUrlsCollection();
   const q = query(urlsCollection, orderBy('createdAt', 'desc'), limit(count));
   const querySnapshot = await getDocs(q);
   

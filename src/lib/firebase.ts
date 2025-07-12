@@ -10,23 +10,24 @@ const firebaseConfig: FirebaseOptions = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Robust singleton pattern for both app and Firestore
-// This ensures that we don't re-initialize the services, which can cause
-// connection issues in server-side environments.
-
-let app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-
-let db: Firestore;
-
-if (process.env.NODE_ENV === 'production') {
-  db = getFirestore(app);
-} else {
-  // In development, we need to handle Next.js hot-reloading.
-  // We attach the db instance to the global object to persist it across reloads.
-  if (!(global as any)._firestoreClient) {
-    (global as any)._firestoreClient = getFirestore(app);
+// This function ensures the Firebase app is initialized only once.
+function getFirebaseApp() {
+  if (getApps().length) {
+    return getApp();
   }
-  db = (global as any)._firestoreClient;
+  return initializeApp(firebaseConfig);
 }
 
-export { app, db };
+// Singleton pattern for Firestore instance to avoid re-initialization
+let firestoreInstance: Firestore | null = null;
+
+export function getFirestoreInstance(): Firestore {
+  if (!firestoreInstance) {
+    const app = getFirebaseApp();
+    firestoreInstance = getFirestore(app);
+  }
+  return firestoreInstance;
+}
+
+// Export the app for other Firebase services if needed
+export const app = getFirebaseApp();
