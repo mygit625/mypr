@@ -42,7 +42,7 @@ const testimonials = [
     name: 'Sarah J.',
     title: 'Software Engineer',
     quote: "I was struggling to write a cover letter that stood out. This tool helped me create a professional and personalized letter in minutes. I got three interview calls the same week!",
-    imageSrc: 'https://placehold.co/100x100.png',
+    imageSrc: 'https://placehold.co/100x100.png?text=SJ',
     rating: 5,
     'data-ai-hint': 'woman portrait',
   },
@@ -50,7 +50,7 @@ const testimonials = [
     name: 'Michael B.',
     title: 'Marketing Manager',
     quote: "The creativity slider is a game-changer. I landed a job at a top creative agency after my cover letter, which this tool helped me write, was mentioned as a key reason they called me in!",
-    imageSrc: 'https://placehold.co/100x100.png',
+    imageSrc: 'https://placehold.co/100x100.png?text=MB',
     rating: 5,
     'data-ai-hint': 'man portrait',
   },
@@ -58,7 +58,7 @@ const testimonials = [
     name: 'Emily C.',
     title: 'Recent Graduate',
     quote: "As a recent grad with little experience, writing cover letters was daunting. This generator highlighted my skills from my CV perfectly. It gave me the confidence boost I needed.",
-    imageSrc: 'https://placehold.co/100x100.png',
+    imageSrc: 'https://placehold.co/100x100.png?text=EC',
     rating: 5,
     'data-ai-hint': 'woman smiling',
   },
@@ -66,7 +66,7 @@ const testimonials = [
     name: 'David L.',
     title: 'UX Designer',
     quote: "I hate writing cover letters. This tool made it painless. It parsed my PDF resume and the job description perfectly, creating a draft that was 90% ready to go. Huge time saver.",
-    imageSrc: 'https://placehold.co/100x100.png',
+    imageSrc: 'https://placehold.co/100x100.png?text=DL',
     rating: 5,
     'data-ai-hint': 'man smiling',
   },
@@ -74,7 +74,7 @@ const testimonials = [
     name: 'Maria G.',
     title: 'Project Manager',
     quote: "Switching careers is tough. This generator helped me frame my transferable skills in a way that made sense for the new role. The result was a compelling narrative that I couldn't have written on my own.",
-    imageSrc: 'https://placehold.co/100x100.png',
+    imageSrc: 'https://placehold.co/100x100.png?text=MG',
     rating: 5,
     'data-ai-hint': 'woman professional',
   },
@@ -82,7 +82,7 @@ const testimonials = [
     name: 'Kevin H.',
     title: 'Data Analyst',
     quote: "The ability to generate a formal and data-centric cover letter was amazing. I used the 'low creativity' setting, and it produced a perfectly toned letter for the financial industry.",
-    imageSrc: 'https://placehold.co/100x100.png',
+    imageSrc: 'https://placehold.co/100x100.png?text=KH',
     rating: 5,
     'data-ai-hint': 'man glasses',
   },
@@ -90,7 +90,7 @@ const testimonials = [
     name: 'Jessica W.',
     title: 'HR Coordinator',
     quote: "As someone who reads cover letters for a living, I was skeptical. But the quality is outstanding. It avoids clichés and focuses on matching skills to the job. I now recommend it to friends.",
-    imageSrc: 'https://placehold.co/100x100.png',
+    imageSrc: 'https://placehold.co/100x100.png?text=JW',
     rating: 5,
     'data-ai-hint': 'woman business',
   },
@@ -98,7 +98,7 @@ const testimonials = [
     name: 'Tom P.',
     title: 'Student',
     quote: "Needed a cover letter for an internship and had no idea where to start. Uploaded my resume, pasted the description, and got a fantastic draft. It helped me land the position!",
-    imageSrc: 'https://placehold.co/100x100.png',
+    imageSrc: 'https://placehold.co/100x100.png?text=TP',
     rating: 5,
     'data-ai-hint': 'man student',
   },
@@ -106,7 +106,7 @@ const testimonials = [
     name: 'Linda K.',
     title: 'Graphic Designer',
     quote: "I'm a visual person, not a writer. This tool helped me articulate my value proposition clearly and creatively. The 'witty remark' option was a nice touch for a creative role.",
-    imageSrc: 'https://placehold.co/100x100.png',
+    imageSrc: 'https://placehold.co/100x100.png?text=LK',
     rating: 5,
     'data-ai-hint': 'woman artist',
   },
@@ -114,7 +114,7 @@ const testimonials = [
     name: 'Brian T.',
     title: 'Sales Executive',
     quote: "In sales, the first impression is everything. This tool helped me craft a powerful opening that grabbed the recruiter's attention immediately. Saved me hours of work.",
-    imageSrc: 'https://placehold.co/100x100.png',
+    imageSrc: 'https://placehold.co/100x100.png?text=BT',
     rating: 5,
     'data-ai-hint': 'man suit',
   },
@@ -421,27 +421,25 @@ export default function CoverLetterGeneratorPage() {
                   index === currentTestimonialIndex ? 'opacity-100' : 'opacity-0'
                 )}
               >
-                <div className="flex flex-col items-center">
-                  <Image
-                    src={testimonial.imageSrc}
-                    alt={`Photo of ${testimonial.name}`}
-                    width={80}
-                    height={80}
-                    className="rounded-full mb-4"
-                    data-ai-hint={testimonial['data-ai-hint']}
-                  />
-                  <div className="flex items-center mb-2">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
-                    ))}
-                  </div>
-                  <blockquote className="text-lg italic text-foreground max-w-2xl px-4">
-                    "{testimonial.quote}"
-                  </blockquote>
-                  <div className="mt-4 text-center">
-                    <p className="font-semibold text-foreground">{testimonial.name}</p>
-                    <p className="text-sm text-muted-foreground">{testimonial.title}</p>
-                  </div>
+                <Image
+                  src={testimonial.imageSrc}
+                  alt={`Photo of ${testimonial.name}`}
+                  width={80}
+                  height={80}
+                  className="rounded-full mb-4"
+                  data-ai-hint={testimonial['data-ai-hint']}
+                />
+                <div className="flex items-center mb-2">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
+                  ))}
+                </div>
+                <blockquote className="text-lg italic text-foreground max-w-2xl px-4">
+                  "{testimonial.quote}"
+                </blockquote>
+                <div className="mt-4 text-center">
+                  <p className="font-semibold text-foreground">{testimonial.name}</p>
+                  <p className="text-sm text-muted-foreground">{testimonial.title}</p>
                 </div>
               </div>
             ))}
