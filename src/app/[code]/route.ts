@@ -8,10 +8,10 @@ export async function GET(
   { params }: { params: { code: string } }
 ) {
   const { code } = params;
+  const homeUrl = new URL('/', request.url);
 
   if (!code) {
     // If there's no code, redirect to the homepage.
-    const homeUrl = new URL('/', request.url);
     return NextResponse.redirect(homeUrl);
   }
 
@@ -21,32 +21,31 @@ export async function GET(
     if (linkData) {
       const userAgent = request.headers.get('user-agent') || '';
 
-      // Prioritize mobile URLs if they exist and match the user agent
+      // Check for Android and a valid Android URL first.
       if (/android/i.test(userAgent) && linkData.android) {
         return NextResponse.redirect(new URL(linkData.android));
       }
+      
+      // Then, check for iOS and a valid iOS URL.
       if ((/iphone|ipad|ipod/i.test(userAgent)) && linkData.ios) {
         return NextResponse.redirect(new URL(linkData.ios));
       }
       
-      // Fallback to desktop URL if it exists
+      // If neither of the above, fall back to the desktop URL if it exists.
       if (linkData.desktop) {
         return NextResponse.redirect(new URL(linkData.desktop));
       }
-      
-      // As a final fallback, if only a mobile URL exists, use the first available one
+
+      // As a final fallback if no desktop URL is set, use any available mobile URL.
       if (linkData.android) return NextResponse.redirect(new URL(linkData.android));
       if (linkData.ios) return NextResponse.redirect(new URL(linkData.ios));
-
     }
   } catch (error) {
     console.error(`Redirection error for code [${code}]:`, error);
     // Fallback to homepage on any error during lookup.
-    const homeUrl = new URL('/', request.url);
     return NextResponse.redirect(homeUrl);
   }
 
   // If the code is not found, or no URLs are defined in the link data, redirect to the homepage.
-  const notFoundUrl = new URL('/', request.url);
-  return NextResponse.redirect(notFoundUrl);
+  return NextResponse.redirect(homeUrl);
 }
