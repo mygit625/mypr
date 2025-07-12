@@ -10,7 +10,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const GenerateCoverLetterInputSchema = z.object({
+const GenerateCoverLetterInputSchema = z.object({
   jobTitle: z.string().describe('The title of the job being applied for.'),
   company: z.string().describe('The name of the company.'),
   location: z.string().optional().describe('The location of the job.'),
@@ -31,7 +31,7 @@ export const GenerateCoverLetterInputSchema = z.object({
 });
 export type GenerateCoverLetterInput = z.infer<typeof GenerateCoverLetterInputSchema>;
 
-export const GenerateCoverLetterOutputSchema = z.object({
+const GenerateCoverLetterOutputSchema = z.object({
   coverLetter: z.string().describe('The generated cover letter text.'),
 });
 export type GenerateCoverLetterOutput = z.infer<typeof GenerateCoverLetterOutputSchema>;
