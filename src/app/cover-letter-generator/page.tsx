@@ -92,7 +92,7 @@ const testimonials = [
     quote: "As someone who reads cover letters for a living, I was skeptical. But the quality is outstanding. It avoids clichés and focuses on matching skills to the job. I now recommend it to friends.",
     imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
-    'data-ai-hint': 'woman professional smiling',
+    'data-ai-hint': 'woman business',
   },
   {
     name: 'Tom P.',
@@ -116,7 +116,7 @@ const testimonials = [
     quote: "In sales, the first impression is everything. This tool helped me craft a powerful opening that grabbed the recruiter's attention immediately. Saved me hours of work.",
     imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
-    'data-ai-hint': 'man business',
+    'data-ai-hint': 'man suit',
   },
 ];
 
@@ -133,7 +133,7 @@ export default function CoverLetterGeneratorPage() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTestimonialIndex((prevIndex) => (prevIndex + 1) % testimonials.length);
-    }, 3000); // Change testimonial every 3 seconds
+    }, 5000); // Change testimonial every 5 seconds
 
     return () => clearInterval(timer); // Cleanup on component unmount
   }, []);
@@ -378,8 +378,8 @@ export default function CoverLetterGeneratorPage() {
            </p>
         </div>
       </section>
-
-      <section className="bg-muted/50 py-16 md:py-24">
+      
+      <section className="py-16 md:py-24">
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="text-3xl font-bold tracking-tight">What Our Users Say</h2>
           <div className="mt-12 relative h-64 overflow-hidden">
@@ -455,3 +455,5 @@ export default function CoverLetterGeneratorPage() {
     </div>
   );
 }
+
+    
