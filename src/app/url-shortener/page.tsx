@@ -194,7 +194,7 @@ export default function DeviceAwareLinksPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Short URL</TableHead>
-                <TableHead>Primary Destination (Desktop)</TableHead>
+                <TableHead>Destination Links</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -207,8 +207,25 @@ export default function DeviceAwareLinksPage() {
                       {baseUrl.replace(/https?:\/\//, '')}/{link.id}
                     </a>
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    <span title={link.links.desktop}>{link.links.desktop || link.links.android || link.links.ios}</span>
+                  <TableCell className="max-w-xs space-y-1.5">
+                    {link.links.desktop && (
+                      <div className="flex items-center gap-2 text-xs truncate">
+                        <Laptop className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        <span className="truncate" title={link.links.desktop}>{link.links.desktop}</span>
+                      </div>
+                    )}
+                     {link.links.android && (
+                      <div className="flex items-center gap-2 text-xs truncate">
+                        <Smartphone className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        <span className="truncate" title={link.links.android}>{link.links.android}</span>
+                      </div>
+                    )}
+                     {link.links.ios && (
+                      <div className="flex items-center gap-2 text-xs truncate">
+                        <Apple className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                        <span className="truncate" title={link.links.ios}>{link.links.ios}</span>
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {link.createdAt ? formatDistanceToNow(link.createdAt, { addSuffix: true }) : 'Just now'}
