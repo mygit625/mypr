@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { userAgent } from 'next/server'; // Import the reliable userAgent utility
 import { getLinkByCode } from '@/lib/url-shortener-db';
 
 // This function handles GET requests for any path that isn't a known page.
@@ -19,22 +20,19 @@ export async function GET(
     const linkData = await getLinkByCode(code);
 
     if (linkData) {
-      const userAgent = request.headers.get('user-agent') || '';
+      // Use the built-in Next.js userAgent parser
+      const { os } = userAgent(request);
 
-      // Create a sequential check to ensure the first match is used.
-      if (/android/i.test(userAgent) && linkData.android) {
-        // First, check for Android and a valid Android URL.
+      if (os.name === 'Android' && linkData.android) {
         return NextResponse.redirect(new URL(linkData.android));
-      } else if ((/iphone|ipad|ipod/i.test(userAgent)) && linkData.ios) {
-        // If not Android, then check for iOS and a valid iOS URL.
+      } else if (os.name === 'iOS' && linkData.ios) {
         return NextResponse.redirect(new URL(linkData.ios));
-      } else if (linkData.desktop) {
-        // If neither mobile OS matches, fall back to the desktop URL if it exists.
-        return NextResponse.redirect(new URL(linkData.desktop));
       } else {
-        // As a final fallback if no desktop URL is set, use any available mobile URL.
-        if (linkData.android) return NextResponse.redirect(new URL(linkData.android));
-        if (linkData.ios) return NextResponse.redirect(new URL(linkData.ios));
+        // Fallback logic: Use desktop, or any other available URL if desktop is not set.
+        const fallbackUrl = linkData.desktop || linkData.android || linkData.ios;
+        if (fallbackUrl) {
+          return NextResponse.redirect(new URL(fallbackUrl));
+        }
       }
     }
   } catch (error) {
