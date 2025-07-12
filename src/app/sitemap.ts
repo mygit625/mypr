@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next'
  
 const toolPaths = [
   '/pdf-tools',
+  '/image-tools',
   '/merge',
   '/split',
   '/compress',
