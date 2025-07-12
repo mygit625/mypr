@@ -20,7 +20,7 @@ export async function GET(
       const { os } = userAgent(request);
       const osName = os.name?.toLowerCase() || '';
 
-      // The redirection logic must be prioritized. Check for mobile OS first.
+      // The redirection logic must be prioritized using if/else if.
       if (osName.includes('android') && linkData.android) {
         return NextResponse.redirect(new URL(linkData.android));
       } else if (osName === 'ios' && linkData.ios) {
