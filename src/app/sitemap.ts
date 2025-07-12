@@ -19,6 +19,7 @@ const toolPaths = [
   '/html-to-pdf',
   '/pdf-to-word',
   '/pdf-to-powerpoint',
+  '/pdf-to-excel',
   '/pdf-to-jpg',
   '/pdf-to-pdfa',
   '/edit',
