@@ -21,24 +21,21 @@ export async function GET(
     if (linkData) {
       const userAgent = request.headers.get('user-agent') || '';
 
-      // Check for Android and a valid Android URL first.
+      // Create a sequential check to ensure the first match is used.
       if (/android/i.test(userAgent) && linkData.android) {
+        // First, check for Android and a valid Android URL.
         return NextResponse.redirect(new URL(linkData.android));
-      }
-      
-      // Then, check for iOS and a valid iOS URL.
-      if ((/iphone|ipad|ipod/i.test(userAgent)) && linkData.ios) {
+      } else if ((/iphone|ipad|ipod/i.test(userAgent)) && linkData.ios) {
+        // If not Android, then check for iOS and a valid iOS URL.
         return NextResponse.redirect(new URL(linkData.ios));
-      }
-      
-      // If neither of the above, fall back to the desktop URL if it exists.
-      if (linkData.desktop) {
+      } else if (linkData.desktop) {
+        // If neither mobile OS matches, fall back to the desktop URL if it exists.
         return NextResponse.redirect(new URL(linkData.desktop));
+      } else {
+        // As a final fallback if no desktop URL is set, use any available mobile URL.
+        if (linkData.android) return NextResponse.redirect(new URL(linkData.android));
+        if (linkData.ios) return NextResponse.redirect(new URL(linkData.ios));
       }
-
-      // As a final fallback if no desktop URL is set, use any available mobile URL.
-      if (linkData.android) return NextResponse.redirect(new URL(linkData.android));
-      if (linkData.ios) return NextResponse.redirect(new URL(linkData.ios));
     }
   } catch (error) {
     console.error(`Redirection error for code [${code}]:`, error);
