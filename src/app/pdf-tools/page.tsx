@@ -109,7 +109,7 @@ export default function PdfToolsPage() {
             <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-6 md:mb-8 text-center md:text-left">
               {category.name}
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {category.features.map((feature) => (
                 <FeatureCard
                   key={feature.title}

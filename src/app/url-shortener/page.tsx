@@ -56,10 +56,7 @@ export default function DeviceAwareLinksPage() {
   };
 
   useEffect(() => {
-    if (state.message && state.shortUrl) {
-      formRef.current?.reset();
-    }
-    // Also fetch links when the component mounts
+    // Fetch links when the component mounts or a new link is created
     getLinksAction().then(setRecentLinks).catch(err => {
         console.error("Failed to fetch recent links on mount:", err);
     });
