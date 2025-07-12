@@ -27,10 +27,15 @@ interface LinkBundle {
   ios: string;
 }
 
+export interface RawClickData {
+  detectedOs: string;
+  ip: string;
+  headers: Record<string, string>;
+}
+
 export interface ClickLog {
   id: string;
-  os: string;
-  userAgent: string;
+  rawData: RawClickData;
   timestamp: Date;
 }
 
@@ -70,13 +75,12 @@ export async function isCodeUnique(code: string): Promise<boolean> {
   return !docSnap.exists();
 }
 
-export async function logClick(code: string, osName: string, userAgent: string): Promise<void> {
+export async function logClick(code: string, rawData: RawClickData): Promise<void> {
   try {
     const db = getFirestoreInstance();
     const clicksCollectionRef = collection(db, 'short_urls', code, 'clicks');
     await addDoc(clicksCollectionRef, {
-      os: osName,
-      userAgent: userAgent,
+      rawData,
       timestamp: serverTimestamp(),
     });
   } catch (error) {
@@ -107,8 +111,7 @@ export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]>
       const clickData = clickDoc.data();
       clicks.push({
         id: clickDoc.id,
-        os: clickData.os,
-        userAgent: clickData.userAgent,
+        rawData: clickData.rawData,
         timestamp: clickData.timestamp?.toDate() ?? new Date(),
       });
     });

@@ -207,7 +207,7 @@ export default function DeviceAwareLinksPage() {
               <TableRow>
                 <TableHead>Short URL</TableHead>
                 <TableHead>Destination Links</TableHead>
-                <TableHead>Clicks & User Agents</TableHead>
+                <TableHead>Clicks & Raw Data</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -254,9 +254,9 @@ export default function DeviceAwareLinksPage() {
                     </div>
                      <div className="space-y-1">
                         {link.clicks?.map((click: ClickLog) => (
-                          <div key={click.id} className="text-xs text-muted-foreground font-mono break-all p-1 bg-muted/50 rounded">
-                            {click.userAgent}
-                          </div>
+                          <pre key={click.id} className="text-xs text-muted-foreground font-mono break-all p-1 bg-muted/50 rounded whitespace-pre-wrap">
+                            {JSON.stringify(click.rawData, null, 2)}
+                          </pre>
                         ))}
                     </div>
                   </TableCell>

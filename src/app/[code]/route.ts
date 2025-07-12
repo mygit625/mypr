@@ -1,6 +1,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { getLinkByCode, logClick } from '@/lib/url-shortener-db';
+import type { RawClickData } from '@/lib/url-shortener-db';
 
 // A more reliable function to determine the OS from the user agent string
 function getOperatingSystem(request: NextRequest): string {
@@ -38,16 +39,28 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { code: string } }
 ) {
-  const osName = getOperatingSystem(request);
-  const uaString = request.headers.get('user-agent') || 'Unknown User Agent';
   const code = params.code;
-
   if (!code) {
     return NextResponse.redirect(new URL('/', request.url));
   }
+  
+  // --- Start: Gather all raw data ---
+  const osName = getOperatingSystem(request);
+  const headers: Record<string, string> = {};
+  request.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
 
-  // Asynchronously log the click with the user agent string
-  logClick(code, osName, uaString).catch(console.error);
+  const rawData: RawClickData = {
+    detectedOs: osName,
+    ip: request.ip || 'N/A',
+    headers: headers
+  };
+  // --- End: Gather all raw data ---
+
+
+  // Asynchronously log the click with the complete raw data
+  logClick(code, rawData).catch(console.error);
 
   const linkData = await getLinkByCode(code);
 
@@ -68,3 +81,4 @@ export async function GET(
   // If no suitable link is found for the device, and no desktop fallback exists, redirect to the homepage
   return NextResponse.redirect(new URL('/', request.url));
 }
+
