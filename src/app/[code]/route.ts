@@ -1,3 +1,4 @@
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { userAgent } from 'next/server';
 import { getLinkByCode } from '@/lib/url-shortener-db';
@@ -20,15 +21,26 @@ export async function GET(
       const { os } = userAgent(request);
       const osName = os.name?.toLowerCase() || '';
 
-      // The redirection logic must be prioritized using if/else if.
-      if (osName.includes('android') && linkData.android) {
+      // Prioritize Android if an Android link exists and the device is Android.
+      if (linkData.android && osName.includes('android')) {
         return NextResponse.redirect(new URL(linkData.android));
-      } else if (osName === 'ios' && linkData.ios) {
-        // Use a strict check for 'ios' to avoid matching 'mac os'.
+      }
+      
+      // Prioritize iOS if an iOS link exists and the device is iOS (strict check).
+      if (linkData.ios && osName === 'ios') {
         return NextResponse.redirect(new URL(linkData.ios));
-      } else if (linkData.desktop) {
-        // Fallback to desktop URL for all other cases (including macOS, Windows, Linux).
+      }
+
+      // Fallback to desktop link if it exists. This will now correctly handle
+      // macOS, Windows, Linux, or mobile devices where no specific link was provided.
+      if (linkData.desktop) {
         return NextResponse.redirect(new URL(linkData.desktop));
+      }
+
+      // If there's no desktop link but there are other links, redirect to the first available one as a last resort.
+      const fallbackUrl = linkData.android || linkData.ios;
+      if (fallbackUrl) {
+          return NextResponse.redirect(new URL(fallbackUrl));
       }
     }
   } catch (error) {
