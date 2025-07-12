@@ -29,7 +29,8 @@ const toolPaths = [
   '/unit-converters',
   '/qr-code',
   '/url-shortener',
-  '/cover-letter-generator'
+  '/cover-letter-generator',
+  '/circle-crop',
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
