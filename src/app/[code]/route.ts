@@ -81,4 +81,3 @@ export async function GET(
   // If no suitable link is found for the device, and no desktop fallback exists, redirect to the homepage
   return NextResponse.redirect(new URL('/', request.url));
 }
-

@@ -4,7 +4,7 @@
 import { useActionState, useEffect, useState, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createDynamicLinkAction, getLinksAction, type CreateLinkState } from './actions';
-import { type DynamicLink, type ClickLog } from '@/lib/url-shortener-db';
+import { type DynamicLink } from '@/lib/url-shortener-db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -73,7 +73,6 @@ export default function DeviceAwareLinksPage() {
   };
 
   useEffect(() => {
-    // Fetch links when the component mounts or a new link is created
     const fetchLinks = () => {
         getLinksAction().then(setRecentLinks).catch(err => {
             console.error("Failed to fetch recent links:", err);
@@ -86,12 +85,6 @@ export default function DeviceAwareLinksPage() {
       formRef.current?.reset();
     }
     
-    // Set up polling to refresh links every 5 seconds
-    const intervalId = setInterval(fetchLinks, 5000);
-    
-    // Cleanup interval on component unmount
-    return () => clearInterval(intervalId);
-
   }, [state.shortUrl, toast]);
 
   return (
@@ -198,7 +191,7 @@ export default function DeviceAwareLinksPage() {
         <CardHeader>
           <CardTitle>Recently Created Links</CardTitle>
           <CardDescription>
-            Here are the last 10 links created. Data refreshes automatically.
+            Here are the last 10 links created.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -207,7 +200,7 @@ export default function DeviceAwareLinksPage() {
               <TableRow>
                 <TableHead>Short URL</TableHead>
                 <TableHead>Destination Links</TableHead>
-                <TableHead>Clicks & Raw Data</TableHead>
+                <TableHead>Clicks</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -247,17 +240,10 @@ export default function DeviceAwareLinksPage() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-md">
-                    <div className="flex items-center gap-2 mb-2">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
                         <MousePointerClick className="h-4 w-4 text-muted-foreground"/>
                         <span className="font-mono text-sm">{link.clickCount ?? 0}</span>
-                    </div>
-                     <div className="space-y-1">
-                        {link.clicks?.map((click: ClickLog) => (
-                          <pre key={click.id} className="text-xs text-muted-foreground font-mono break-all p-1 bg-muted/50 rounded whitespace-pre-wrap">
-                            {JSON.stringify(click.rawData, null, 2)}
-                          </pre>
-                        ))}
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">

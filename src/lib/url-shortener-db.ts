@@ -13,6 +13,8 @@ import {
   getDocs,
   serverTimestamp,
   addDoc,
+  collectionGroup,
+  getCountFromServer,
 } from 'firebase/firestore';
 
 // Helper function to get the collection reference with a valid DB instance
@@ -91,6 +93,7 @@ export async function logClick(code: string, rawData: RawClickData): Promise<voi
 
 
 export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]> {
+  const db = getFirestoreInstance();
   const urlsCollection = getUrlsCollection();
   const q = query(urlsCollection, orderBy('createdAt', 'desc'), limit(count));
   const querySnapshot = await getDocs(q);
@@ -100,33 +103,16 @@ export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]>
   for (const docSnap of querySnapshot.docs) {
     const data = docSnap.data();
     
-    // Fetch recent clicks for each link
-    const db = getFirestoreInstance();
+    // Get total click count for each link
     const clicksCollectionRef = collection(db, 'short_urls', docSnap.id, 'clicks');
-    const clicksQuery = query(clicksCollectionRef, orderBy('timestamp', 'desc'), limit(5)); // Get last 5 clicks
-    const clicksSnapshot = await getDocs(clicksQuery);
-
-    const clicks: ClickLog[] = [];
-    clicksSnapshot.forEach(clickDoc => {
-      const clickData = clickDoc.data();
-      clicks.push({
-        id: clickDoc.id,
-        rawData: clickData.rawData,
-        timestamp: clickData.timestamp?.toDate() ?? new Date(),
-      });
-    });
-    
-    // For total count, we would ideally use a counter field updated with transactions.
-    // For simplicity here, we'll just show the count of recent clicks fetched.
-    // A more scalable solution would be to add a clickCount field to the main link document.
-    const clickCount = clicksSnapshot.size;
+    const clicksSnapshot = await getCountFromServer(clicksCollectionRef);
+    const clickCount = clicksSnapshot.data().count;
 
     links.push({
       id: docSnap.id,
       links: data.links,
       createdAt: data.createdAt?.toDate() ?? new Date(),
-      clicks: clicks,
-      clickCount: clickCount, // This is not a total count, but a count of recent clicks.
+      clickCount: clickCount,
     });
   }
 
