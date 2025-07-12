@@ -379,44 +379,6 @@ export default function CoverLetterGeneratorPage() {
         </div>
       </section>
       
-      <section className="py-16 md:py-24">
-        <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight">What Our Users Say</h2>
-          <div className="mt-12 relative h-64 overflow-hidden">
-            {testimonials.map((testimonial, index) => (
-              <div
-                key={index}
-                className={cn(
-                  'absolute inset-0 transition-opacity duration-1000 ease-in-out',
-                  index === currentTestimonialIndex ? 'opacity-100' : 'opacity-0'
-                )}
-              >
-                <div className="flex flex-col items-center">
-                  <Image
-                    src={testimonial.imageSrc}
-                    alt={`Photo of ${testimonial.name}`}
-                    width={80}
-                    height={80}
-                    className="rounded-full mb-4"
-                    data-ai-hint={testimonial['data-ai-hint']}
-                  />
-                  <div className="flex items-center mb-2">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
-                    ))}
-                  </div>
-                  <blockquote className="text-lg italic text-foreground max-w-2xl">
-                    "{testimonial.quote}"
-                  </blockquote>
-                  <p className="mt-4 font-semibold text-foreground">{testimonial.name}</p>
-                  <p className="text-sm text-muted-foreground">{testimonial.title}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
        <section className="max-w-4xl mx-auto py-12 px-4">
         <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
         <Accordion type="single" collapsible className="w-full">
@@ -447,6 +409,46 @@ export default function CoverLetterGeneratorPage() {
         </Accordion>
       </section>
 
+      <section className="py-16 md:py-24">
+        <div className="container mx-auto max-w-4xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight">What Our Users Say</h2>
+          <div className="mt-12 relative h-64 overflow-hidden">
+            {testimonials.map((testimonial, index) => (
+              <div
+                key={index}
+                className={cn(
+                  'absolute inset-0 transition-opacity duration-1000 ease-in-out',
+                  index === currentTestimonialIndex ? 'opacity-100' : 'opacity-0'
+                )}
+              >
+                <div className="flex flex-col items-center">
+                  <Image
+                    src={testimonial.imageSrc}
+                    alt={`Photo of ${testimonial.name}`}
+                    width={80}
+                    height={80}
+                    className="rounded-full mb-4"
+                    data-ai-hint={testimonial['data-ai-hint']}
+                  />
+                  <div className="flex items-center mb-2">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
+                    ))}
+                  </div>
+                  <blockquote className="text-lg italic text-foreground max-w-2xl">
+                    "{testimonial.quote}"
+                  </blockquote>
+                  <div className="mt-4">
+                    <p className="font-semibold text-foreground">{testimonial.name}</p>
+                    <p className="text-sm text-muted-foreground">{testimonial.title}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
        <section className="text-center pb-12">
         <Button size="lg" className="text-lg py-6" asChild>
           <Link href="#top">Try Now for Free</Link>
@@ -455,5 +457,3 @@ export default function CoverLetterGeneratorPage() {
     </div>
   );
 }
-
-    
