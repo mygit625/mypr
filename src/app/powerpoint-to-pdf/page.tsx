@@ -9,6 +9,9 @@ export default function PowerPointToPdfPage() {
   useEffect(() => {
     // Check if the script has already been added to avoid duplicates
     if (document.getElementById('avepdf-embed-script')) {
+      if (typeof (window as any).loadAvePDFWidget === 'function') {
+        (window as any).loadAvePDFWidget('d9263667-adce-41ec-880e-26b4371a4fb0', 'auto', 'pptx-to-pdf', 'avepdf-container-id');
+       }
       return;
     }
 
@@ -29,12 +32,7 @@ export default function PowerPointToPdfPage() {
     document.body.appendChild(script);
 
     // Cleanup function to remove the script when the component unmounts
-    return () => {
-      const existingScript = document.getElementById('avepdf-embed-script');
-      if (existingScript) {
-        document.body.removeChild(existingScript);
-      }
-    };
+    return () => {};
   }, []); // Empty dependency array ensures this effect runs only once
 
   const customCss = `

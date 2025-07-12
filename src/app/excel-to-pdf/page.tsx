@@ -1,87 +1,80 @@
 "use client";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { FileUploadZone } from '@/components/feature/file-upload-zone';
-import { Table2, Loader2, FileText } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useEffect, useRef } from 'react';
+import { FileSpreadsheet } from 'lucide-react';
 
 export default function ExcelToPdfPage() {
-  const [files, setFiles] = useState<File[]>([]);
-  const [isConverting, setIsConverting] = useState(false);
-  const { toast } = useToast();
+  const widgetContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleFileSelected = (selectedFiles: File[]) => {
-    setFiles(selectedFiles);
-  };
-
-  const handleConvert = () => {
-    if (files.length === 0) {
-      toast({
-        title: "No file selected",
-        description: "Please upload an Excel file to convert.",
-        variant: "destructive",
-      });
+  useEffect(() => {
+    if (document.getElementById('avepdf-embed-script')) {
+       if (typeof (window as any).loadAvePDFWidget === 'function') {
+        (window as any).loadAvePDFWidget('d9263667-adce-41ec-880e-26b4371a4fb0', 'auto', 'excel-to-pdf', 'avepdf-container-id');
+       }
       return;
     }
+
+    const script = document.createElement('script');
+    script.id = 'avepdf-embed-script';
+    script.src = 'https://avepdf.com/api/js/embedwidgets.js';
+    script.type = 'text/javascript';
+    script.async = true;
+
+    script.onload = () => {
+      if (typeof (window as any).loadAvePDFWidget === 'function') {
+        (window as any).loadAvePDFWidget('d9263667-adce-41ec-880e-26b4371a4fb0', 'auto', 'excel-to-pdf', 'avepdf-container-id');
+      }
+    };
     
-    // Placeholder for conversion logic
-    setIsConverting(true);
-    toast({
-      title: "Feature In Progress",
-      description: "Native Excel to PDF conversion is not yet implemented.",
-    });
-    setTimeout(() => setIsConverting(false), 2000);
-  };
+    document.body.appendChild(script);
+
+    return () => {};
+  }, []);
+
+  const customCss = `
+    #avepdf-container-id {
+      padding: 0px;
+      height: 600px;
+      border: 0px solid lime;
+      overflow: hidden !important;
+      margin-bottom: -131px;
+    }
+    
+    hr.watermark-cover {
+      display: block;
+      background-color: var(--background-hsl);
+      height: 93px;
+      border-style: none;
+      margin-top: -60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    body:not(.dark) hr.watermark-cover {
+      --background-hsl: #FFFFFF;
+    }
+
+    body.dark hr.watermark-cover {
+      --background-hsl: hsl(240 10% 3.9%);
+    }
+  `;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="max-w-full mx-auto space-y-8">
+      <style dangerouslySetInnerHTML={{ __html: customCss }} />
       <header className="text-center py-8">
-        <Table2 className="mx-auto h-16 w-16 text-primary mb-4" />
+        <FileSpreadsheet className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Excel to PDF</h1>
         <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
           Convert your Excel spreadsheets to PDF documents seamlessly.
         </p>
       </header>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload Excel File</CardTitle>
-          <CardDescription>Select the .xlsx or .xls file you want to convert to PDF.</CardDescription>
-        </CardHeader>
-        <CardContent>
-           <FileUploadZone 
-                onFilesSelected={handleFileSelected} 
-                multiple={false} 
-                accept=".xlsx, .xls, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            />
-        </CardContent>
-        <CardFooter>
-            <Button onClick={handleConvert} disabled={isConverting || files.length === 0} className="w-full" size="lg">
-                 {isConverting ? (
-                    <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Converting...
-                    </>
-                 ) : (
-                    <>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Convert to PDF
-                    </>
-                 )}
-            </Button>
-        </CardFooter>
-      </Card>
-      
-      <Alert variant="default">
-        <AlertTitle>Feature Coming Soon</AlertTitle>
-        <AlertDescription>
-          The native conversion for Excel to PDF is under construction. The UI is ready, but the backend logic will be implemented shortly.
-        </AlertDescription>
-      </Alert>
-
+      <section>
+        <div id="avepdf-container-id" ref={widgetContainerRef}>
+          {/* AvePDF widget will be loaded here by the script */}
+        </div>
+        <hr className="watermark-cover" />
+      </section>
     </div>
   );
 }
