@@ -49,7 +49,7 @@ const testimonials = [
   {
     name: 'Michael B.',
     title: 'Marketing Manager',
-    quote: "The creativity slider is a game-changer. I landed a job at a top creative agency, and my cover letter was mentioned as a key reason they called me in. Truly amazing!",
+    quote: "The creativity slider is a game-changer. I landed a job at a top creative agency after my cover letter, which this tool helped me write, was mentioned as a key reason they called me in!",
     imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'man portrait',
@@ -61,6 +61,62 @@ const testimonials = [
     imageSrc: 'https://placehold.co/100x100.png',
     rating: 5,
     'data-ai-hint': 'woman smiling',
+  },
+   {
+    name: 'David L.',
+    title: 'UX Designer',
+    quote: "I hate writing cover letters. This tool made it painless. It parsed my PDF resume and the job description perfectly, creating a draft that was 90% ready to go. Huge time saver.",
+    imageSrc: 'https://placehold.co/100x100.png',
+    rating: 5,
+    'data-ai-hint': 'man smiling',
+  },
+  {
+    name: 'Maria G.',
+    title: 'Project Manager',
+    quote: "Switching careers is tough. This generator helped me frame my transferable skills in a way that made sense for the new role. The result was a compelling narrative that I couldn't have written on my own.",
+    imageSrc: 'https://placehold.co/100x100.png',
+    rating: 5,
+    'data-ai-hint': 'woman professional',
+  },
+  {
+    name: 'Kevin H.',
+    title: 'Data Analyst',
+    quote: "The ability to generate a formal and data-centric cover letter was amazing. I used the 'low creativity' setting, and it produced a perfectly toned letter for the financial industry.",
+    imageSrc: 'https://placehold.co/100x100.png',
+    rating: 5,
+    'data-ai-hint': 'man glasses',
+  },
+  {
+    name: 'Jessica W.',
+    title: 'HR Coordinator',
+    quote: "As someone who reads cover letters for a living, I was skeptical. But the quality is outstanding. It avoids clichés and focuses on matching skills to the job. I now recommend it to friends.",
+    imageSrc: 'https://placehold.co/100x100.png',
+    rating: 5,
+    'data-ai-hint': 'woman professional smiling',
+  },
+  {
+    name: 'Tom P.',
+    title: 'Student',
+    quote: "Needed a cover letter for an internship and had no idea where to start. Uploaded my resume, pasted the description, and got a fantastic draft. It helped me land the position!",
+    imageSrc: 'https://placehold.co/100x100.png',
+    rating: 5,
+    'data-ai-hint': 'man student',
+  },
+  {
+    name: 'Linda K.',
+    title: 'Graphic Designer',
+    quote: "I'm a visual person, not a writer. This tool helped me articulate my value proposition clearly and creatively. The 'witty remark' option was a nice touch for a creative role.",
+    imageSrc: 'https://placehold.co/100x100.png',
+    rating: 5,
+    'data-ai-hint': 'woman artist',
+  },
+  {
+    name: 'Brian T.',
+    title: 'Sales Executive',
+    quote: "In sales, the first impression is everything. This tool helped me craft a powerful opening that grabbed the recruiter's attention immediately. Saved me hours of work.",
+    imageSrc: 'https://placehold.co/100x100.png',
+    rating: 5,
+    'data-ai-hint': 'man business',
   },
 ];
 
@@ -399,5 +455,3 @@ export default function CoverLetterGeneratorPage() {
     </div>
   );
 }
-
-    
