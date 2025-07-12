@@ -20,17 +20,14 @@ export async function GET(
       const { os } = userAgent(request);
       const osName = os.name?.toLowerCase() || '';
 
-      // Correctly use an if/else if structure to prioritize device links.
-      // This ensures that once a condition is met, it redirects immediately.
+      // The redirection logic must be prioritized. Check for mobile OS first.
       if (osName.includes('android') && linkData.android) {
         return NextResponse.redirect(new URL(linkData.android));
-      } else if (osName.includes('ios') && linkData.ios) {
-        // This includes 'iOS' (for iPhones/iPads) and 'Mac OS' (for desktops)
-        // We will assume 'Mac OS' should go to the iOS link if a specific desktop link isn't the primary goal.
-        // For more granular control, one could separate 'Mac OS'.
+      } else if (osName === 'ios' && linkData.ios) {
+        // Use a strict check for 'ios' to avoid matching 'mac os'.
         return NextResponse.redirect(new URL(linkData.ios));
       } else if (linkData.desktop) {
-        // This is the final fallback if no mobile-specific URL is matched.
+        // Fallback to desktop URL for all other cases (including macOS, Windows, Linux).
         return NextResponse.redirect(new URL(linkData.desktop));
       }
     }
