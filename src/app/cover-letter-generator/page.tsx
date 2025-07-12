@@ -20,6 +20,7 @@ import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { BrainCircuit, Loader2, Wand2, Copy, Download, Info, UploadCloud, PlusCircle, CheckCircle, Edit, Clock, Target, Sparkles, FolderUp, PenLine } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const FormSchema = z.object({
   jobTitle: z.string().min(2, { message: 'Job title is required.' }),
@@ -130,13 +131,13 @@ export default function CoverLetterGeneratorPage() {
     { icon: UploadCloud, title: '1. Upload PDF CV', description: 'Start with your existing CV/Résumé.' },
     { icon: PlusCircle, title: '2. Add Job & Customize', description: 'Paste the description and adjust creativity level.' },
     { icon: CheckCircle, title: '3. Generate Draft', description: 'Let AI create a tailored first version in seconds.' },
-    { icon: Edit, title: '4. Refine Instantly', description: 'Use inline tools to make it concise, detailed, etc.' },
+    { icon: Edit, title: '4. Refine & Download', description: 'Review the letter, copy, and download it instantly.' },
   ];
 
   const whyChooseFeatures = [
     { icon: Clock, title: 'Save Hours, Not Just Minutes', description: 'Go from job description to a polished first draft in seconds, giving you more time to focus on applying.' },
-    { icon: Target, title: 'Perfectly Tailored, Every Time', description: 'Use the Creativity Slider to find your unique tone and the Inline Editor to instantly refine wording, ensuring you sound like you and not AI.' },
-    { icon: Sparkles, title: 'Effortless Polishing', description: "Don't struggle with finding the right words. Select any text and use the Inline Editor (Concise, Detailed, Professional, Informal) to reshape it instantly." },
+    { icon: Target, title: 'Perfectly Tailored, Every Time', description: 'Our AI analyzes your CV and the job description to highlight your most relevant skills and experiences, creating a unique letter for each application.' },
+    { icon: Sparkles, title: 'Find Your Perfect Tone', description: "Use the Creativity Slider to shift from a highly formal tone to a more personal and creative one, ensuring you sound like you, not a robot." },
     { icon: FolderUp, title: 'Leverage Your Existing CV', description: 'Simply upload your current CV/Résumé as a PDF. The AI uses it as the foundation, ensuring your experience is accurately reflected.' },
   ];
 
@@ -273,33 +274,50 @@ export default function CoverLetterGeneratorPage() {
         </div>
       </section>
 
-      <section className="text-center py-12">
-        <Card className="max-w-2xl mx-auto p-6 bg-muted/40 shadow-sm">
-            <h3 className="text-2xl font-bold tracking-tight">Refine Your Message Instantly</h3>
-            <p className="text-muted-foreground mt-2 mb-4">Highlight any part of your generated letter to easily adjust the tone and length. Make it yours, faster.</p>
-            <div className="p-4 border rounded-lg bg-background text-sm text-left shadow-inner">
-                ...I am confident that my extensive experience in project management and cross-functional team leadership makes me an <span className="bg-primary/20 text-primary-foreground p-1 rounded">exceptionally suitable candidate for this opportunity</span> and I am eager to discuss how my skills can benefit your organization...
-            </div>
-            <div className="mt-4 flex items-center justify-center gap-2">
-                <PenLine className="h-4 w-4 text-muted-foreground"/>
-                <p className="text-sm text-muted-foreground">Ask AI to make this part more...</p>
-            </div>
-            <div className="mt-3 flex justify-center gap-2">
-                <Button variant="outline" size="sm">Concise</Button>
-                <Button variant="outline" size="sm">Detailed</Button>
-                <Button variant="outline" size="sm">Professional</Button>
-                <Button variant="outline" size="sm">Informal</Button>
-            </div>
-        </Card>
+       <section className="max-w-4xl mx-auto py-12 px-4">
+        <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="item-1">
+            <AccordionTrigger>Is this cover letter generator free to use?</AccordionTrigger>
+            <AccordionContent>
+              Yes, our AI Cover Letter Generator is completely free. We believe in providing accessible tools to help everyone in their job search without any hidden costs or subscriptions.
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-2">
+            <AccordionTrigger>Can I use this for any industry or job role?</AccordionTrigger>
+            <AccordionContent>
+              Absolutely. Our tool is designed to be versatile. By analyzing the job description and your CV, the AI adapts to any industry, from tech and finance to creative arts and healthcare, crafting a suitable and relevant letter.
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-3">
+            <AccordionTrigger>How does the AI ensure my cover letter is unique?</AccordionTrigger>
+            <AccordionContent>
+              The AI combines the specific details from the job description you provide with the unique skills and experiences listed in your CV. This dual-source approach ensures every generated letter is tailored to the specific application, avoiding generic templates.
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-4">
+            <AccordionTrigger>Is my personal data safe?</AccordionTrigger>
+            <AccordionContent>
+              We prioritize your privacy. The data you upload is used solely for the purpose of generating your cover letter and is not stored or shared. You can use our tools with confidence, knowing your information is secure.
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </section>
+
+      <section className="max-w-4xl mx-auto text-center">
+        <h2 className="text-3xl font-bold tracking-tight">Create a Winning Cover Letter in Seconds</h2>
+        <div className="prose prose-lg text-muted-foreground mx-auto mt-4">
+           <p>
+            A great cover letter is your opportunity to make a strong first impression and stand out from other applicants. It bridges the gap between your resume and the job description, telling a compelling story about why you're the perfect fit for the role. Our AI-powered generator helps you do just that, saving you valuable time and effort. By providing a custom, well-written draft, we empower you to focus on what matters most: preparing for your interviews and landing your dream job.
+           </p>
+        </div>
       </section>
 
        <section className="text-center pb-12">
         <Button size="lg" className="text-lg py-6" asChild>
-          <Link href="#top">Try Now</Link>
+          <Link href="#top">Try Now for Free</Link>
         </Button>
       </section>
     </div>
   );
 }
-
-    
