@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -308,7 +309,7 @@ export default function CoverLetterGeneratorPage() {
         <h2 className="text-3xl font-bold tracking-tight">Create a Winning Cover Letter in Seconds</h2>
         <div className="prose prose-lg text-muted-foreground mx-auto mt-4">
            <p>
-            A great cover letter is your opportunity to make a strong first impression and stand out from other applicants. It bridges the gap between your resume and the job description, telling a compelling story about why you're the perfect fit for the role. Our AI-powered generator helps you do just that, saving you valuable time and effort. By providing a custom, well-written draft, we empower you to focus on what matters most: preparing for your interviews and landing your dream job.
+            A great cover letter is your opportunity to make a strong first impression and stand out from other applicants. It bridges the gap between your resume and the job description, telling a compelling story about why you're the perfect fit. Our AI-powered cover letter generator helps you do just that, saving you valuable time and effort. Instead of staring at a blank page, you can generate a cover letter that is custom, well-written, and tailored to the job. This free cover letter generator gives you a powerful head start, empowering you to focus on what matters most: preparing for your interviews and landing your dream job.
            </p>
         </div>
       </section>
