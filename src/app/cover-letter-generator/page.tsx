@@ -1,12 +1,13 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { generateCoverLetterAction } from './actions';
 import Link from 'next/link';
+import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,10 +19,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
-import { BrainCircuit, Loader2, Wand2, Copy, Download, Info, UploadCloud, PlusCircle, CheckCircle, Edit, Clock, Target, Sparkles, FolderUp, PenLine } from 'lucide-react';
+import { BrainCircuit, Loader2, Wand2, Copy, Download, Info, UploadCloud, PlusCircle, CheckCircle, Edit, Clock, Target, Sparkles, FolderUp, PenLine, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { cn } from '@/lib/utils';
 
 const FormSchema = z.object({
   jobTitle: z.string().min(2, { message: 'Job title is required.' }),
@@ -35,6 +37,34 @@ const FormSchema = z.object({
 
 type FormValues = z.infer<typeof FormSchema>;
 
+const testimonials = [
+  {
+    name: 'Sarah J.',
+    title: 'Software Engineer',
+    quote: "I was struggling to write a cover letter that stood out. This tool helped me create a professional and personalized letter in minutes. I got three interview calls the same week!",
+    imageSrc: 'https://placehold.co/100x100.png',
+    rating: 5,
+    'data-ai-hint': 'woman portrait',
+  },
+  {
+    name: 'Michael B.',
+    title: 'Marketing Manager',
+    quote: "The creativity slider is a game-changer. I landed a job at a top creative agency, and my cover letter was mentioned as a key reason they called me in. Truly amazing!",
+    imageSrc: 'https://placehold.co/100x100.png',
+    rating: 5,
+    'data-ai-hint': 'man portrait',
+  },
+  {
+    name: 'Emily C.',
+    title: 'Recent Graduate',
+    quote: "As a recent grad with little experience, writing cover letters was daunting. This generator highlighted my skills from my CV perfectly. It gave me the confidence boost I needed.",
+    imageSrc: 'https://placehold.co/100x100.png',
+    rating: 5,
+    'data-ai-hint': 'woman smiling',
+  },
+];
+
+
 export default function CoverLetterGeneratorPage() {
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -42,6 +72,15 @@ export default function CoverLetterGeneratorPage() {
   const [error, setError] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
   const { toast } = useToast();
+  const [currentTestimonialIndex, setCurrentTestimonialIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTestimonialIndex((prevIndex) => (prevIndex + 1) % testimonials.length);
+    }, 3000); // Change testimonial every 3 seconds
+
+    return () => clearInterval(timer); // Cleanup on component unmount
+  }, []);
 
   const {
     register,
@@ -275,6 +314,53 @@ export default function CoverLetterGeneratorPage() {
         </div>
       </section>
 
+      <section className="max-w-4xl mx-auto text-center">
+        <h2 className="text-3xl font-bold tracking-tight">Create a Winning Cover Letter in Seconds</h2>
+        <div className="prose prose-lg text-muted-foreground mx-auto mt-4">
+           <p>
+            A great cover letter is your opportunity to make a strong first impression and stand out from other applicants. It bridges the gap between your resume and the job description, telling a compelling story about why you're the perfect fit. Our AI-powered cover letter generator helps you do just that, saving you valuable time and effort. Instead of staring at a blank page, you can generate a cover letter that is custom, well-written, and tailored to the job. This free cover letter generator gives you a powerful head start, empowering you to focus on what matters most: preparing for your interviews and landing your dream job.
+           </p>
+        </div>
+      </section>
+
+      <section className="bg-muted/50 py-16 md:py-24">
+        <div className="container mx-auto max-w-4xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight">What Our Users Say</h2>
+          <div className="mt-12 relative h-64 overflow-hidden">
+            {testimonials.map((testimonial, index) => (
+              <div
+                key={index}
+                className={cn(
+                  'absolute inset-0 transition-opacity duration-1000 ease-in-out',
+                  index === currentTestimonialIndex ? 'opacity-100' : 'opacity-0'
+                )}
+              >
+                <div className="flex flex-col items-center">
+                  <Image
+                    src={testimonial.imageSrc}
+                    alt={`Photo of ${testimonial.name}`}
+                    width={80}
+                    height={80}
+                    className="rounded-full mb-4"
+                    data-ai-hint={testimonial['data-ai-hint']}
+                  />
+                  <div className="flex items-center mb-2">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
+                    ))}
+                  </div>
+                  <blockquote className="text-lg italic text-foreground max-w-2xl">
+                    "{testimonial.quote}"
+                  </blockquote>
+                  <p className="mt-4 font-semibold text-foreground">{testimonial.name}</p>
+                  <p className="text-sm text-muted-foreground">{testimonial.title}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
        <section className="max-w-4xl mx-auto py-12 px-4">
         <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
         <Accordion type="single" collapsible className="w-full">
@@ -305,15 +391,6 @@ export default function CoverLetterGeneratorPage() {
         </Accordion>
       </section>
 
-      <section className="max-w-4xl mx-auto text-center">
-        <h2 className="text-3xl font-bold tracking-tight">Create a Winning Cover Letter in Seconds</h2>
-        <div className="prose prose-lg text-muted-foreground mx-auto mt-4">
-           <p>
-            A great cover letter is your opportunity to make a strong first impression and stand out from other applicants. It bridges the gap between your resume and the job description, telling a compelling story about why you're the perfect fit. Our AI-powered cover letter generator helps you do just that, saving you valuable time and effort. Instead of staring at a blank page, you can generate a cover letter that is custom, well-written, and tailored to the job. This free cover letter generator gives you a powerful head start, empowering you to focus on what matters most: preparing for your interviews and landing your dream job.
-           </p>
-        </div>
-      </section>
-
        <section className="text-center pb-12">
         <Button size="lg" className="text-lg py-6" asChild>
           <Link href="#top">Try Now for Free</Link>
@@ -322,3 +399,5 @@ export default function CoverLetterGeneratorPage() {
     </div>
   );
 }
+
+    
