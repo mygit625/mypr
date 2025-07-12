@@ -142,6 +142,9 @@ export default function CircleCropPage() {
     canvas.width = sourceSize;
     canvas.height = sourceSize;
     
+    // Fill the canvas with a transparent background first.
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
     ctx.beginPath();
     ctx.arc(sourceSize / 2, sourceSize / 2, sourceSize / 2, 0, Math.PI * 2, true);
     ctx.closePath();
