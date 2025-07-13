@@ -51,7 +51,6 @@
     "lucide-react": "^0.475.0",
     "nanoid": "^5.0.7",
     "next": "15.2.3",
-    "pce.js": "^4.4.13",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.4.168",
     "qrcode.react": "^3.1.0",
