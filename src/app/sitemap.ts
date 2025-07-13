@@ -31,6 +31,7 @@ const toolPaths = [
   '/qr-code',
   '/cover-letter-generator',
   '/circle-crop',
+  '/smart-url-shortener',
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

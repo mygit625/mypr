@@ -18,7 +18,7 @@ export async function GET(
     'html-to-pdf', 'pdf-to-word', 'pdf-to-powerpoint', 'pdf-to-excel',
     'pdf-to-jpg', 'pdf-to-pdfa', 'edit', 'add-page-numbers', 'watermark',
     'unit-converters', 'qr-code', 'cover-letter-generator', 'circle-crop',
-    'remove-background', 'automation-tools', 'url-shortener', 'admin', 'login', 'signup'
+    'remove-background', 'automation-tools', 'smart-url-shortener', 'admin', 'login', 'signup'
   ];
 
   // If the code is a known page, let Next.js handle it normally.

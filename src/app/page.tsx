@@ -18,7 +18,7 @@ const toolCategories: ToolCategory[] = [
   { title: 'Image Tools', description: 'Resize, compress, convert, and edit your images with ease.', href: '/image-tools', Icon: Image, iconColor: 'text-blue-500' },
   { title: 'AI Cover Letter Generator', description: 'Create professional, personalized cover letters in seconds using AI.', href: '/cover-letter-generator', Icon: BrainCircuit, iconColor: 'text-cyan-500' },
   { title: 'QR Code Generator', description: 'Create custom QR codes for URLs, text, Wi-Fi, and more.', href: '/qr-code', Icon: QrCode, iconColor: 'text-green-500' },
-  { title: 'Multi-direction URL Shortener', description: 'Create one short link that redirects users based on their device (iOS, Android, Desktop).', href: '/url-shortener', Icon: LinkIcon, iconColor: 'text-orange-500' },
+  { title: 'Multi-direction URL Shortener', description: 'Create one short link that redirects users based on their device (iOS, Android, Desktop).', href: '/smart-url-shortener', Icon: LinkIcon, iconColor: 'text-orange-500' },
   { title: 'Unit Converters', description: 'Quickly convert between different units of measurement.', href: '/unit-converters', Icon: Scale, iconColor: 'text-yellow-500' },
   { title: 'Calculators', description: 'Access a variety of calculators for daily use, like finance or baby gender.', href: '#', Icon: Calculator, iconColor: 'text-purple-500' },
   { title: 'Web Tools', description: 'A collection of useful web utilities for developers and designers.', href: '#', Icon: Globe, iconColor: 'text-sky-500' },

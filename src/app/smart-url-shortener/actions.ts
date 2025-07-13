@@ -78,7 +78,7 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
 
     await createDynamicLink(code, links);
     
-    revalidatePath('/url-shortener');
+    revalidatePath('/smart-url-shortener');
     revalidatePath(`/${code}`);
 
     const shortUrl = `${baseUrl}/${code}`;
