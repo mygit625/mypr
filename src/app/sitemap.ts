@@ -1,3 +1,4 @@
+
 import { MetadataRoute } from 'next'
  
 const toolPaths = [
@@ -28,7 +29,7 @@ const toolPaths = [
   '/watermark',
   '/unit-converters',
   '/qr-code',
-  '/url-shortener',
+  '/multi-direction-links',
   '/cover-letter-generator',
   '/circle-crop',
 ];

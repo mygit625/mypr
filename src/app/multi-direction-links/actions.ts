@@ -2,26 +2,22 @@
 'use server';
 
 import { nanoid } from 'nanoid';
-import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink } from '@/lib/url-shortener-db';
+import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink } from '@/lib/multi-direction-links-db';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
-// New, more robust schema for validating an individual URL.
-// It allows the field to be empty, but if a value is present, it must be a valid URL.
 const UrlSchema = z.preprocess(
-  (val) => (val === "" ? undefined : val), // Treat empty strings as undefined
+  (val) => (val === "" ? undefined : val),
   z.string().url({ message: "Please enter a valid URL if the field is not empty." }).optional()
 );
 
-// Schema for the entire form.
 const LinksSchema = z.object({
   desktopUrl: UrlSchema,
   androidUrl: UrlSchema,
   iosUrl: UrlSchema,
 }).refine(data => !!data.desktopUrl || !!data.androidUrl || !!data.iosUrl, {
-  // This ensures at least one of the fields is filled out.
   message: "At least one URL (Desktop, Android, or iOS) must be provided.",
-  path: ["desktopUrl"], // Associate the error with the first field for display purposes.
+  path: ["desktopUrl"], 
 });
 
 
@@ -31,7 +27,7 @@ export interface CreateLinkState {
   error: string | null;
 }
 
-export async function createDynamicLinkAction(prevState: CreateLinkState, formData: FormData): Promise<CreateLinkState> {
+export async function createMultiDirectionLinkAction(prevState: CreateLinkState, formData: FormData): Promise<CreateLinkState> {
   const data = {
     desktopUrl: formData.get('desktopUrl') as string,
     androidUrl: formData.get('androidUrl') as string,
@@ -73,19 +69,18 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
 
     await createDynamicLink(code, links);
     
-    revalidatePath('/url-shortener');
+    revalidatePath('/multi-direction-links');
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
     const shortUrl = `${baseUrl}/${code}`;
 
     return {
-      message: 'Successfully created dynamic link!',
+      message: 'Successfully created multi-direction link!',
       shortUrl: shortUrl,
       error: null,
     };
   } catch (error: any) {
-    console.error("Error in createDynamicLinkAction:", error);
-    // Return a more detailed error message for debugging
+    console.error("Error in createMultiDirectionLinkAction:", error);
     const errorMessage = `Failed to create link. Reason: ${error.message}.`;
     return {
       message: null,
@@ -100,7 +95,6 @@ export async function getLinksAction(): Promise<DynamicLink[]> {
     return await getRecentLinks();
   } catch (error: any) {
     console.error("Error in getLinksAction:", error);
-    // Return empty array but maybe also toast an error on the client
     return [];
   }
 }

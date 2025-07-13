@@ -3,8 +3,8 @@
 
 import { useActionState, useEffect, useState, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
-import { createDynamicLinkAction, getLinksAction, type CreateLinkState } from './actions';
-import { type DynamicLink } from '@/lib/url-shortener-db';
+import { createMultiDirectionLinkAction, getLinksAction, type CreateLinkState } from './actions';
+import { type DynamicLink } from '@/lib/multi-direction-links-db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -30,16 +30,16 @@ function SubmitButton() {
       ) : (
         <>
           <LinkIcon className="mr-2 h-4 w-4" />
-          Create Dynamic Link
+          Create Multi-direction Link
         </>
       )}
     </Button>
   );
 }
 
-export default function DeviceAwareLinksPage() {
+export default function MultiDirectionLinksPage() {
   const initialState: CreateLinkState = { message: null, shortUrl: null, error: null };
-  const [state, formAction] = useActionState(createDynamicLinkAction, initialState);
+  const [state, formAction] = useActionState(createMultiDirectionLinkAction, initialState);
   const [recentLinks, setRecentLinks] = useState<DynamicLink[]>([]);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
@@ -90,7 +90,7 @@ export default function DeviceAwareLinksPage() {
     <div className="max-w-6xl mx-auto space-y-8">
       <header className="text-center">
         <LinkIcon className="mx-auto h-16 w-16 text-primary mb-4" />
-        <h1 className="text-3xl font-bold tracking-tight">Device-Aware Links</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Multi-direction Links</h1>
         <p className="text-muted-foreground mt-2">
           Create one short link that sends users to different destinations based on their device.
         </p>
@@ -155,7 +155,7 @@ export default function DeviceAwareLinksPage() {
       {state.shortUrl && (
         <Alert variant="default" className="border-green-500 bg-green-50">
             <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertTitle className="text-green-700">Dynamic Link Created!</AlertTitle>
+            <AlertTitle className="text-green-700">Multi-direction Link Created!</AlertTitle>
             <AlertDescription>
                 <div className="flex flex-col sm:flex-row items-center justify-between mt-2 gap-4">
                     <div className="flex-grow">

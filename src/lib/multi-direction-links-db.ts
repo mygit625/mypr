@@ -20,10 +20,9 @@ import {
   limit as clickLimit,
 } from 'firebase/firestore';
 
-// Helper function to get the collection reference with a valid DB instance
 function getUrlsCollection() {
     const db = getFirestoreInstance();
-    return collection(db, 'short_urls');
+    return collection(db, 'multi_direction_links');
 }
 
 interface LinkBundle {
@@ -82,23 +81,20 @@ export async function isCodeUnique(code: string): Promise<boolean> {
 export async function logClick(code: string, rawData: ClickData): Promise<void> {
   try {
     const db = getFirestoreInstance();
-    const clicksCollectionRef = collection(db, 'short_urls', code, 'clicks');
+    const clicksCollectionRef = collection(db, 'multi_direction_links', code, 'clicks');
     await addDoc(clicksCollectionRef, {
       rawData,
       timestamp: serverTimestamp(),
     });
   } catch (error) {
     console.error(`Failed to log click for code ${code}:`, error);
-    // Fail silently to not block the redirect
   }
 }
-
 
 export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]> {
   const db = getFirestoreInstance();
   const urlsCollection = getUrlsCollection();
   const q = query(urlsCollection, orderBy('createdAt', 'desc'), limit(count));
-  // By adding { next: { revalidate: 0 } }, we tell Next.js not to cache this specific fetch.
   const querySnapshot = await getDocs(q);
   
   const links: DynamicLink[] = [];
@@ -106,15 +102,11 @@ export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]>
   for (const docSnap of querySnapshot.docs) {
     const data = docSnap.data();
     
-    // Get total click count for each link
-    const clicksCollectionRef = collection(db, 'short_urls', docSnap.id, 'clicks');
-    // Also disable caching for click counts to ensure they are fresh.
+    const clicksCollectionRef = collection(db, 'multi_direction_links', docSnap.id, 'clicks');
     const clicksSnapshot = await getCountFromServer(clicksCollectionRef);
     const clickCount = clicksSnapshot.data().count;
 
-    // Get the most recent 5 clicks
     const clicksQuery = clickQuery(clicksCollectionRef, clickOrderBy('timestamp', 'desc'), clickLimit(5));
-    // And disable caching for the recent click data.
     const recentClicksSnapshot = await getClickDocs(clicksQuery);
     const clicks = recentClicksSnapshot.docs.map(clickDoc => {
       const clickData = clickDoc.data();

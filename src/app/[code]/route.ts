@@ -1,6 +1,6 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { getLinkByCode, logClick } from '@/lib/url-shortener-db';
+import { getLinkByCode, logClick } from '@/lib/multi-direction-links-db';
 import { getDeviceType } from '@/lib/device-detection';
 
 export const revalidate = 0;
