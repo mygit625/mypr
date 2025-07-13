@@ -55,7 +55,7 @@ export default function CircleCropPage() {
                 if (container) {
                     const containerWidth = container.clientWidth;
                     const containerHeight = container.clientHeight;
-                    const initialSize = Math.min(containerWidth, containerHeight) * 0.8;
+                    const initialSize = Math.min(containerWidth, containerHeight) * 0.5;
                     setCrop({
                         x: (containerWidth - initialSize) / 2,
                         y: (containerHeight - initialSize) / 2,
