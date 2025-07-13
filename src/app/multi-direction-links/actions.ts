@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid';
 import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink } from '@/lib/multi-direction-links-db';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 
 const UrlSchema = z.preprocess(
   (val) => (val === "" ? undefined : val),
@@ -46,9 +47,20 @@ export async function createMultiDirectionLinkAction(prevState: CreateLinkState,
   const { desktopUrl, androidUrl, iosUrl } = validatedLinks.data;
 
   try {
-    if (!process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL.includes('your-project-id')) {
-        throw new Error("The NEXT_PUBLIC_BASE_URL environment variable is not set. Please set it to your app's public domain in your .env or `apphosting.yaml` file.");
+    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
+    // If the environment variable is not set, derive it from headers
+    if (!baseUrl || baseUrl.includes('your-project-id')) {
+        const headersList = headers();
+        const host = headersList.get('host');
+        const proto = headersList.get('x-forwarded-proto') || 'http';
+        if (host) {
+            baseUrl = `${proto}://${host}`;
+        } else {
+             throw new Error("Could not determine the base URL. The NEXT_PUBLIC_BASE_URL environment variable is not set, and the host header is not available.");
+        }
     }
+
 
     let code = nanoid(7);
     let attempts = 0;
@@ -71,7 +83,6 @@ export async function createMultiDirectionLinkAction(prevState: CreateLinkState,
     
     revalidatePath('/multi-direction-links');
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
     const shortUrl = `${baseUrl}/${code}`;
 
     return {
