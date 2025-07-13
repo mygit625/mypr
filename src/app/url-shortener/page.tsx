@@ -18,8 +18,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { QRCodeCanvas } from 'qrcode.react';
 import { downloadDataUri } from '@/lib/download-utils';
 
-export const revalidate = 0;
-
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -201,7 +199,7 @@ export default function DeviceAwareLinksPage() {
               <TableRow>
                 <TableHead>Short URL</TableHead>
                 <TableHead>Destination Links</TableHead>
-                <TableHead>Clicks &amp; Raw Data</TableHead>
+                <TableHead>Clicks & Raw Data</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
