@@ -17,8 +17,20 @@ export async function GET(
   const userAgent = request.headers.get('user-agent') || '';
   const deviceType = await getDeviceType(userAgent);
 
+  // Capture all headers
+  const headersObject: Record<string, string> = {};
+  request.headers.forEach((value, key) => {
+    headersObject[key] = value;
+  });
+
   // Await the logging of the click to ensure it completes before redirection.
-  await logClick(code, { userAgent, deviceType });
+  await logClick(code, { 
+    userAgent, 
+    deviceType,
+    ip: request.ip,
+    geo: request.geo,
+    headers: headersObject,
+  });
 
   const linkData = await getLinkByCode(code);
 
