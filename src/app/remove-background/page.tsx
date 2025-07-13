@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { removeBackground } from "@imgly/background-removal";
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -11,7 +12,6 @@ import { ImageIcon, Loader2, Wand2, Download, Info, Upload } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { removeBackgroundAction } from './actions';
 import { Badge } from '@/components/ui/badge';
 
 export default function RemoveBackgroundPage() {
@@ -45,7 +45,7 @@ export default function RemoveBackgroundPage() {
   };
 
   const handleRemoveBackground = async () => {
-    if (!originalImageDataUrl) {
+    if (!originalImageFile) {
       toast({ title: "No image selected", description: "Please upload an image file.", variant: "destructive" });
       return;
     }
@@ -55,27 +55,42 @@ export default function RemoveBackgroundPage() {
     setResultImageDataUrl(null);
 
     try {
-      const result = await removeBackgroundAction({ imageDataUri: originalImageDataUrl });
-      if (result.error) {
-        throw new Error(result.error);
-      }
-      setResultImageDataUrl(result.resultImageDataUri);
+      const resultBlob = await removeBackground(originalImageFile);
+      const resultUrl = URL.createObjectURL(resultBlob);
+      setResultImageDataUrl(resultUrl);
       toast({ title: "Background Removed!", description: "Your new image is ready below." });
     } catch (e: any) {
-      setError(e.message || "An unexpected error occurred.");
+      setError(e.message || "An unexpected error occurred. The model may not have loaded correctly.");
       toast({ title: "Processing Failed", description: e.message, variant: "destructive" });
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const handleDownload = () => {
+    if (resultImageDataUrl && originalImageFile) {
+        // We use the result URL directly for download, but we create a new anchor tag
+        // to control the filename, as blob URLs don't have one.
+        const link = document.createElement('a');
+        link.href = resultImageDataUrl;
+        link.download = `${originalImageFile.name.split('.').slice(0, -1).join('.')}_no_bg.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({
+          title: 'Download Started',
+          description: 'Your background-free image is downloading.',
+        });
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <header className="text-center py-8">
         <ImageIcon className="mx-auto h-16 w-16 text-primary mb-4" />
-        <h1 className="text-3xl font-bold tracking-tight">AI Background Remover</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Client-Side Background Remover</h1>
         <p className="text-muted-foreground mt-2">
-          Automatically remove the background from any image with a single click.
+          Automatically remove the background from any image right in your browser. No API key needed.
         </p>
       </header>
 
@@ -83,7 +98,7 @@ export default function RemoveBackgroundPage() {
         <Card>
           <CardHeader>
             <CardTitle>Upload Your Image</CardTitle>
-            <CardDescription>Select or drag an image file to begin.</CardDescription>
+            <CardDescription>Select or drag an image file to begin. The model will load on the first use.</CardDescription>
           </CardHeader>
           <CardContent>
             <FileUploadZone onFilesSelected={handleFileSelected} multiple={false} accept="image/*" />
@@ -116,10 +131,9 @@ export default function RemoveBackgroundPage() {
       {isProcessing && !resultImageDataUrl && (
          <div className="text-center p-8 space-y-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-            <p className="text-muted-foreground">AI is analyzing your image... this can take a moment.</p>
+            <p className="text-muted-foreground">Loading model and processing image... this can take a moment on first run.</p>
         </div>
       )}
-
 
       {resultImageDataUrl && originalImageDataUrl && (
         <Card>
@@ -164,7 +178,7 @@ export default function RemoveBackgroundPage() {
           </CardContent>
           <CardFooter className="flex-col sm:flex-row gap-4">
             <Button
-              onClick={() => downloadDataUri(resultImageDataUrl, `${originalImageFile?.name.split('.')[0]}_no_bg.png`)}
+              onClick={handleDownload}
               className="w-full"
               size="lg"
             >
