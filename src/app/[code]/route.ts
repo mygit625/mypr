@@ -81,7 +81,7 @@ export async function GET(
       return NextResponse.redirect(new URL('/', baseUrl));
     }
 
-    return NextResponse.redirect(new URL(destinationUrl));
+    return NextResponse.redirect(destinationUrl);
 
   } catch (error) {
     console.error(`Error handling shortcode ${code}:`, error);
