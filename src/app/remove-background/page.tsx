@@ -7,14 +7,12 @@ import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ImageIcon, Loader2, Wand2, Download, Info, Upload, KeyRound } from 'lucide-react';
+import { ImageIcon, Loader2, Wand2, Download, Info, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { removeBackgroundAction } from './actions';
 import { Badge } from '@/components/ui/badge';
-
-const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY || process.env.GOOGLE_API_KEY;
 
 export default function RemoveBackgroundPage() {
   const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
@@ -70,24 +68,6 @@ export default function RemoveBackgroundPage() {
       setIsProcessing(false);
     }
   };
-
-  if (!apiKey) {
-    return (
-       <div className="max-w-2xl mx-auto space-y-8 text-center">
-        <header className="py-8">
-            <ImageIcon className="mx-auto h-16 w-16 text-primary mb-4" />
-            <h1 className="text-3xl font-bold tracking-tight">AI Background Remover</h1>
-        </header>
-        <Alert variant="destructive">
-          <KeyRound className="h-4 w-4" />
-          <AlertTitle>API Key Required</AlertTitle>
-          <AlertDescription>
-            To use this AI-powered tool, you need to provide a Gemini API key. Please add your key to the `.env` file in your project as `GOOGLE_API_KEY="YOUR_API_KEY"` and restart the server.
-          </AlertDescription>
-        </Alert>
-       </div>
-    )
-  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
