@@ -28,7 +28,7 @@ const featuresByCategory: FeatureCategory[] = [
       { title: 'Circle Crop', description: 'Crop your image into a perfect circle, ideal for profile pictures.', href: '/circle-crop', Icon: CircleEllipsis, iconColor: 'text-teal-500' },
       { title: 'Image Editor', description: 'Add text, filters, stickers, or annotations to your photos.', href: '#', Icon: Wand2, iconColor: 'text-purple-500' },
       { title: 'Watermark Image', description: 'Stamp a text or image watermark over your pictures.', href: '#', Icon: Droplets, iconColor: 'text-sky-500' },
-      { title: 'Remove Background', description: 'Automatically erase the background from any image with one click.', href: '#', Icon: ImageIcon, iconColor: 'text-pink-500' },
+      { title: 'Remove Background', description: 'Automatically erase the background from any image with one click.', href: '/remove-background', Icon: ImageIcon, iconColor: 'text-pink-500' },
     ],
   },
   {
