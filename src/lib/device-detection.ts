@@ -3,16 +3,16 @@
 
 // A basic device detection function based on User-Agent sniffing.
 // This is a simplified approach and may not be 100% accurate.
-export async function getDeviceType(userAgent: string): Promise<string> {
+// It prioritizes iOS and Android, defaulting to Desktop.
+export function detectDevice(userAgent: string): 'iOS' | 'Android' | 'Desktop' {
   const ua = userAgent.toLowerCase();
   
-  // A simple heuristic to differentiate device types.
-  if (/ipad|tablet|(android(?!.*mobile))/.test(ua)) {
-    return 'Tablet';
+  if (/iphone|ipad|ipod/.test(ua)) {
+    return 'iOS';
   }
-  if (/iphone|ipod|android.*mobile|windows phone|iemobile|mobile/.test(ua)) {
-    return 'Mobile';
+  if (/android/.test(ua)) {
+    return 'Android';
   }
-  // Assume Desktop for anything else
+  // Assume Desktop for anything else, including tablets that aren't iPads.
   return 'Desktop';
 }
