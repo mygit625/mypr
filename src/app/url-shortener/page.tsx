@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useActionState, useEffect, useState, useRef } from 'react';
@@ -17,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { QRCodeCanvas } from 'qrcode.react';
 import { downloadDataUri } from '@/lib/download-utils';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -273,6 +273,48 @@ export default function UrlShortenerPage() {
           </Table>
         </CardContent>
       </Card>
+      
+      <section className="max-w-4xl mx-auto py-12 px-4">
+        <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="item-1">
+            <AccordionTrigger>What is a multi-direction or device-aware URL shortener?</AccordionTrigger>
+            <AccordionContent>
+              A multi-direction URL shortener allows you to create a single, short link that intelligently redirects users to different destination URLs based on their device. For example, you can send iOS users to the Apple App Store, Android users to the Google Play Store, and all other users (like those on desktop) to your main website, all from one link.
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-2">
+            <AccordionTrigger>Why is a dynamic link useful for my app or business?</AccordionTrigger>
+            <AccordionContent>
+              Dynamic links are incredibly powerful for marketing and user acquisition. They provide a seamless user experience, ensuring that every user lands on the most appropriate page for their device. This is crucial for app download campaigns, where you want to direct mobile users straight to the correct app store, improving conversion rates and eliminating friction.
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-3">
+            <AccordionTrigger>How do you detect the user's device?</AccordionTrigger>
+            <AccordionContent>
+              Our system analyzes the `User-Agent` string sent by the user's browser with every request. This string contains information about the device's operating system (like iOS or Android) and browser. Based on this information, we perform the device-based redirect to the URL you've specified for that category.
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-4">
+            <AccordionTrigger>Do I need to provide a URL for all three devices?</AccordionTrigger>
+            <AccordionContent>
+              No, you only need to provide at least one URL. The Desktop URL serves as a fallback; if a user is not on Android or iOS, or if you leave the Android/iOS fields blank, they will be sent to the Desktop URL. This makes the system flexible for any use case.
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-5">
+            <AccordionTrigger>Can I track how many people click my short links?</AccordionTrigger>
+            <AccordionContent>
+              Yes! Our real-time statistics table shows you the total click count for each short link you create. This allows you to measure the performance of your campaigns and see how much traffic your dynamic links are generating.
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="item-6">
+            <AccordionTrigger>Are the QR Codes generated for my short links also free?</AccordionTrigger>
+            <AccordionContent>
+              Absolutely. Every time you create a short link, we automatically generate a QR code for it, completely free of charge. You can download the QR code in PNG format for use in your print materials, presentations, or any other offline marketing channel to seamlessly bridge the gap to your online content.
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </section>
     </div>
   );
 }
