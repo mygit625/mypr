@@ -4,13 +4,13 @@ import type { NextRequest } from 'next/server';
 import { getLink, logClick } from '@/lib/url-shortener-db';
 import { detectDevice } from '@/lib/device-detection';
 
-function isValidUrl(string: string) {
-  try {
-    new URL(string);
-    return true;
-  } catch (_) {
-    return false;
-  }
+function isValidUrl(string: string): boolean {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
+    }
 }
 
 export async function GET(
@@ -43,27 +43,37 @@ export async function GET(
     const userAgent = request.headers.get('user-agent') || 'Unknown';
     const deviceType = detectDevice(userAgent);
     
+    const headersObject: Record<string, string> = {};
+    request.headers.forEach((value, key) => {
+        headersObject[key] = value;
+    });
+
+    const rawData = {
+        headers: headersObject,
+        ip: request.ip ?? 'N/A',
+        userAgent: userAgent,
+    };
+    
     // Log the click event without awaiting to avoid delaying the redirect
     logClick(code, {
       deviceType,
-      userAgent,
-      timestamp: Date.now(),
+      rawData,
     }).catch(console.error);
 
     let destinationUrl = linkDoc.links.desktop; // Default
 
-    if (deviceType === 'iOS' && linkDoc.links.ios) {
+    if (deviceType === 'iOS' && isValidUrl(linkDoc.links.ios)) {
       destinationUrl = linkDoc.links.ios;
-    } else if (deviceType === 'Android' && linkDoc.links.android) {
+    } else if (deviceType === 'Android' && isValidUrl(linkDoc.links.android)) {
       destinationUrl = linkDoc.links.android;
     }
 
-    if (!destinationUrl || !isValidUrl(destinationUrl)) {
+    if (!isValidUrl(destinationUrl)) {
       console.warn(`No valid destination URL for code ${code} and device ${deviceType}. Redirecting to homepage.`);
       return NextResponse.redirect(new URL('/', request.url));
     }
 
-    return NextResponse.redirect(destinationUrl);
+    return NextResponse.redirect(new URL(destinationUrl));
 
   } catch (error) {
     console.error(`Error handling shortcode ${code}:`, error);

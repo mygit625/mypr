@@ -3,7 +3,7 @@
 
 import { headers } from 'next/headers';
 import { nanoid } from 'nanoid';
-import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink } from '@/lib/url-shortener-db';
+import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink, getRecentClicksForLink, type ClickData } from '@/lib/url-shortener-db';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
@@ -106,4 +106,13 @@ export async function getLinksAction(): Promise<DynamicLink[]> {
     console.error("Error in getLinksAction:", error);
     return [];
   }
+}
+
+export async function getClicksForLinkAction(linkId: string): Promise<ClickData[]> {
+    try {
+        return await getRecentClicksForLink(linkId);
+    } catch (error) {
+        console.error(`Error fetching clicks for link ${linkId}:`, error);
+        return [];
+    }
 }

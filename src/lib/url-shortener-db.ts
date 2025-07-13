@@ -26,12 +26,17 @@ export interface DynamicLink {
   links: Links;
   createdAt: number;
   clickCount: number;
+  recentClicks?: ClickData[]; // Optional: for holding recent clicks data on the client
 }
 
 export interface ClickData {
   deviceType: string;
-  userAgent: string;
   timestamp: number;
+  rawData: {
+    headers: Record<string, string>;
+    ip?: string;
+    userAgent: string;
+  };
 }
 
 const linksCollection = collection(db, 'dynamicLinks');
@@ -60,8 +65,13 @@ export async function getLink(code: string): Promise<DynamicLink | null> {
   return docSnap.exists() ? (docSnap.data() as DynamicLink) : null;
 }
 
-export async function logClick(code: string, clickData: ClickData): Promise<void> {
+export async function logClick(code: string, clickData: Omit<ClickData, 'timestamp'>): Promise<void> {
   const linkDocRef = doc(linksCollection, code);
+  
+  const completeClickData: ClickData = {
+    ...clickData,
+    timestamp: Date.now(),
+  };
   
   await runTransaction(db, async (transaction) => {
     const linkDoc = await transaction.get(linkDocRef);
@@ -69,13 +79,11 @@ export async function logClick(code: string, clickData: ClickData): Promise<void
       throw new Error("Link does not exist!");
     }
     
-    // Increment click count
     const currentCount = linkDoc.data().clickCount || 0;
     transaction.update(linkDocRef, { clickCount: currentCount + 1 });
     
-    // Add new click data to subcollection
     const clickDocRef = doc(clicksSubcollection(code));
-    transaction.set(clickDocRef, clickData);
+    transaction.set(clickDocRef, completeClickData);
   });
 }
 
@@ -83,4 +91,11 @@ export async function getRecentLinks(): Promise<DynamicLink[]> {
   const q = query(linksCollection, orderBy('createdAt', 'desc'), limit(10));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => doc.data() as DynamicLink);
+}
+
+
+export async function getRecentClicksForLink(linkId: string, count: number = 5): Promise<ClickData[]> {
+    const q = query(clicksSubcollection(linkId), orderBy('timestamp', 'desc'), limit(count));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => doc.data() as ClickData);
 }
