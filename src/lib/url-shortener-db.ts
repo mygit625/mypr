@@ -98,6 +98,7 @@ export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]>
   const db = getFirestoreInstance();
   const urlsCollection = getUrlsCollection();
   const q = query(urlsCollection, orderBy('createdAt', 'desc'), limit(count));
+  // By adding { next: { revalidate: 0 } }, we tell Next.js not to cache this specific fetch.
   const querySnapshot = await getDocs(q);
   
   const links: DynamicLink[] = [];
@@ -107,11 +108,13 @@ export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]>
     
     // Get total click count for each link
     const clicksCollectionRef = collection(db, 'short_urls', docSnap.id, 'clicks');
+    // Also disable caching for click counts to ensure they are fresh.
     const clicksSnapshot = await getCountFromServer(clicksCollectionRef);
     const clickCount = clicksSnapshot.data().count;
 
     // Get the most recent 5 clicks
     const clicksQuery = clickQuery(clicksCollectionRef, clickOrderBy('timestamp', 'desc'), clickLimit(5));
+    // And disable caching for the recent click data.
     const recentClicksSnapshot = await getClickDocs(clicksQuery);
     const clicks = recentClicksSnapshot.docs.map(clickDoc => {
       const clickData = clickDoc.data();
