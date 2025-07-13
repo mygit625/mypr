@@ -29,7 +29,6 @@ const toolPaths = [
   '/watermark',
   '/unit-converters',
   '/qr-code',
-  '/multi-direction-links',
   '/cover-letter-generator',
   '/circle-crop',
 ];

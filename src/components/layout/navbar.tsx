@@ -15,7 +15,6 @@ const navItems = [
   { href: '/cover-letter-generator', label: 'AI Cover Letter', Icon: BrainCircuit },
   { href: '/unit-converters', label: 'Unit Converters', Icon: Scale },
   { href: '/qr-code', label: 'QR Generator', Icon: QrCode },
-  { href: '/multi-direction-links', label: 'Multi-direction Links', Icon: LinkIcon },
   { href: '/admin', label: 'Admin', Icon: Settings },
 ];
 
