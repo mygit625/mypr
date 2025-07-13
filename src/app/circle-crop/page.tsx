@@ -49,16 +49,20 @@ export default function CircleCropPage() {
         img.onload = () => {
             setImage(img);
             setCroppedImageUrl(null);
-            // Reset crop position
-            const container = containerRef.current;
-            if (container) {
-                const initialSize = Math.min(container.clientWidth, container.clientHeight, 300) * 0.8;
-                setCrop({
-                    x: (container.clientWidth - initialSize) / 2,
-                    y: (container.clientHeight - initialSize) / 2,
-                    size: initialSize,
-                });
-            }
+            // We use a timeout to allow the DOM to update and for the container to get its final dimensions.
+            setTimeout(() => {
+                const container = containerRef.current;
+                if (container) {
+                    const containerWidth = container.clientWidth;
+                    const containerHeight = container.clientHeight;
+                    const initialSize = Math.min(containerWidth, containerHeight) * 0.8;
+                    setCrop({
+                        x: (containerWidth - initialSize) / 2,
+                        y: (containerHeight - initialSize) / 2,
+                        size: initialSize,
+                    });
+                }
+            }, 0);
         };
       });
     }
@@ -218,9 +222,8 @@ export default function CircleCropPage() {
         <Card>
             <CardContent className="p-4">
                 <div
-                    ref={containerRef}
                     className="relative w-full max-w-full mx-auto touch-none select-none overflow-hidden"
-                    style={{ aspectRatio: `${image.width} / ${image.height}`}}
+                    style={{ maxHeight: '60vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
@@ -230,34 +233,34 @@ export default function CircleCropPage() {
                     onTouchEnd={handleTouchEnd}
                     onTouchCancel={handleTouchEnd}
                 >
-                    <img
-                        ref={imageRef}
-                        src={image.src}
-                        alt="Upload for cropping"
-                        className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                    />
-                    <div
-                        className="absolute border-2 border-dashed border-green-400 pointer-events-none"
-                        style={{
-                            left: crop.x,
-                            top: crop.y,
-                            width: crop.size,
-                            height: crop.size,
-                        }}
-                    >
-                         {/* This div creates the circular clipping mask appearance */}
-                        <div
-                            className="absolute inset-0 rounded-full shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"
+                    <div ref={containerRef} className="relative">
+                        <img
+                            ref={imageRef}
+                            src={image.src}
+                            alt="Upload for cropping"
+                            className="max-w-full max-h-full block object-contain pointer-events-none"
+                            style={{ maxHeight: '60vh' }}
                         />
-                        {/* Corner handles */}
-                        <div className="absolute -top-1 -left-1 w-2 h-2 bg-green-400 border border-background"></div>
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 border border-background"></div>
-                        <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-green-400 border border-background"></div>
-                        {/* Resize Handle */}
                         <div
-                            data-resize-handle="true"
-                            className="absolute -bottom-2 -right-2 w-4 h-4 bg-green-400 border-2 border-background cursor-nwse-resize pointer-events-auto"
-                        />
+                            className="absolute border-2 border-dashed border-green-400 pointer-events-none"
+                            style={{
+                                left: crop.x,
+                                top: crop.y,
+                                width: crop.size,
+                                height: crop.size,
+                            }}
+                        >
+                            <div
+                                className="absolute inset-0 rounded-full shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"
+                            />
+                            <div className="absolute -top-1 -left-1 w-2 h-2 bg-green-400 border border-background"></div>
+                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 border border-background"></div>
+                            <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-green-400 border border-background"></div>
+                            <div
+                                data-resize-handle="true"
+                                className="absolute -bottom-2 -right-2 w-4 h-4 bg-green-400 border-2 border-background cursor-nwse-resize pointer-events-auto"
+                            />
+                        </div>
                     </div>
                 </div>
             </CardContent>
