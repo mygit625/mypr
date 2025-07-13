@@ -35,13 +35,6 @@ export interface ClickData {
   userAgent: string;
   deviceType: string;
   ip?: string;
-  geo?: {
-    city?: string;
-    country?: string;
-    region?: string;
-    latitude?: string;
-    longitude?: string;
-  };
   headers: Record<string, string>;
 }
 

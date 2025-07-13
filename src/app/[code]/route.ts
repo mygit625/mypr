@@ -23,20 +23,10 @@ export async function GET(
       headersObject[key] = value;
     });
     
-    // Ensure geo data is a plain, serializable object for Firestore
-    const geoData = request.geo ? {
-        city: request.geo.city,
-        country: request.geo.country,
-        region: request.geo.region,
-        latitude: request.geo.latitude,
-        longitude: request.geo.longitude,
-    } : undefined;
-
     await logClick(code, { 
       userAgent, 
       deviceType,
       ip: request.ip,
-      geo: geoData,
       headers: headersObject,
     });
   } catch (error) {
