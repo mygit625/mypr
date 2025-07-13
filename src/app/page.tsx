@@ -1,7 +1,7 @@
 
 import { FeatureCard } from '@/components/feature/feature-card';
 import { 
-  Files, Image, QrCode, Scale, Calculator, Globe, Link as LinkIcon, BrainCircuit, Bot, Waypoints, FileJson
+  Files, Image, QrCode, Scale, Calculator, Globe, Link as LinkIcon, BrainCircuit, Bot
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -22,14 +22,8 @@ const toolCategories: ToolCategory[] = [
   { title: 'Multi-direction Links', description: 'Create smart links that send users to different URLs based on their device.', href: '/multi-direction-links', Icon: LinkIcon, iconColor: 'text-indigo-500' },
   { title: 'Calculators', description: 'Access a variety of calculators for daily use, like finance or baby gender.', href: '#', Icon: Calculator, iconColor: 'text-purple-500' },
   { title: 'Web Tools', description: 'A collection of useful web utilities for developers and designers.', href: '#', Icon: Globe, iconColor: 'text-sky-500' },
+  { title: 'Automation Tools', description: 'Jumpstart your workflows with our library of pre-built N8N templates and other tools.', href: '/automation-tools', Icon: Bot, iconColor: 'text-emerald-500' },
 ];
-
-const automationTools: ToolCategory[] = [
-    { title: 'N8N Templates', description: 'Jumpstart your workflows with our library of pre-built N8N templates.', href: '#', Icon: Bot, iconColor: 'text-emerald-500' },
-    { title: 'Sitemap Generator', description: 'Create an XML sitemap for your website to improve SEO.', href: '#', Icon: Waypoints, iconColor: 'text-rose-500' },
-    { title: 'JSON to CSV', description: 'Convert complex JSON data into structured CSV files online.', href: '#', Icon: FileJson, iconColor: 'text-orange-500' },
-];
-
 
 export default function HomePage() {
   return (
@@ -52,26 +46,6 @@ export default function HomePage() {
           </h2>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
             {toolCategories.map((tool) => (
-              <FeatureCard
-                key={tool.title}
-                title={tool.title}
-                description={tool.description}
-                href={tool.href}
-                Icon={tool.Icon}
-                iconColor={tool.iconColor}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-6 md:mb-8 text-center">
-            Automation Tools
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
-            {automationTools.map((tool) => (
               <FeatureCard
                 key={tool.title}
                 title={tool.title}
