@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, MoreVertical, Download, MousePointerClick } from 'lucide-react';
+import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, MoreVertical, Download, MousePointerClick, TrendingUp, Target, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -49,6 +49,16 @@ export default function UrlShortenerPage() {
     // Set base URL on the client-side to ensure it's available for display
     const currentBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
     setBaseUrl(currentBaseUrl.replace(/\/$/, '')); // Remove trailing slash if present
+
+    const handleWindowFocus = () => {
+        getLinksAction().then(setRecentLinks).catch(err => {
+            console.error("Failed to fetch recent links on focus:", err);
+        });
+    };
+    window.addEventListener('focus', handleWindowFocus);
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+    };
   }, []);
 
   const copyToClipboard = (text: string) => {
@@ -314,6 +324,50 @@ export default function UrlShortenerPage() {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+      </section>
+
+      <section className="max-w-4xl mx-auto py-12 px-4">
+        <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold tracking-tight">Maximize Your Reach with Smart, Device-Aware Links</h2>
+            <p className="text-lg text-muted-foreground mt-3 max-w-3xl mx-auto">
+                Go beyond simple redirection. Understand the advantages of using a multi-direction URL shortener to create smarter, more effective campaigns.
+            </p>
+        </div>
+        <div className="grid md:grid-cols-1 gap-10">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                <div className="flex-shrink-0 flex items-center justify-center h-14 w-14 rounded-full bg-primary/10 text-primary">
+                    <UserCheck className="h-7 w-7" />
+                </div>
+                <div>
+                    <h3 className="text-xl font-semibold mb-2">Provide a Seamless User Experience</h3>
+                    <p className="text-muted-foreground">
+                        Stop sending your mobile users to a desktop website. By automatically routing visitors to the correct app store or a mobile-optimized page, you reduce friction and eliminate confusion. A happy user is more likely to engage, purchase, or download.
+                    </p>
+                </div>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                <div className="flex-shrink-0 flex items-center justify-center h-14 w-14 rounded-full bg-primary/10 text-primary">
+                    <TrendingUp className="h-7 w-7" />
+                </div>
+                <div>
+                    <h3 className="text-xl font-semibold mb-2">Boost App Downloads & Conversions</h3>
+                    <p className="text-muted-foreground">
+                        For businesses with mobile apps, device-aware links are essential. A single link in your marketing email or social media bio can direct iOS users straight to the Apple App Store and Android users to the Google Play Store, significantly increasing download conversion rates.
+                    </p>
+                </div>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                <div className="flex-shrink-0 flex items-center justify-center h-14 w-14 rounded-full bg-primary/10 text-primary">
+                    <Target className="h-7 w-7" />
+                </div>
+                <div>
+                    <h3 className="text-xl font-semibold mb-2">Unify Your Marketing Campaigns</h3>
+                    <p className="text-muted-foreground">
+                        Use one short link and one QR code across all your marketing materials—from physical flyers to digital ads. This simplifies campaign management, provides cleaner analytics, and ensures a consistent call-to-action for your entire audience, no matter how they access your content.
+                    </p>
+                </div>
+            </div>
+        </div>
       </section>
     </div>
   );
