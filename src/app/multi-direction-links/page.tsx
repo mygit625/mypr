@@ -71,20 +71,32 @@ export default function MultiDirectionLinksPage() {
     }
   };
 
-  useEffect(() => {
-    const fetchLinks = () => {
-        getLinksAction().then(setRecentLinks).catch(err => {
-            console.error("Failed to fetch recent links:", err);
-            toast({ title: 'Error', description: 'Could not fetch recent links.', variant: 'destructive' });
-        });
-    };
-    fetchLinks();
+  // This function will be used to fetch the links
+  const fetchLinks = () => {
+      getLinksAction().then(setRecentLinks).catch(err => {
+          console.error("Failed to fetch recent links:", err);
+          toast({ title: 'Error', description: 'Could not fetch recent links.', variant: 'destructive' });
+      });
+  };
 
+  useEffect(() => {
+    fetchLinks(); // Fetch on initial load
+
+    // Add event listener to re-fetch when the window gets focus
+    window.addEventListener('focus', fetchLinks);
+
+    // Cleanup listener on component unmount
+    return () => {
+      window.removeEventListener('focus', fetchLinks);
+    };
+  }, []);
+
+  useEffect(() => {
     if(state.shortUrl) {
       formRef.current?.reset();
+      fetchLinks(); // Re-fetch links after a new one is created
     }
-    
-  }, [state.shortUrl, toast]);
+  }, [state.shortUrl]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
