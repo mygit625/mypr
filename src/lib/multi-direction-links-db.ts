@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getFirestoreInstance } from './firebase';
+import { db } from './firebase';
 import {
   collection,
   doc,
@@ -21,7 +21,6 @@ import {
 } from 'firebase/firestore';
 
 function getUrlsCollection() {
-    const db = getFirestoreInstance();
     return collection(db, 'multi_direction_links');
 }
 
@@ -82,7 +81,6 @@ export async function isCodeUnique(code: string): Promise<boolean> {
 
 export async function logClick(code: string, rawData: ClickData): Promise<void> {
   try {
-    const db = getFirestoreInstance();
     const clicksCollectionRef = collection(db, 'multi_direction_links', code, 'clicks');
     await addDoc(clicksCollectionRef, {
       rawData,
@@ -94,7 +92,6 @@ export async function logClick(code: string, rawData: ClickData): Promise<void> 
 }
 
 export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]> {
-  const db = getFirestoreInstance();
   const urlsCollection = getUrlsCollection();
   const q = query(urlsCollection, orderBy('createdAt', 'desc'), limit(count));
   const querySnapshot = await getDocs(q);
