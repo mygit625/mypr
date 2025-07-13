@@ -18,6 +18,7 @@ export async function GET(
   { params }: { params: { code: string } }
 ) {
   const code = params.code;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://toolsinn.com';
 
   const knownPaths = [
     'pdf-tools', 'image-tools', 'merge', 'split', 'compress', 'organize',
@@ -37,7 +38,7 @@ export async function GET(
     const linkDoc = await getLink(code);
 
     if (!linkDoc) {
-      return NextResponse.redirect(new URL('/404', request.url));
+      return NextResponse.redirect(new URL('/404', baseUrl));
     }
     
     const userAgent = request.headers.get('user-agent') || 'Unknown';
@@ -68,9 +69,16 @@ export async function GET(
       destinationUrl = linkDoc.links.android;
     }
 
+    // After determining the target device URL, check if it's valid.
+    // If not, fall back to the desktop URL.
+    if (!isValidUrl(destinationUrl)) {
+        destinationUrl = linkDoc.links.desktop;
+    }
+
+    // Final check: if even the fallback desktop URL is invalid, redirect to the homepage.
     if (!isValidUrl(destinationUrl)) {
       console.warn(`No valid destination URL for code ${code} and device ${deviceType}. Redirecting to homepage.`);
-      return NextResponse.redirect(new URL('/', request.url));
+      return NextResponse.redirect(new URL('/', baseUrl));
     }
 
     return NextResponse.redirect(new URL(destinationUrl));
@@ -78,6 +86,6 @@ export async function GET(
   } catch (error) {
     console.error(`Error handling shortcode ${code}:`, error);
     // As a final fallback, redirect to the homepage on unexpected errors.
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/', baseUrl));
   }
 }
