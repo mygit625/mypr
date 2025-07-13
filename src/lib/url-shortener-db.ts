@@ -14,6 +14,10 @@ import {
   serverTimestamp,
   addDoc,
   getCountFromServer,
+  getDocs as getClickDocs,
+  query as clickQuery,
+  orderBy as clickOrderBy,
+  limit as clickLimit,
 } from 'firebase/firestore';
 
 // Helper function to get the collection reference with a valid DB instance
@@ -28,10 +32,15 @@ interface LinkBundle {
   ios: string;
 }
 
+export interface ClickData {
+  userAgent: string;
+  deviceType: string;
+}
+
 export interface ClickLog {
   id: string;
-  deviceType: string;
   timestamp: Date;
+  rawData: ClickData;
 }
 
 export interface DynamicLink {
@@ -70,12 +79,12 @@ export async function isCodeUnique(code: string): Promise<boolean> {
   return !docSnap.exists();
 }
 
-export async function logClick(code: string, deviceType: string): Promise<void> {
+export async function logClick(code: string, rawData: ClickData): Promise<void> {
   try {
     const db = getFirestoreInstance();
     const clicksCollectionRef = collection(db, 'short_urls', code, 'clicks');
     await addDoc(clicksCollectionRef, {
-      deviceType: deviceType || 'Unknown',
+      rawData,
       timestamp: serverTimestamp(),
     });
   } catch (error) {
@@ -101,11 +110,24 @@ export async function getRecentLinks(count: number = 10): Promise<DynamicLink[]>
     const clicksSnapshot = await getCountFromServer(clicksCollectionRef);
     const clickCount = clicksSnapshot.data().count;
 
+    // Get the most recent 5 clicks
+    const clicksQuery = clickQuery(clicksCollectionRef, clickOrderBy('timestamp', 'desc'), clickLimit(5));
+    const recentClicksSnapshot = await getClickDocs(clicksQuery);
+    const clicks = recentClicksSnapshot.docs.map(clickDoc => {
+      const clickData = clickDoc.data();
+      return {
+        id: clickDoc.id,
+        timestamp: clickData.timestamp?.toDate() ?? new Date(),
+        rawData: clickData.rawData as ClickData,
+      };
+    });
+
     links.push({
       id: docSnap.id,
       links: data.links,
       createdAt: data.createdAt?.toDate() ?? new Date(),
       clickCount: clickCount,
+      clicks: clicks,
     });
   }
 

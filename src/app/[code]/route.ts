@@ -19,7 +19,7 @@ export async function GET(
 
   // Asynchronously log the click with the detected device type.
   // We don't await this so it doesn't block the redirect.
-  logClick(code, deviceType).catch(console.error);
+  logClick(code, { userAgent, deviceType }).catch(console.error);
 
   const linkData = await getLinkByCode(code);
 

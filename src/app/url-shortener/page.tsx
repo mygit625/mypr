@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, MoreVertical, Download, MousePointerClick } from 'lucide-react';
+import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, MoreVertical, Download, MousePointerClick, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -46,7 +46,6 @@ export default function DeviceAwareLinksPage() {
   const [baseUrl, setBaseUrl] = useState('');
 
   useEffect(() => {
-    // Set base URL on the client-side to ensure it's available for display
     setBaseUrl(process.env.NEXT_PUBLIC_BASE_URL || window.location.origin);
   }, []);
 
@@ -191,7 +190,7 @@ export default function DeviceAwareLinksPage() {
         <CardHeader>
           <CardTitle>Recently Created Links</CardTitle>
           <CardDescription>
-            Here are the last 10 links created.
+            Here are the last 10 links created, with the 5 most recent clicks shown for each.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -200,7 +199,7 @@ export default function DeviceAwareLinksPage() {
               <TableRow>
                 <TableHead>Short URL</TableHead>
                 <TableHead>Destination Links</TableHead>
-                <TableHead>Clicks</TableHead>
+                <TableHead>Clicks & Raw Data</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -241,9 +240,24 @@ export default function DeviceAwareLinksPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                        <MousePointerClick className="h-4 w-4 text-muted-foreground"/>
-                        <span className="font-mono text-sm">{link.clickCount ?? 0}</span>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                          <MousePointerClick className="h-4 w-4 text-muted-foreground"/>
+                          <span className="font-mono text-sm">{link.clickCount ?? 0} total</span>
+                      </div>
+                      {link.clicks && link.clicks.length > 0 && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="link" size="sm" className="p-0 h-auto text-xs">View Clicks</Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-96">
+                            <h4 className="font-medium text-sm mb-2">Recent Clicks Raw Data</h4>
+                            <pre className="text-xs bg-muted p-2 rounded-md overflow-x-auto max-h-60">
+                              {JSON.stringify(link.clicks.map(c => c.rawData), null, 2)}
+                            </pre>
+                          </PopoverContent>
+                        </Popover>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
