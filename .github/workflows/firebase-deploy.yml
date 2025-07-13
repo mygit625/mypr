@@ -1,4 +1,4 @@
-# This is a basic workflow to help you get started with Actions
+vv# This is a basic workflow to help you get started with Actions
 
 name: Deploy to Firebase Hosting on Push
 
@@ -22,3 +22,4 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}'
           channelId: live
           projectId: docuease-y40m1 # <-- IMPORTANT: Make sure this is your project ID
+          entryPoint: ./studio # <-- ADD THIS LINE
