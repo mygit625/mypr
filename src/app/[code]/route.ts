@@ -14,47 +14,53 @@ export async function GET(
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  const userAgent = request.headers.get('user-agent') || '';
-  const deviceType = await getDeviceType(userAgent);
+  try {
+    const userAgent = request.headers.get('user-agent') || '';
+    const deviceType = await getDeviceType(userAgent);
 
-  // Capture all headers
-  const headersObject: Record<string, string> = {};
-  request.headers.forEach((value, key) => {
-    headersObject[key] = value;
-  });
+    const headersObject: Record<string, string> = {};
+    request.headers.forEach((value, key) => {
+      headersObject[key] = value;
+    });
+    
+    // Ensure geo data is a plain, serializable object for Firestore
+    const geoData = request.geo ? {
+        city: request.geo.city,
+        country: request.geo.country,
+        region: request.geo.region,
+        latitude: request.geo.latitude,
+        longitude: request.geo.longitude,
+    } : undefined;
 
-  // Await the logging of the click to ensure it completes before redirection.
-  await logClick(code, { 
-    userAgent, 
-    deviceType,
-    ip: request.ip,
-    geo: request.geo,
-    headers: headersObject,
-  });
+    await logClick(code, { 
+      userAgent, 
+      deviceType,
+      ip: request.ip,
+      geo: geoData,
+      headers: headersObject,
+    });
+  } catch (error) {
+    // Log the error but don't block the redirect
+    console.error(`Failed to log click for code '${code}':`, error);
+  }
 
   const linkData = await getLinkByCode(code);
 
   if (!linkData) {
-    // If the short code doesn't exist, redirect to the homepage.
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // Prioritized redirection logic
-  if (deviceType === 'Mobile' && linkData.android) {
+  if (linkData.desktop) {
+    return NextResponse.redirect(new URL(linkData.desktop));
+  }
+  
+  if (linkData.android) {
     return NextResponse.redirect(new URL(linkData.android));
   }
   
-  if ((deviceType === 'Tablet' || deviceType === 'Mobile') && linkData.ios) {
-    // Redirect iPhones and iPads to the iOS link
+  if (linkData.ios) {
     return NextResponse.redirect(new URL(linkData.ios));
   }
 
-  // Fallback to desktop URL if it exists, or to the first available URL.
-  const fallbackUrl = linkData.desktop || linkData.android || linkData.ios;
-  if (fallbackUrl) {
-    return NextResponse.redirect(new URL(fallbackUrl));
-  }
-
-  // If no links are defined at all, redirect to the homepage.
   return NextResponse.redirect(new URL('/', request.url));
 }
