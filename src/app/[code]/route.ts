@@ -28,7 +28,7 @@ export async function GET(
     const linkDoc = await getLink(code);
 
     if (!linkDoc) {
-      // If the short link code doesn't exist in the database, it's a 404.
+      // If the short link code doesn't exist, it's a 404.
       return new NextResponse('Not Found', { status: 404 });
     }
 
