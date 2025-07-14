@@ -33,7 +33,6 @@ export async function GET(
     }
 
     // This section is temporarily disabled to diagnose the 500 error.
-    // The redirect logic below will be used directly.
     /*
     try {
       const deviceType = detectDevice(request.headers);
@@ -54,33 +53,23 @@ export async function GET(
     }
     */
 
-    // 3. Determine the destination URL
-    let destinationUrl = '';
+    // 3. Determine the destination URL with a robust fallback mechanism
     const deviceType = detectDevice(request.headers);
+    let destinationUrl = linkDoc.links.desktop; // Start with desktop as the default
 
-    switch (deviceType) {
-      case 'iOS':
-        destinationUrl = linkDoc.links.ios || linkDoc.links.desktop;
-        break;
-      case 'Android':
-        destinationUrl = linkDoc.links.android || linkDoc.links.desktop;
-        break;
-      default: // Desktop or other
-        destinationUrl = linkDoc.links.desktop;
+    if (deviceType === 'iOS' && linkDoc.links.ios) {
+      destinationUrl = linkDoc.links.ios;
+    } else if (deviceType === 'Android' && linkDoc.links.android) {
+      destinationUrl = linkDoc.links.android;
     }
     
-    // Final fallback to desktop URL if the selected one is empty.
-    if (!destinationUrl) {
-      destinationUrl = linkDoc.links.desktop;
-    }
-
     // 4. Validate and Redirect
     if (isValidUrl(destinationUrl)) {
       // Perform the redirect using the absolute URL.
       return NextResponse.redirect(destinationUrl);
     } else {
-      // If the chosen URL is invalid, fall back to the main site.
-      console.warn(`Invalid destination URL for code ${code}: "${destinationUrl}". Redirecting to homepage.`);
+      // If the chosen URL is invalid or empty, fall back to the main site.
+      console.warn(`Invalid or empty destination URL for code ${code} (device: ${deviceType}). Redirecting to homepage.`);
       return NextResponse.redirect(baseUrl);
     }
 
