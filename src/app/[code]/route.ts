@@ -20,7 +20,6 @@ export async function GET(
   const code = params.code;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://toolsinn.com';
 
-  // Let Next.js handle its own paths and known tool pages.
   const knownPaths = [
     'pdf-tools', 'image-tools', 'merge', 'split', 'compress', 'organize',
     'rotate', 'remove-pages', 'add-pages', 'summarize', 'repair', 'ocr',
@@ -38,12 +37,10 @@ export async function GET(
   try {
     const linkDoc = await getLink(code);
 
-    // If the link code doesn't exist in the database, redirect to a 404 page.
     if (!linkDoc) {
       return NextResponse.redirect(new URL('/404', baseUrl));
     }
     
-    // Determine device and log the click event. This can happen in the background.
     const userAgent = request.headers.get('user-agent') || 'Unknown';
     const deviceType = detectDevice(userAgent);
     
@@ -63,27 +60,30 @@ export async function GET(
       rawData,
     }).catch(console.error);
 
-    // Determine the destination URL based on device
-    let destinationUrl = linkDoc.links.desktop; // Default
+    // --- Corrected Logic ---
+    let destinationUrl = '';
 
-    if (deviceType === 'iOS' && isValidUrl(linkDoc.links.ios)) {
+    // 1. Select the URL based on device priority
+    if (deviceType === 'iOS' && linkDoc.links.ios) {
       destinationUrl = linkDoc.links.ios;
-    } else if (deviceType === 'Android' && isValidUrl(linkDoc.links.android)) {
+    } else if (deviceType === 'Android' && linkDoc.links.android) {
       destinationUrl = linkDoc.links.android;
+    } else {
+      // 2. Unconditionally fall back to desktop if no device-specific URL is found
+      destinationUrl = linkDoc.links.desktop;
     }
 
-    // Final check: if the determined destination (or the fallback desktop) is valid, redirect.
+    // 3. Perform a single validation check on the chosen URL
     if (isValidUrl(destinationUrl)) {
       return NextResponse.redirect(destinationUrl);
     }
 
-    // If no valid URL could be found at all, redirect to the homepage as a last resort.
-    console.warn(`No valid destination URL for code ${code} and device ${deviceType}. Redirecting to homepage.`);
+    // 4. If the chosen URL (even the desktop fallback) is invalid, go to homepage.
+    console.warn(`No valid destination URL for code ${code}. Final attempted URL was '${destinationUrl}'. Redirecting to homepage.`);
     return NextResponse.redirect(new URL('/', baseUrl));
 
   } catch (error) {
     console.error(`Error handling shortcode ${code}:`, error);
-    // As a final fallback on unexpected errors, redirect to the homepage.
     return NextResponse.redirect(new URL('/', baseUrl));
   }
 }
