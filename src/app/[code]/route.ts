@@ -48,9 +48,11 @@ export async function GET(
   let destinationUrl = '';
   switch (deviceType) {
     case 'iOS':
+      // Use iOS link if it exists and is not an empty string, otherwise fall back.
       destinationUrl = linkDoc.links.ios || linkDoc.links.desktop;
       break;
     case 'Android':
+      // Use Android link if it exists and is not an empty string, otherwise fall back.
       destinationUrl = linkDoc.links.android || linkDoc.links.desktop;
       break;
     case 'Desktop':
