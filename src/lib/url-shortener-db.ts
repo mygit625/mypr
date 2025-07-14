@@ -11,8 +11,9 @@ import {
   orderBy,
   limit,
   getDocs,
-  runTransaction,
-  Timestamp,
+  updateDoc,
+  addDoc,
+  increment,
 } from 'firebase/firestore';
 
 export interface Links {
@@ -72,19 +73,14 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
     ...clickData,
     timestamp: Date.now(),
   };
-  
-  await runTransaction(db, async (transaction) => {
-    const linkDoc = await transaction.get(linkDocRef);
-    if (!linkDoc.exists()) {
-      throw new Error("Link does not exist!");
-    }
-    
-    const currentCount = linkDoc.data().clickCount || 0;
-    transaction.update(linkDocRef, { clickCount: currentCount + 1 });
-    
-    const clickDocRef = doc(clicksSubcollection(code));
-    transaction.set(clickDocRef, completeClickData);
+
+  // 1. Atomically increment the click count.
+  await updateDoc(linkDocRef, {
+      clickCount: increment(1)
   });
+
+  // 2. Add the detailed click document.
+  await addDoc(clicksSubcollection(code), completeClickData);
 }
 
 export async function getRecentLinks(): Promise<DynamicLink[]> {

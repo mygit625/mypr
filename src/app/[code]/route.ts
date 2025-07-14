@@ -28,24 +28,32 @@ export async function GET(
     return new NextResponse('Not Found', { status: 404 });
   }
 
-  // 2. Log the click with device data
-  const headersObject: Record<string, string> = {};
-  request.headers.forEach((value, key) => {
-    headersObject[key] = value;
-  });
+  // 2. Log the click with device data (with error handling)
+  try {
+    const headersObject: Record<string, string> = {};
+    request.headers.forEach((value, key) => {
+      headersObject[key] = value;
+    });
 
-  const rawData = {
-    headers: headersObject,
-    ip: request.ip ?? 'N/A',
-    userAgent: request.headers.get('user-agent') || 'Unknown',
-  };
-  
-  const deviceType = detectDevice(request.headers);
-  
-  await logClick(code, { deviceType, rawData });
+    const rawData = {
+      headers: headersObject,
+      ip: request.ip ?? 'N/A',
+      userAgent: request.headers.get('user-agent') || 'Unknown',
+    };
+    
+    const deviceType = detectDevice(request.headers);
+    
+    // Non-blocking log. If this fails, the redirect will still happen.
+    await logClick(code, { deviceType, rawData });
+  } catch (error) {
+      console.error(`Failed to log click for code ${code}:`, error);
+      // Do not block the redirect if logging fails.
+  }
 
   // 3. Determine the destination URL
   let destinationUrl = '';
+  const deviceType = detectDevice(request.headers);
+
   switch (deviceType) {
     case 'iOS':
       // Use iOS link if it exists and is not an empty string, otherwise fall back.
