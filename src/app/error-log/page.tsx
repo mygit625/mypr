@@ -4,8 +4,9 @@
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
+import { Suspense } from 'react';
 
-export default function ErrorLogPage() {
+function ErrorLogContent() {
   const searchParams = useSearchParams();
 
   const errorDetails = {
@@ -67,4 +68,12 @@ export default function ErrorLogPage() {
       </Card>
     </div>
   );
+}
+
+export default function ErrorLogPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ErrorLogContent />
+    </Suspense>
+  )
 }
