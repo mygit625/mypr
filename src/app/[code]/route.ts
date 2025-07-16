@@ -6,7 +6,7 @@ import { getLink, logClick } from '@/lib/url-shortener-db';
 /**
  * A robust device detection function that checks the `sec-ch-ua-platform` header.
  * It positively identifies Android and common Desktop OSes.
- * If the platform is not recognized, it defaults to 'iOS'.
+ * If the platform is not recognized (which is common for iOS devices), it defaults to 'iOS'.
  * @param headers The request headers.
  * @returns 'iOS', 'Android', or 'Desktop'.
  */
@@ -78,8 +78,10 @@ export async function GET(
         let destinationUrl = '';
 
         if (deviceType === 'iOS') {
+            // Use iOS link, but fall back to desktop if iOS link is not provided
             destinationUrl = linkDoc.links.ios || linkDoc.links.desktop || '';
         } else if (deviceType === 'Android') {
+            // Use Android link, but fall back to desktop if Android link is not provided
             destinationUrl = linkDoc.links.android || linkDoc.links.desktop || '';
         } else { // deviceType is 'Desktop'
             destinationUrl = linkDoc.links.desktop || '';
