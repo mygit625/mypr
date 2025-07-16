@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getLink } from '@/lib/url-shortener-db';
+import { getLink, logClick } from '@/lib/url-shortener-db';
 import { detectDevice } from '@/lib/device-detection';
-// Assuming you have a logClick function similar to this signature
-// import { logClick } from '@/lib/analytics';
 
 /**
  * Normalizes and validates a URL.
@@ -13,7 +11,7 @@ import { detectDevice } from '@/lib/device-detection';
  * @returns A valid, absolute URL string or null if the URL is invalid or empty.
  */
 function normalizeAndValidateUrl(url: string | undefined | null): string | null {
-    if (!url) {
+    if (!url || url.trim() === '') {
         return null; // Return null if the URL is empty, null, or undefined.
     }
 
@@ -51,27 +49,25 @@ export async function GET(
             return new NextResponse('Not Found', { status: 404 });
         }
 
-        // 2. Log the click event (non-blocking)
-        // This runs in the background. If it fails, the redirect will still happen.
+        // 2. Log the click event (non-blocking). If it fails, redirect still happens.
         try {
-            const deviceType = detectDevice(request.headers);
             const headersObject: Record<string, string> = {};
             request.headers.forEach((value, key) => {
                 headersObject[key] = value;
             });
-            const rawData = {
-                headers: headersObject,
-                ip: request.ip ?? 'N/A',
-                userAgent: request.headers.get('user-agent') || 'Unknown',
-            };
-            // Assuming you have a logClick function. If not, you can keep this commented out.
-            // await logClick(code, { deviceType, rawData });
+            await logClick(code, {
+                deviceType: detectDevice(request.headers),
+                rawData: {
+                    headers: headersObject,
+                    ip: request.ip ?? 'N/A',
+                    userAgent: request.headers.get('user-agent') || 'Unknown',
+                },
+            });
         } catch (error) {
             console.error(`Failed to log click for code ${code}:`, error);
-            // Do not block the redirect if logging fails.
         }
 
-        // 3. Determine and normalize the destination URL
+        // 3. Determine the destination URL with a clear fallback mechanism
         const deviceType = detectDevice(request.headers);
         let destinationUrl: string | undefined | null = linkDoc.links.desktop; // Default to desktop
 
@@ -81,23 +77,15 @@ export async function GET(
             destinationUrl = linkDoc.links.android;
         }
         
-        // Try to normalize the selected device-specific URL
-        let finalUrl = normalizeAndValidateUrl(destinationUrl);
+        // 4. Validate the selected URL and redirect
+        const finalUrl = normalizeAndValidateUrl(destinationUrl);
 
-        // 4. If the device-specific URL is invalid, fall back to the desktop URL
-        if (!finalUrl) {
-            console.warn(`Device-specific URL for code ${code} (device: ${deviceType}) was invalid. Falling back to desktop URL.`);
-            finalUrl = normalizeAndValidateUrl(linkDoc.links.desktop);
-        }
-
-        // 5. Perform the redirect or fall back to the homepage
         if (finalUrl) {
             // Perform the redirect using the normalized, absolute URL.
             return NextResponse.redirect(finalUrl);
         } else {
-            // If all potential URLs (device-specific and desktop) are invalid or empty,
-            // log the issue and redirect to the main site as a final fallback.
-            console.error(`All URLs for code ${code} are invalid. Redirecting to homepage.`);
+            // If the determined URL (including the desktop fallback) is invalid, go to the homepage.
+            console.error(`All URL options for code ${code} are invalid. Redirecting to homepage.`);
             return NextResponse.redirect(baseUrl);
         }
 
