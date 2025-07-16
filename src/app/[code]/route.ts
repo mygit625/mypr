@@ -27,18 +27,6 @@ function detectDevice(headers: Headers): 'iOS' | 'Android' | 'Desktop' {
   return 'iOS';
 }
 
-// Helper function to validate a URL.
-function isValidUrl(url: string | null | undefined): boolean {
-    if (!url) return false;
-    try {
-        const newUrl = new URL(url);
-        // Check for http or https protocol
-        return newUrl.protocol === 'http:' || newUrl.protocol === 'https:';
-    } catch (e) {
-        return false;
-    }
-}
-
 export async function GET(
     request: NextRequest,
     { params }: { params: { code: string } }
@@ -77,18 +65,16 @@ export async function GET(
         const deviceType = detectDevice(request.headers);
         let destinationUrl = '';
 
-        if (deviceType === 'iOS') {
-            // Use iOS link, but fall back to desktop if iOS link is not provided
-            destinationUrl = linkDoc.links.ios || linkDoc.links.desktop || '';
-        } else if (deviceType === 'Android') {
-            // Use Android link, but fall back to desktop if Android link is not provided
-            destinationUrl = linkDoc.links.android || linkDoc.links.desktop || '';
-        } else { // deviceType is 'Desktop'
-            destinationUrl = linkDoc.links.desktop || '';
+        if (deviceType === 'iOS' && linkDoc.links.ios) {
+            destinationUrl = linkDoc.links.ios;
+        } else if (deviceType === 'Android' && linkDoc.links.android) {
+            destinationUrl = linkDoc.links.android;
+        } else { 
+            destinationUrl = linkDoc.links.desktop || ''; // Fallback to desktop
         }
         
-        // 4. Validate the chosen URL and redirect
-        if (isValidUrl(destinationUrl)) {
+        // 4. Redirect if we have a valid destination URL
+        if (destinationUrl) {
             return NextResponse.redirect(destinationUrl);
         }
 
