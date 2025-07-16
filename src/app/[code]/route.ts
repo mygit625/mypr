@@ -70,10 +70,12 @@ export async function GET(
         } else if (deviceType === 'Android' && linkDoc.links.android) {
             destinationUrl = linkDoc.links.android;
         } else { 
-            destinationUrl = linkDoc.links.desktop || ''; // Fallback to desktop
+            // Fallback to desktop for any other case, including 'Desktop' device type
+            // or if the specific device URL is empty.
+            destinationUrl = linkDoc.links.desktop || '';
         }
         
-        // 4. Redirect if we have a valid destination URL
+        // 4. Redirect if we have a valid destination URL (any non-empty string)
         if (destinationUrl) {
             return NextResponse.redirect(destinationUrl);
         }
