@@ -14,6 +14,7 @@ import {
   updateDoc,
   addDoc,
   increment,
+  runTransaction
 } from 'firebase/firestore';
 
 export interface Links {
@@ -74,6 +75,8 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
     timestamp: Date.now(),
   };
 
+  // Perform two separate writes. This is more resilient than a transaction
+  // in environments where transactions might cause issues.
   // 1. Atomically increment the click count.
   await updateDoc(linkDocRef, {
       clickCount: increment(1)
