@@ -6,9 +6,9 @@ import { getLink, logClick } from '@/lib/url-shortener-db';
 /**
  * A robust device detection function that checks the `sec-ch-ua-platform` header.
  * @param headers The request headers.
- * @returns 'iOS', 'Android', or 'Desktop'.
+ * @returns 'iOS', 'Android'. Defaults to 'iOS' if platform is not recognized.
  */
-function detectDevice(headers: Headers): 'iOS' | 'Android' | 'Desktop' {
+function detectDevice(headers: Headers): 'iOS' | 'Android' {
   const platform = headers.get('sec-ch-ua-platform')?.toLowerCase() || '';
   // The header value might be wrapped in quotes, e.g., "Android".
   const cleanPlatform = platform.replace(/['"]/g, '');
@@ -16,11 +16,8 @@ function detectDevice(headers: Headers): 'iOS' | 'Android' | 'Desktop' {
   if (cleanPlatform.includes('android')) {
     return 'Android';
   }
-  if (cleanPlatform.includes('ios')) {
-    return 'iOS';
-  }
-  
-  return 'Desktop';
+  // Default to iOS if it's not Android
+  return 'iOS';
 }
 
 // Helper function to validate a URL.
