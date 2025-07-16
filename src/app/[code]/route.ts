@@ -61,31 +61,34 @@ export async function GET(
             console.error(`Failed to log click for code ${code}:`, error);
         }
         
-        // 3. Determine the destination URL based on the refined detection logic
+        // 3. Determine the destination URL with the correct logic
         const deviceType = detectDevice(request.headers);
-        let destinationUrl = '';
+        let destinationUrl: string | undefined | null = '';
 
-        if (deviceType === 'iOS' && linkDoc.links.ios) {
+        if (deviceType === 'iOS') {
             destinationUrl = linkDoc.links.ios;
-        } else if (deviceType === 'Android' && linkDoc.links.android) {
+        } else if (deviceType === 'Android') {
             destinationUrl = linkDoc.links.android;
-        } else { 
-            // Fallback to desktop for any other case, including 'Desktop' device type
-            // or if the specific device URL is empty.
-            destinationUrl = linkDoc.links.desktop || '';
+        } else {
+            destinationUrl = linkDoc.links.desktop;
+        }
+
+        // 4. Smart Fallback: If the chosen device-specific URL is empty, fallback to desktop.
+        if (!destinationUrl) {
+            destinationUrl = linkDoc.links.desktop;
         }
         
-        // 4. Redirect if we have a valid destination URL (any non-empty string)
+        // 5. Redirect if we have a valid destination URL (any non-empty string)
         if (destinationUrl) {
             return NextResponse.redirect(destinationUrl);
         }
 
-        // 5. If no valid URL could be determined, redirect to the error log page with details.
+        // 6. If no valid URL could be determined, redirect to the error log page with details.
         const errorParams = new URLSearchParams({
             error: 'No valid destination URL could be determined for the detected device.',
             code: code,
             detectedDevice: deviceType,
-            attemptedUrl: destinationUrl,
+            attemptedUrl: destinationUrl || '"" (Empty String)',
             desktopUrl: linkDoc.links.desktop || 'N/A',
             androidUrl: linkDoc.links.android || 'N/A',
             iosUrl: linkDoc.links.ios || 'N/A',
