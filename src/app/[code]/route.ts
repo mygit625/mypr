@@ -2,7 +2,26 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getLink, logClick } from '@/lib/url-shortener-db';
-import * as deviceDetection from '@/lib/device-detection';
+
+/**
+ * A robust device detection function that checks the `sec-ch-ua-platform` header.
+ * @param headers The request headers.
+ * @returns 'iOS', 'Android', or 'Desktop'.
+ */
+function detectDevice(headers: Headers): 'iOS' | 'Android' | 'Desktop' {
+  const platform = headers.get('sec-ch-ua-platform')?.toLowerCase() || '';
+  // The header value might be wrapped in quotes, e.g., "Android".
+  const cleanPlatform = platform.replace(/['"]/g, '');
+
+  if (cleanPlatform.includes('android')) {
+    return 'Android';
+  }
+  if (cleanPlatform.includes('ios')) {
+    return 'iOS';
+  }
+  
+  return 'Desktop';
+}
 
 // Helper function to validate a URL.
 function isValidUrl(url: string | null | undefined): boolean {
@@ -38,7 +57,7 @@ export async function GET(
         // 2. Log the click event (non-blocking)
         try {
             await logClick(code, {
-                deviceType: deviceDetection.detectDevice(request.headers),
+                deviceType: detectDevice(request.headers),
                 rawData: {
                     headers: Object.fromEntries(request.headers.entries()),
                     ip: request.ip ?? 'N/A',
@@ -51,7 +70,7 @@ export async function GET(
         }
         
         // 3. Determine the destination URL
-        const deviceType = deviceDetection.detectDevice(request.headers);
+        const deviceType = detectDevice(request.headers);
         let destinationUrl = linkDoc.links.desktop || ''; // Default to desktop URL
 
         if (deviceType === 'iOS' && linkDoc.links.ios) {
