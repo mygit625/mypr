@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getLink, logClick } from '@/lib/url-shortener-db';
-import { detectDevice } from '@/lib/device-detection';
+import * as deviceDetection from '@/lib/device-detection';
 
 // Helper function to validate a URL.
 function isValidUrl(url: string | null | undefined): boolean {
@@ -38,7 +38,7 @@ export async function GET(
         // 2. Log the click event (non-blocking)
         try {
             await logClick(code, {
-                deviceType: detectDevice(request.headers),
+                deviceType: deviceDetection.detectDevice(request.headers),
                 rawData: {
                     headers: Object.fromEntries(request.headers.entries()),
                     ip: request.ip ?? 'N/A',
@@ -51,7 +51,7 @@ export async function GET(
         }
         
         // 3. Determine the destination URL
-        const deviceType = detectDevice(request.headers);
+        const deviceType = deviceDetection.detectDevice(request.headers);
         let destinationUrl = linkDoc.links.desktop || ''; // Default to desktop URL
 
         if (deviceType === 'iOS' && linkDoc.links.ios) {
@@ -62,8 +62,6 @@ export async function GET(
         
         // 4. Validate the chosen URL and redirect
         if (isValidUrl(destinationUrl)) {
-            // The URL is valid, perform the redirect.
-            // Using an absolute URL string is the most reliable method.
             return NextResponse.redirect(destinationUrl);
         }
 
