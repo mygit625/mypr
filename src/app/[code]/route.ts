@@ -5,18 +5,25 @@ import { getLink, logClick } from '@/lib/url-shortener-db';
 
 /**
  * A robust device detection function that checks the `sec-ch-ua-platform` header.
+ * It positively identifies Android and common Desktop OSes.
+ * If the platform is not recognized, it defaults to 'iOS'.
  * @param headers The request headers.
- * @returns 'iOS', 'Android'. Defaults to 'iOS' if platform is not recognized.
+ * @returns 'iOS', 'Android', or 'Desktop'.
  */
-function detectDevice(headers: Headers): 'iOS' | 'Android' {
+function detectDevice(headers: Headers): 'iOS' | 'Android' | 'Desktop' {
   const platform = headers.get('sec-ch-ua-platform')?.toLowerCase() || '';
-  // The header value might be wrapped in quotes, e.g., "Android".
+  // The header value might be wrapped in quotes, e.g., "Android", "Windows".
   const cleanPlatform = platform.replace(/['"]/g, '');
 
   if (cleanPlatform.includes('android')) {
     return 'Android';
   }
-  // Default to iOS if it's not Android
+
+  if (['windows', 'linux', 'macos'].some(p => cleanPlatform.includes(p))) {
+    return 'Desktop';
+  }
+
+  // Default to iOS if it's not a recognized Android or Desktop platform.
   return 'iOS';
 }
 
@@ -66,14 +73,16 @@ export async function GET(
             console.error(`Failed to log click for code ${code}:`, error);
         }
         
-        // 3. Determine the destination URL
+        // 3. Determine the destination URL based on the refined detection logic
         const deviceType = detectDevice(request.headers);
-        let destinationUrl = linkDoc.links.desktop || ''; // Default to desktop URL
+        let destinationUrl = '';
 
-        if (deviceType === 'iOS' && linkDoc.links.ios) {
-            destinationUrl = linkDoc.links.ios;
-        } else if (deviceType === 'Android' && linkDoc.links.android) {
-            destinationUrl = linkDoc.links.android;
+        if (deviceType === 'iOS') {
+            destinationUrl = linkDoc.links.ios || linkDoc.links.desktop || '';
+        } else if (deviceType === 'Android') {
+            destinationUrl = linkDoc.links.android || linkDoc.links.desktop || '';
+        } else { // deviceType is 'Desktop'
+            destinationUrl = linkDoc.links.desktop || '';
         }
         
         // 4. Validate the chosen URL and redirect
