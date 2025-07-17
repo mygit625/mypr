@@ -43,8 +43,9 @@ export async function POST(request: Request) {
         country: cfIpCountry
       },
     };
-
-    // Asynchronously log the click, don't wait for it to complete
+    
+    // The real-time increment was failing. It is removed in favor of a manual recount tool.
+    // The detailed log is still saved for recount purposes.
     logClick(code, clickData).catch(console.error);
 
     return NextResponse.json({ success: true }, { status: 202 });

@@ -31,7 +31,8 @@ import {
   Menu,
   X,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Calculator
 } from 'lucide-react';
 
 interface MenuItem {
@@ -90,6 +91,7 @@ const menuItems: MenuItem[] = [
       { title: 'PDF Tools', href: '/admin/tools/pdf', icon: FileText },
       { title: 'Image Tools', href: '/admin/tools/image', icon: FileCheck },
       { title: 'Converters', href: '/admin/tools/converters', icon: Zap },
+      { title: 'Recalculate Clicks', href: '/admin/recalculate-counts', icon: Calculator },
       { title: 'Tool Settings', href: '/admin/tools/settings', icon: Settings },
     ]
   },

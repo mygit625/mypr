@@ -14,7 +14,8 @@ import {
   updateDoc,
   addDoc,
   increment,
-  runTransaction
+  runTransaction,
+  getCountFromServer
 } from 'firebase/firestore';
 
 export interface Links {
@@ -74,27 +75,14 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
     const clicksCollectionRef = clicksSubcollection(code);
 
     try {
-        await runTransaction(db, async (transaction) => {
-            const linkDoc = await transaction.get(linkDocRef);
-
-            if (!linkDoc.exists()) {
-                console.error(`Attempted to log click for non-existent link code: ${code}`);
-                return; 
-            }
-
-            // Correctly use Firestore's atomic increment operation.
-            transaction.update(linkDocRef, { clickCount: increment(1) });
-
-            // Add the new click document within the same transaction.
-            const newClickDocRef = doc(clicksCollectionRef); // Create a new doc ref for the subcollection.
-            const completeClickData: ClickData = {
-                ...clickData,
-                timestamp: Date.now(),
-            };
-            transaction.set(newClickDocRef, completeClickData);
-        });
+        // Just add the click document. The increment is removed.
+        const completeClickData: ClickData = {
+            ...clickData,
+            timestamp: Date.now(),
+        };
+        await addDoc(clicksCollectionRef, completeClickData);
     } catch (e) {
-        console.error("Click logging transaction failed: ", e);
+        console.error("Click logging failed: ", e);
         // Do not re-throw, as we don't want to block the redirect.
     }
 }
@@ -111,4 +99,26 @@ export async function getRecentClicksForLink(linkId: string, count: number = 5):
     const q = query(clicksSubcollection(linkId), orderBy('timestamp', 'desc'), limit(count));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => doc.data() as ClickData);
+}
+
+// New function for admin tool
+export async function recalculateAllClickCounts(): Promise<{success: boolean, updatedCount: number, error?: string}> {
+  try {
+    const querySnapshot = await getDocs(linksCollection);
+    let updatedCount = 0;
+
+    for (const linkDoc of querySnapshot.docs) {
+      const linkId = linkDoc.id;
+      const clicksRef = clicksSubcollection(linkId);
+      const snapshot = await getCountFromServer(clicksRef);
+      const clickCount = snapshot.data().count;
+      
+      await updateDoc(doc(linksCollection, linkId), { clickCount: clickCount });
+      updatedCount++;
+    }
+    return { success: true, updatedCount };
+  } catch (e: any) {
+    console.error("Failed to recalculate click counts:", e);
+    return { success: false, updatedCount: 0, error: e.message };
+  }
 }

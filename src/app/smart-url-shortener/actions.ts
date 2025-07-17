@@ -3,7 +3,7 @@
 
 import { headers } from 'next/headers';
 import { nanoid } from 'nanoid';
-import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink, getRecentClicksForLink, type ClickData, logClick } from '@/lib/url-shortener-db';
+import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink, getRecentClicksForLink, type ClickData, logClick, recalculateAllClickCounts } from '@/lib/url-shortener-db';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
@@ -114,5 +114,17 @@ export async function getClicksForLinkAction(linkId: string): Promise<ClickData[
     } catch (error) {
         console.error(`Error fetching clicks for link ${linkId}:`, error);
         return [];
+    }
+}
+
+export async function recalculateCountsAction(): Promise<{success: boolean, updatedCount: number, error?: string}> {
+    try {
+        const result = await recalculateAllClickCounts();
+        if (result.success) {
+            revalidatePath('/smart-url-shortener');
+        }
+        return result;
+    } catch (e: any) {
+        return { success: false, updatedCount: 0, error: e.message };
     }
 }
