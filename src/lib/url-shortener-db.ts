@@ -78,14 +78,17 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
             const linkDoc = await transaction.get(linkDocRef);
 
             if (!linkDoc.exists()) {
-                throw new Error("Link document does not exist!");
+                // If the link document somehow doesn't exist, we can't increment.
+                // Log an error and stop.
+                console.error(`Attempted to log click for non-existent link code: ${code}`);
+                return; 
             }
 
-            // Correctly increment the count
-            const newClickCount = (linkDoc.data().clickCount || 0) + 1;
-            transaction.update(linkDocRef, { clickCount: newClickCount });
+            // Atomically increment the clickCount field by 1.
+            // This is the correct, safe way to update a counter.
+            transaction.update(linkDocRef, { clickCount: increment(1) });
 
-            // Add the new click document with a new ID
+            // Add the new click document with a new ID to the subcollection.
             const newClickDocRef = doc(clicksCollectionRef);
             const completeClickData: ClickData = {
                 ...clickData,
@@ -94,7 +97,7 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
             transaction.set(newClickDocRef, completeClickData);
         });
     } catch (e) {
-        console.error("Transaction failed: ", e);
+        console.error("Click logging transaction failed: ", e);
         // Do not re-throw, as we don't want to block the redirect.
     }
 }
