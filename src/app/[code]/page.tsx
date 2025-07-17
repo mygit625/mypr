@@ -1,8 +1,8 @@
 
 import { getLink } from '@/lib/url-shortener-db';
-import { Loader2 } from 'lucide-react';
 import { headers } from 'next/headers';
 import RedirectClientComponent from './RedirectClientComponent';
+import { logClickAction } from '../smart-url-shortener/actions';
 
 interface RedirectPageProps {
   params: { code: string };
@@ -14,7 +14,7 @@ export default async function RedirectPage({ params }: RedirectPageProps) {
   const userAgent = headersList.get('user-agent') || '';
   
   // Quick check for bots on the server side to avoid unnecessary Firestore reads
-  if (userAgent.match(/bot|spider|crawler/i)) {
+  if (userAgent.match(/bot|spider|crawler|preview/i)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
         <h1 className="text-2xl font-bold">Bot Detected</h1>
@@ -34,6 +34,10 @@ export default async function RedirectPage({ params }: RedirectPageProps) {
     );
   }
 
+  // *** Log the click before rendering the client component ***
+  // This is a fire-and-forget operation; we don't need to wait for it.
+  logClickAction(params.code, headersList).catch(console.error);
+  
   // Pass the fetched links to the client component
   return <RedirectClientComponent links={linkDoc.links} />;
 }

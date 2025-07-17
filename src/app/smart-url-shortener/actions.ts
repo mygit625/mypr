@@ -3,7 +3,7 @@
 
 import { headers } from 'next/headers';
 import { nanoid } from 'nanoid';
-import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink, getRecentClicksForLink, type ClickData } from '@/lib/url-shortener-db';
+import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink, getRecentClicksForLink, type ClickData, logClick } from '@/lib/url-shortener-db';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
@@ -115,4 +115,43 @@ export async function getClicksForLinkAction(linkId: string): Promise<ClickData[
         console.error(`Error fetching clicks for link ${linkId}:`, error);
         return [];
     }
+}
+
+// New action to log a click
+export async function logClickAction(code: string, headers: Headers): Promise<void> {
+  try {
+    const userAgent = headers.get('user-agent') || '';
+    const secChUaPlatform = headers.get('sec-ch-ua-platform')?.replace(/"/g, '');
+    const cfIpCountry = headers.get('cf-ipcountry');
+    
+    let deviceType = "Desktop";
+    if (/android/i.test(secChUaPlatform || userAgent)) {
+        deviceType = "Android";
+    } else if (/windows/i.test(secChUaPlatform || userAgent)) {
+        deviceType = "Desktop";
+    } else { // Default to iOS for unknown/missing platform
+        deviceType = "iOS";
+    }
+
+    const rawHeaders: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      rawHeaders[key] = value;
+    });
+    
+    const clickData = {
+      deviceType,
+      rawData: {
+        headers: rawHeaders,
+        ip: headers.get('x-forwarded-for') ?? undefined,
+        userAgent: userAgent,
+        platform: secChUaPlatform,
+        country: cfIpCountry
+      },
+    };
+
+    await logClick(code, clickData);
+  } catch (error) {
+    // Log the error but don't block the redirect.
+    console.error(`Failed to log click for code ${code}:`, error);
+  }
 }
