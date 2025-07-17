@@ -22,6 +22,7 @@ export default function RedirectClientComponent({ links }: RedirectClientCompone
       const ua = navigator.userAgent.toLowerCase();
       let destinationUrl = '';
 
+      // Prioritized check: first iOS, then Android, then default to Desktop.
       if (/iphone|ipad|ipod/.test(ua)) {
         destinationUrl = links.ios;
       } else if (/android/.test(ua)) {
@@ -30,7 +31,7 @@ export default function RedirectClientComponent({ links }: RedirectClientCompone
         destinationUrl = links.desktop;
       }
 
-      // Fallback to desktop URL only if the determined URL is empty
+      // If the chosen device-specific URL is empty, fall back to the desktop URL.
       if (!destinationUrl) {
           destinationUrl = links.desktop || '';
       }
