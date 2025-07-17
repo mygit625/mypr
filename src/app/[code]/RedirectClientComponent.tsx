@@ -20,16 +20,17 @@ export default function RedirectClientComponent({ links }: RedirectClientCompone
   useEffect(() => {
     try {
       const ua = navigator.userAgent.toLowerCase();
-      let destinationUrl = links.desktop || ''; // Default to desktop
+      let destinationUrl = '';
 
-      // Prioritize iOS, then Android, then Desktop.
-      if (/iphone|ipad|ipod/.test(ua) && links.ios) {
+      if (/iphone|ipad|ipod/.test(ua)) {
         destinationUrl = links.ios;
-      } else if (/android/.test(ua) && links.android) {
+      } else if (/android/.test(ua)) {
         destinationUrl = links.android;
+      } else {
+        destinationUrl = links.desktop;
       }
 
-      // Final fallback to desktop if a more specific URL was chosen but was empty
+      // Fallback to desktop URL only if the determined URL is empty
       if (!destinationUrl) {
           destinationUrl = links.desktop || '';
       }
