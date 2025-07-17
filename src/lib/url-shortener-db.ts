@@ -38,6 +38,8 @@ export interface ClickData {
     headers: Record<string, string>;
     ip?: string;
     userAgent: string;
+    platform?: string | null;
+    country?: string | null;
   };
 }
 
@@ -68,23 +70,35 @@ export async function getLink(code: string): Promise<DynamicLink | null> {
 }
 
 export async function logClick(code: string, clickData: Omit<ClickData, 'timestamp'>): Promise<void> {
-  const linkDocRef = doc(linksCollection, code);
-  
-  const completeClickData: ClickData = {
-    ...clickData,
-    timestamp: Date.now(),
-  };
+    const linkDocRef = doc(linksCollection, code);
+    const clicksCollectionRef = clicksSubcollection(code);
 
-  // Perform two separate writes. This is more resilient than a transaction
-  // in environments where transactions might cause issues.
-  // 1. Atomically increment the click count.
-  await updateDoc(linkDocRef, {
-      clickCount: increment(1)
-  });
+    try {
+        await runTransaction(db, async (transaction) => {
+            const linkDoc = await transaction.get(linkDocRef);
 
-  // 2. Add the detailed click document.
-  await addDoc(clicksSubcollection(code), completeClickData);
+            if (!linkDoc.exists()) {
+                throw new Error("Link document does not exist!");
+            }
+
+            // Correctly increment the count
+            const newClickCount = (linkDoc.data().clickCount || 0) + 1;
+            transaction.update(linkDocRef, { clickCount: newClickCount });
+
+            // Add the new click document with a new ID
+            const newClickDocRef = doc(clicksCollectionRef);
+            const completeClickData: ClickData = {
+                ...clickData,
+                timestamp: Date.now(),
+            };
+            transaction.set(newClickDocRef, completeClickData);
+        });
+    } catch (e) {
+        console.error("Transaction failed: ", e);
+        // Do not re-throw, as we don't want to block the redirect.
+    }
 }
+
 
 export async function getRecentLinks(): Promise<DynamicLink[]> {
   const q = query(linksCollection, orderBy('createdAt', 'desc'), limit(10));
