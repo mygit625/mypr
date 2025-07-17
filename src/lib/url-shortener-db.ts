@@ -78,18 +78,15 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
             const linkDoc = await transaction.get(linkDocRef);
 
             if (!linkDoc.exists()) {
-                // If the link document somehow doesn't exist, we can't increment.
-                // Log an error and stop.
                 console.error(`Attempted to log click for non-existent link code: ${code}`);
                 return; 
             }
 
-            // Atomically increment the clickCount field by 1.
-            // This is the correct, safe way to update a counter.
+            // Correctly use Firestore's atomic increment operation.
             transaction.update(linkDocRef, { clickCount: increment(1) });
 
-            // Add the new click document with a new ID to the subcollection.
-            const newClickDocRef = doc(clicksCollectionRef);
+            // Add the new click document within the same transaction.
+            const newClickDocRef = doc(clicksCollectionRef); // Create a new doc ref for the subcollection.
             const completeClickData: ClickData = {
                 ...clickData,
                 timestamp: Date.now(),
