@@ -2,7 +2,6 @@
 import { getLink } from '@/lib/url-shortener-db';
 import { headers } from 'next/headers';
 import RedirectClientComponent from './RedirectClientComponent';
-import { logClickAction } from '../smart-url-shortener/actions';
 
 interface RedirectPageProps {
   params: { code: string };
@@ -34,10 +33,6 @@ export default async function RedirectPage({ params }: RedirectPageProps) {
     );
   }
 
-  // *** Log the click before rendering the client component ***
-  // This is a fire-and-forget operation; we don't need to wait for it.
-  logClickAction(params.code, headersList).catch(console.error);
-  
-  // Pass the fetched links to the client component
-  return <RedirectClientComponent links={linkDoc.links} />;
+  // Pass the fetched links and code to the client component for redirection and logging
+  return <RedirectClientComponent code={params.code} links={linkDoc.links} />;
 }

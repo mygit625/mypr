@@ -11,21 +11,26 @@ interface Links {
 }
 
 interface RedirectClientComponentProps {
+  code: string;
   links: Links;
 }
 
-export default function RedirectClientComponent({ links }: RedirectClientComponentProps) {
+export default function RedirectClientComponent({ code, links }: RedirectClientComponentProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Fire-and-forget call to the log-click API endpoint
+    fetch('/api/log-click', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+      keepalive: true, // Important for requests that might outlive the page
+    }).catch(console.error);
+
     try {
       const ua = navigator.userAgent.toLowerCase();
       let destinationUrl = '';
 
-      // Logic as per explicit instructions:
-      // 1. Check for Android.
-      // 2. Check for Windows.
-      // 3. Default everything else to iOS.
       if (/android/.test(ua)) {
         destinationUrl = links.android;
       } else if (/windows/.test(ua)) {
@@ -34,7 +39,6 @@ export default function RedirectClientComponent({ links }: RedirectClientCompone
         destinationUrl = links.ios;
       }
 
-      // If the chosen device-specific URL is empty, fall back to the desktop URL as a final safeguard.
       if (!destinationUrl) {
           destinationUrl = links.desktop || '';
       }
@@ -48,7 +52,7 @@ export default function RedirectClientComponent({ links }: RedirectClientCompone
       console.error("Redirection error on client:", e);
       setError(e.message || "An unexpected client-side error occurred.");
     }
-  }, [links]);
+  }, [code, links]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
