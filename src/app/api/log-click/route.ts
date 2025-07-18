@@ -17,15 +17,17 @@ export async function POST(request: Request) {
     const secChUaPlatform = headersList.get('sec-ch-ua-platform')?.replace(/"/g, '');
     const cfIpCountry = headersList.get('cf-ipcountry');
 
-    let deviceType = "Desktop";
-    if (/android/i.test(secChUaPlatform || userAgent)) {
-        deviceType = "Android";
-    } else if (/windows/i.test(secChUaPlatform || userAgent)) {
-        deviceType = "Desktop";
-    } else if (/iphone|ipad|ipod|macintosh/.test(userAgent)) {
-        deviceType = "iOS";
+    let deviceType = 'Desktop'; // Default
+    const ua = userAgent.toLowerCase();
+    const platform = secChUaPlatform?.toLowerCase() || '';
+
+    if (/android/.test(platform) || /android/.test(ua)) {
+      deviceType = "Android";
+    } else if (/windows/.test(platform) || /windows/.test(ua)) {
+      deviceType = "Desktop";
     } else {
-        deviceType = "Desktop"; // Default fallback
+      // Fallback for iOS and other non-Android/Windows devices
+      deviceType = "iOS";
     }
 
     const rawHeaders: Record<string, string> = {};
