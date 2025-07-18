@@ -1,7 +1,7 @@
 
 import { FeatureCard } from '@/components/feature/feature-card';
 import { 
-  Files, Image, QrCode, Scale, Calculator, Globe, Link as LinkIcon, BrainCircuit, Bot, Binary
+  Files, Image, QrCode, Scale, Calculator, Globe, Link as LinkIcon, BrainCircuit, Bot
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -23,7 +23,6 @@ const toolCategories: ToolCategory[] = [
   { title: 'Calculators', description: 'Access a variety of calculators for daily use, like finance or baby gender.', href: '#', Icon: Calculator, iconColor: 'text-purple-500' },
   { title: 'Web Tools', description: 'A collection of useful web utilities for developers and designers.', href: '#', Icon: Globe, iconColor: 'text-sky-500' },
   { title: 'Automation Tools', description: 'Jumpstart your workflows with our library of pre-built N8N templates and other tools.', href: '/automation-tools', Icon: Bot, iconColor: 'text-emerald-500' },
-  { title: 'Other Tools', description: 'A collection of miscellaneous utilities like text to binary converter.', href: '#', Icon: Binary, iconColor: 'text-slate-500' },
 ];
 
 export default function HomePage() {
