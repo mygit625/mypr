@@ -54,8 +54,7 @@ export async function isCodeUnique(code: string): Promise<boolean> {
 
 export async function createDynamicLink(code: string, links: Links): Promise<void> {
   const docRef = doc(linksCollection, code);
-  const newLink: DynamicLink = {
-    id: code,
+  const newLink: Omit<DynamicLink, 'id'> = {
     links,
     createdAt: Date.now(),
     clickCount: 0,
@@ -66,7 +65,8 @@ export async function createDynamicLink(code: string, links: Links): Promise<voi
 export async function getLink(code: string): Promise<DynamicLink | null> {
   const docRef = doc(linksCollection, code);
   const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? (docSnap.data() as DynamicLink) : null;
+  if (!docSnap.exists()) return null;
+  return { id: docSnap.id, ...docSnap.data() } as DynamicLink;
 }
 
 export async function logClick(code: string, clickData: Omit<ClickData, 'timestamp'>): Promise<void> {
@@ -74,22 +74,17 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
     const clicksCollectionRef = clicksSubcollection(code);
 
     try {
-        // 1. Atomically increment the counter. This is the most reliable way.
-        await updateDoc(linkDocRef, {
-            clickCount: increment(1)
-        });
-
-        // 2. Add the detailed click document.
         const completeClickData: ClickData = {
             ...clickData,
             timestamp: Date.now(),
         };
-        await addDoc(clicksCollectionRef, completeClickData);
-        
+        // Perform writes in parallel
+        await Promise.all([
+            addDoc(clicksCollectionRef, completeClickData),
+            updateDoc(linkDocRef, { clickCount: increment(1) })
+        ]);
     } catch (e) {
         console.error(`[FATAL] Click logging failed for code ${code}:`, e);
-        // Do not re-throw, as we don't want to block the user's redirect.
-        // The error is logged on the server for debugging.
     }
 }
 
@@ -97,7 +92,7 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
 export async function getRecentLinks(): Promise<DynamicLink[]> {
   const q = query(linksCollection, orderBy('createdAt', 'desc'), limit(10));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => doc.data() as DynamicLink);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DynamicLink));
 }
 
 
@@ -106,6 +101,13 @@ export async function getRecentClicksForLink(linkId: string, count: number = 5):
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => doc.data() as ClickData);
 }
+
+export async function getClicksForLink(linkId: string): Promise<ClickData[]> {
+    const q = query(clicksSubcollection(linkId), orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => doc.data() as ClickData);
+}
+
 
 // New function for admin tool
 export async function recalculateAllClickCounts(): Promise<{success: boolean, updatedCount: number, error?: string}> {

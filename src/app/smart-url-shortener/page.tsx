@@ -3,8 +3,8 @@
 
 import { useActionState, useEffect, useState, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
-import { createDynamicLinkAction, getLinksAction, getClicksForLinkAction, type CreateLinkState } from './actions';
-import { type DynamicLink, type ClickData } from '@/lib/url-shortener-db';
+import { createDynamicLinkAction, getLinksAction, getClickStatsAction, type CreateLinkState, type ClickStats } from './actions';
+import { type DynamicLink } from '@/lib/url-shortener-db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,14 +12,12 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, MoreVertical, Download, MousePointerClick, TrendingUp, Target, UserCheck, Eye, BarChart2 } from 'lucide-react';
+import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, MoreVertical, Download, BarChart2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { QRCodeCanvas } from 'qrcode.react';
 import { downloadDataUri } from '@/lib/download-utils';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 function SubmitButton() {
@@ -41,61 +39,76 @@ function SubmitButton() {
   );
 }
 
-function ViewClicksButton({ linkId }: { linkId: string }) {
-    const [clicks, setClicks] = useState<ClickData[]>([]);
+function ViewStatsButton({ linkId, initialClickCount }: { linkId: string, initialClickCount: number }) {
+    const [stats, setStats] = useState<ClickStats | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const handleFetchClicks = async () => {
+    const handleFetchStats = async () => {
         setIsLoading(true);
-        const fetchedClicks = await getClicksForLinkAction(linkId);
-        setClicks(fetchedClicks);
+        setError(null);
+        const result = await getClickStatsAction(linkId);
+        if ('error' in result) {
+            setError(result.error);
+        } else {
+            setStats(result);
+        }
         setIsLoading(false);
     };
     
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start" size="sm" onClick={handleFetchClicks}>
-                    <Eye className="h-4 w-4 mr-2" /> View Clicks
+                <Button variant="ghost" className="w-full justify-start" size="sm" onClick={handleFetchStats}>
+                    <BarChart2 className="h-4 w-4 mr-2" /> View Statistics
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl">
+            <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Recent Clicks for /{linkId}</DialogTitle>
+                    <DialogTitle>Click Statistics for /{linkId}</DialogTitle>
                     <DialogDescription>
-                        Showing the last 5 clicks with full raw data.
+                        A summary of clicks by detected device type. The total may differ from the table if new clicks occurred.
                     </DialogDescription>
                 </DialogHeader>
-                <ScrollArea className="h-[60vh] mt-4">
+                <div className="mt-4">
                     {isLoading ? (
                         <div className="flex justify-center items-center h-48">
                             <Loader2 className="h-8 w-8 animate-spin" />
                         </div>
-                    ) : clicks.length > 0 ? (
-                        <div className="space-y-4 pr-6">
-                            {clicks.map((click, index) => (
-                                <Accordion type="single" collapsible key={index}>
-                                    <AccordionItem value={`click-${index}`}>
-                                        <AccordionTrigger>
-                                            <div className="flex items-center gap-2 text-sm">
-                                                {click.deviceType === 'Desktop' ? <Laptop className="h-4 w-4" /> : click.deviceType === 'Android' ? <Smartphone className="h-4 w-4" /> : <Apple className="h-4 w-4" />}
-                                                <span>{click.deviceType} Click</span>
-                                                <span className="text-xs text-muted-foreground ml-2">{formatDistanceToNow(click.timestamp, { addSuffix: true })}</span>
-                                            </div>
-                                        </AccordionTrigger>
-                                        <AccordionContent>
-                                            <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
-                                                {JSON.stringify(click.rawData, null, 2)}
-                                            </pre>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                </Accordion>
-                            ))}
+                    ) : error ? (
+                         <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    ) : stats ? (
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center text-lg font-medium p-3 bg-muted rounded-md">
+                                <span>Total Clicks</span>
+                                <span>{stats.total}</span>
+                            </div>
+                             <div className="grid grid-cols-3 gap-2 text-center">
+                                <div className="p-2 border rounded-md">
+                                    <Laptop className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                                    <p className="text-xl font-bold">{stats.desktop}</p>
+                                    <p className="text-xs text-muted-foreground">Desktop</p>
+                                </div>
+                                <div className="p-2 border rounded-md">
+                                    <Smartphone className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                                    <p className="text-xl font-bold">{stats.android}</p>
+                                    <p className="text-xs text-muted-foreground">Android</p>
+                                </div>
+                                <div className="p-2 border rounded-md">
+                                    <Apple className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                                    <p className="text-xl font-bold">{stats.ios}</p>
+                                    <p className="text-xs text-muted-foreground">iOS</p>
+                                </div>
+                            </div>
                         </div>
                     ) : (
-                        <p className="text-center text-muted-foreground py-12">No click data available for this link yet.</p>
+                        <p className="text-center text-muted-foreground py-12">No statistics available for this link yet.</p>
                     )}
-                </ScrollArea>
+                </div>
             </DialogContent>
         </Dialog>
     )
@@ -278,7 +291,7 @@ export default function UrlShortenerPage() {
               <TableRow>
                 <TableHead>Short URL</TableHead>
                 <TableHead>Destinations</TableHead>
-                <TableHead>Clicks & Raw Data</TableHead>
+                <TableHead>Total Clicks</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -337,7 +350,7 @@ export default function UrlShortenerPage() {
                            <Button variant="ghost" className="w-full justify-start" size="sm" onClick={() => copyToClipboard(`${baseUrl}/${link.id}`)}>
                              <Copy className="h-4 w-4 mr-2" /> Copy Link
                            </Button>
-                           <ViewClicksButton linkId={link.id} />
+                           <ViewStatsButton linkId={link.id} initialClickCount={link.clickCount ?? 0} />
                          </div>
                       </PopoverContent>
                     </Popover>

@@ -3,7 +3,7 @@
 
 import { headers } from 'next/headers';
 import { nanoid } from 'nanoid';
-import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink, getRecentClicksForLink, type ClickData, logClick, recalculateAllClickCounts } from '@/lib/url-shortener-db';
+import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink, getRecentClicksForLink, type ClickData, logClick, recalculateAllClickCounts, getClicksForLink } from '@/lib/url-shortener-db';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
@@ -116,6 +116,32 @@ export async function getClicksForLinkAction(linkId: string): Promise<ClickData[
         return [];
     }
 }
+
+export interface ClickStats {
+  desktop: number;
+  android: number;
+  ios: number;
+  total: number;
+}
+
+export async function getClickStatsAction(linkId: string): Promise<ClickStats | { error: string }> {
+    try {
+        const clicks = await getClicksForLink(linkId);
+        const stats: ClickStats = { desktop: 0, android: 0, ios: 0, total: clicks.length };
+        
+        for (const click of clicks) {
+            if (click.deviceType === 'Desktop') stats.desktop++;
+            else if (click.deviceType === 'Android') stats.android++;
+            else if (click.deviceType === 'iOS') stats.ios++;
+        }
+        
+        return stats;
+    } catch (error: any) {
+        console.error(`Error calculating stats for link ${linkId}:`, error);
+        return { error: error.message || 'Failed to fetch click statistics.' };
+    }
+}
+
 
 export async function recalculateCountsAction(): Promise<{success: boolean, updatedCount: number, error?: string}> {
     try {
