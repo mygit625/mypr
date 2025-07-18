@@ -11,8 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, MoreVertical, Download, BarChart2 } from 'lucide-react';
+import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, Download, BarChart2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -39,7 +38,7 @@ function SubmitButton() {
   );
 }
 
-function ViewStatsButton({ linkId, initialClickCount }: { linkId: string, initialClickCount: number }) {
+function StatsDialog({ linkId, initialClickCount }: { linkId: string, initialClickCount: number }) {
     const [stats, setStats] = useState<ClickStats | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -57,17 +56,17 @@ function ViewStatsButton({ linkId, initialClickCount }: { linkId: string, initia
     };
     
     return (
-        <Dialog>
+        <Dialog onOpenChange={(open) => { if(open) handleFetchStats() }}>
             <DialogTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start" size="sm" onClick={handleFetchStats}>
-                    <BarChart2 className="h-4 w-4 mr-2" /> View Statistics
+                 <Button variant="outline" size="sm" className="font-mono">
+                    {initialClickCount ?? 0} Clicks
                 </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Click Statistics for /{linkId}</DialogTitle>
                     <DialogDescription>
-                        A summary of clicks by detected device type. The total may differ from the table if new clicks occurred.
+                        A summary of clicks by detected device type.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="mt-4">
@@ -82,26 +81,32 @@ function ViewStatsButton({ linkId, initialClickCount }: { linkId: string, initia
                             <AlertDescription>{error}</AlertDescription>
                         </Alert>
                     ) : stats ? (
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center text-lg font-medium p-3 bg-muted rounded-md">
+                        <div className="space-y-4">
+                             <div className="flex justify-between items-center text-lg font-bold p-4 bg-muted rounded-lg">
                                 <span>Total Clicks</span>
                                 <span>{stats.total}</span>
                             </div>
-                             <div className="grid grid-cols-3 gap-2 text-center">
-                                <div className="p-2 border rounded-md">
-                                    <Laptop className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                                    <p className="text-xl font-bold">{stats.desktop}</p>
-                                    <p className="text-xs text-muted-foreground">Desktop</p>
+                            <div className="space-y-2 text-base">
+                                <div className="flex justify-between items-center p-3 border rounded-md">
+                                    <div className="flex items-center gap-2">
+                                        <Laptop className="h-5 w-5 text-muted-foreground" />
+                                        <span>Desktop</span>
+                                    </div>
+                                    <span className="font-semibold">{stats.desktop}</span>
                                 </div>
-                                <div className="p-2 border rounded-md">
-                                    <Smartphone className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                                    <p className="text-xl font-bold">{stats.android}</p>
-                                    <p className="text-xs text-muted-foreground">Android</p>
+                                 <div className="flex justify-between items-center p-3 border rounded-md">
+                                    <div className="flex items-center gap-2">
+                                        <Smartphone className="h-5 w-5 text-muted-foreground" />
+                                        <span>Android</span>
+                                    </div>
+                                    <span className="font-semibold">{stats.android}</span>
                                 </div>
-                                <div className="p-2 border rounded-md">
-                                    <Apple className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                                    <p className="text-xl font-bold">{stats.ios}</p>
-                                    <p className="text-xs text-muted-foreground">iOS</p>
+                                <div className="flex justify-between items-center p-3 border rounded-md">
+                                    <div className="flex items-center gap-2">
+                                        <Apple className="h-5 w-5 text-muted-foreground" />
+                                        <span>iOS</span>
+                                    </div>
+                                    <span className="font-semibold">{stats.ios}</span>
                                 </div>
                             </div>
                         </div>
@@ -291,15 +296,14 @@ export default function UrlShortenerPage() {
               <TableRow>
                 <TableHead>Short URL</TableHead>
                 <TableHead>Destinations</TableHead>
-                <TableHead>Total Clicks</TableHead>
                 <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right">Statistics</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {recentLinks.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                         No links created yet. Your links will appear here.
                     </TableCell>
                 </TableRow>
@@ -331,29 +335,11 @@ export default function UrlShortenerPage() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                        <BarChart2 className="h-4 w-4 text-muted-foreground"/>
-                        <span className="font-mono text-sm">{link.clickCount ?? 0}</span>
-                    </div>
-                  </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {link.createdAt ? formatDistanceToNow(link.createdAt, { addSuffix: true }) : 'Just now'}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                         <div className="p-2 space-y-1">
-                           <Button variant="ghost" className="w-full justify-start" size="sm" onClick={() => copyToClipboard(`${baseUrl}/${link.id}`)}>
-                             <Copy className="h-4 w-4 mr-2" /> Copy Link
-                           </Button>
-                           <ViewStatsButton linkId={link.id} initialClickCount={link.clickCount ?? 0} />
-                         </div>
-                      </PopoverContent>
-                    </Popover>
+                    <StatsDialog linkId={link.id} initialClickCount={link.clickCount ?? 0} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -402,50 +388,6 @@ export default function UrlShortenerPage() {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-      </section>
-
-      <section className="max-w-4xl mx-auto py-12 px-4">
-        <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold tracking-tight">Maximize Your Reach with Smart, Device-Aware Links</h2>
-            <p className="text-lg text-muted-foreground mt-3 max-w-3xl mx-auto">
-                Go beyond simple redirection. Understand the advantages of using a multi-direction URL shortener to create smarter, more effective campaigns.
-            </p>
-        </div>
-        <div className="grid md:grid-cols-1 gap-10">
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-                <div className="flex-shrink-0 flex items-center justify-center h-14 w-14 rounded-full bg-primary/10 text-primary">
-                    <UserCheck className="h-7 w-7" />
-                </div>
-                <div>
-                    <h3 className="text-xl font-semibold mb-2">Provide a Seamless User Experience</h3>
-                    <p className="text-muted-foreground">
-                        Stop sending your mobile users to a desktop website. By automatically routing visitors to the correct app store or a mobile-optimized page, you reduce friction and eliminate confusion. A happy user is more likely to engage, purchase, or download.
-                    </p>
-                </div>
-            </div>
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-                <div className="flex-shrink-0 flex items-center justify-center h-14 w-14 rounded-full bg-primary/10 text-primary">
-                    <TrendingUp className="h-7 w-7" />
-                </div>
-                <div>
-                    <h3 className="text-xl font-semibold mb-2">Boost App Downloads & Conversions</h3>
-                    <p className="text-muted-foreground">
-                        For businesses with mobile apps, device-aware links are essential. A single link in your marketing email or social media bio can direct iOS users straight to the Apple App Store and Android users to the Google Play Store, significantly increasing download conversion rates.
-                    </p>
-                </div>
-            </div>
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-                <div className="flex-shrink-0 flex items-center justify-center h-14 w-14 rounded-full bg-primary/10 text-primary">
-                    <Target className="h-7 w-7" />
-                </div>
-                <div>
-                    <h3 className="text-xl font-semibold mb-2">Unify Your Marketing Campaigns</h3>
-                    <p className="text-muted-foreground">
-                        Use one short link and one QR code across all your marketing materials—from physical flyers to digital ads. This simplifies campaign management, provides cleaner analytics, and ensures a consistent call-to-action for your entire audience, no matter how they access your content.
-                    </p>
-                </div>
-            </div>
-        </div>
       </section>
     </div>
   );
