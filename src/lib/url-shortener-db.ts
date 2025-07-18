@@ -14,7 +14,6 @@ import {
   updateDoc,
   addDoc,
   increment,
-  runTransaction,
   getCountFromServer
 } from 'firebase/firestore';
 
@@ -75,15 +74,22 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
     const clicksCollectionRef = clicksSubcollection(code);
 
     try {
-        // Just add the click document. The increment is removed.
+        // 1. Atomically increment the counter. This is the most reliable way.
+        await updateDoc(linkDocRef, {
+            clickCount: increment(1)
+        });
+
+        // 2. Add the detailed click document.
         const completeClickData: ClickData = {
             ...clickData,
             timestamp: Date.now(),
         };
         await addDoc(clicksCollectionRef, completeClickData);
+        
     } catch (e) {
-        console.error("Click logging failed: ", e);
-        // Do not re-throw, as we don't want to block the redirect.
+        console.error(`[FATAL] Click logging failed for code ${code}:`, e);
+        // Do not re-throw, as we don't want to block the user's redirect.
+        // The error is logged on the server for debugging.
     }
 }
 

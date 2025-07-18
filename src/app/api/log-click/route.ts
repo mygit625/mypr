@@ -44,14 +44,15 @@ export async function POST(request: Request) {
       },
     };
     
-    // The real-time increment was failing. It is removed in favor of a manual recount tool.
-    // The detailed log is still saved for recount purposes.
+    // Fire-and-forget the logging process.
+    // The redirect should not wait for this to complete.
     logClick(code, clickData).catch(console.error);
 
+    // Respond immediately to the client.
     return NextResponse.json({ success: true }, { status: 202 });
 
   } catch (error) {
-    console.error('[API/log-click] Error:', error);
+    console.error('[API/log-click] Error processing request:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
