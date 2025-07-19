@@ -14,19 +14,17 @@ export async function POST(request: Request) {
 
     const headersList = headers();
     const userAgent = headersList.get('user-agent') || '';
-    const secChUaPlatform = headersList.get('sec-ch-ua-platform')?.replace(/"/g, '');
-    const cfIpCountry = headersList.get('cf-ipcountry');
-
+    
+    // Simplified and corrected device detection logic
     let deviceType: 'Android' | 'Desktop' | 'iOS'; 
     const ua = userAgent.toLowerCase();
-    const platform = secChUaPlatform?.toLowerCase() || '';
 
-    if (/android/.test(platform) || /android/.test(ua)) {
+    if (/android/.test(ua)) {
       deviceType = "Android";
-    } else if (/windows/.test(platform) || /windows/.test(ua)) {
+    } else if (/windows/.test(ua)) {
       deviceType = "Desktop";
     } else {
-      // Fallback for iOS and all other non-Android/Windows devices
+      // Fallback for iOS and all other devices. This matches the client-side redirection logic.
       deviceType = "iOS";
     }
 
@@ -41,8 +39,8 @@ export async function POST(request: Request) {
         headers: rawHeaders,
         ip: headersList.get('x-forwarded-for') ?? undefined,
         userAgent: userAgent,
-        platform: secChUaPlatform,
-        country: cfIpCountry
+        platform: headersList.get('sec-ch-ua-platform')?.replace(/"/g, ''),
+        country: headersList.get('cf-ipcountry')
       },
     };
     
