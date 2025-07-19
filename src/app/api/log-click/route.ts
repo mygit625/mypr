@@ -15,17 +15,16 @@ export async function POST(request: Request) {
     const headersList = headers();
     const userAgent = headersList.get('user-agent') || '';
     
-    // Server-side device detection logic, mirroring the client-side implementation for consistency.
-    let deviceType: 'Android' | 'Desktop' | 'iOS'; 
-    const ua = userAgent.toLowerCase();
+    let deviceType: 'Android' | 'Desktop' | 'iOS';
+    const platformHeader = headersList.get('sec-ch-ua-platform')?.replace(/"/g, '');
 
-    if (/android/.test(ua)) {
-      deviceType = "Android";
-    } else if (/windows/.test(ua)) {
-      deviceType = "Desktop";
+    if (platformHeader === 'Android') {
+      deviceType = 'Android';
+    } else if (platformHeader === 'Windows') {
+      deviceType = 'Desktop';
     } else {
-      // Default for iOS, iPadOS, macOS, and others
-      deviceType = "iOS";
+      // Default to iOS if the platform header is missing, empty, or any other value (e.g., "iOS", "macOS").
+      deviceType = 'iOS';
     }
 
     const rawHeaders: Record<string, string> = {};
@@ -39,7 +38,7 @@ export async function POST(request: Request) {
         headers: rawHeaders,
         ip: headersList.get('x-forwarded-for') ?? undefined,
         userAgent: userAgent,
-        platform: headersList.get('sec-ch-ua-platform')?.replace(/"/g, ''),
+        platform: platformHeader || null, // Log the actual platform header value or null
         country: headersList.get('cf-ipcountry')
       },
     };
