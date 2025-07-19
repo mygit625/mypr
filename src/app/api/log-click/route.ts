@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const secChUaPlatform = headersList.get('sec-ch-ua-platform')?.replace(/"/g, '');
     const cfIpCountry = headersList.get('cf-ipcountry');
 
-    let deviceType = 'Desktop'; // Default
+    let deviceType: 'Android' | 'Desktop' | 'iOS'; 
     const ua = userAgent.toLowerCase();
     const platform = secChUaPlatform?.toLowerCase() || '';
 
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     } else if (/windows/.test(platform) || /windows/.test(ua)) {
       deviceType = "Desktop";
     } else {
-      // Fallback for iOS and other non-Android/Windows devices
+      // Fallback for iOS and all other non-Android/Windows devices
       deviceType = "iOS";
     }
 
