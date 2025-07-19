@@ -15,34 +15,18 @@ export async function POST(request: Request) {
     const headersList = headers();
     const userAgent = headersList.get('user-agent') || '';
     
-    // Server-side device detection logic
+    // Server-side device detection logic, mirroring the client-side implementation for consistency.
     let deviceType: 'Android' | 'Desktop' | 'iOS'; 
-    const platformHeader = headersList.get('sec-ch-ua-platform');
-    
-    // Check for platform header first. If it's not present, default to iOS.
-    if (platformHeader) {
-      const platform = platformHeader.replace(/"/g, '').toLowerCase();
-      if (platform === 'android') {
-        deviceType = "Android";
-      } else if (platform === 'windows') {
-        deviceType = "Desktop";
-      } else {
-        // Includes macOS, Linux, ChromeOS etc. Defaulting to iOS as per logic for redirection.
-        deviceType = "iOS";
-      }
-    } else {
-      // Fallback logic if sec-ch-ua-platform is not available
-      const ua = userAgent.toLowerCase();
-      if (/android/.test(ua)) {
-        deviceType = "Android";
-      } else if (/windows/.test(ua)) {
-        deviceType = "Desktop";
-      } else {
-        // Default for iOS, iPadOS, macOS, and others
-        deviceType = "iOS";
-      }
-    }
+    const ua = userAgent.toLowerCase();
 
+    if (/android/.test(ua)) {
+      deviceType = "Android";
+    } else if (/windows/.test(ua)) {
+      deviceType = "Desktop";
+    } else {
+      // Default for iOS, iPadOS, macOS, and others
+      deviceType = "iOS";
+    }
 
     const rawHeaders: Record<string, string> = {};
     headersList.forEach((value, key) => {
