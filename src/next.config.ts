@@ -26,11 +26,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  experimental: {
-    // fontkit is a dependency of pdf-lib, which is used in server actions.
-    // Marking it as external can help prevent bundling issues in serverless environments.
-    serverComponentsExternalPackages: ['fontkit'],
-  },
+  // fontkit is a dependency of pdf-lib, which is used in server actions.
+  // Marking it as external can help prevent bundling issues in serverless environments.
+  serverExternalPackages: ['fontkit'],
   webpack: (
     config: WebpackConfiguration,
     { isServer }
