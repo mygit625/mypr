@@ -4,7 +4,7 @@ import {
   Combine, Split, Minimize2, LayoutGrid, RotateCcw, FileMinus2, FilePlus2,
   FileText, Wrench, ScanText, FileCode, Presentation, Table2, ImagePlus, Globe,
   BarChart3, FileImage, Archive, Edit3, ListOrdered, Droplets, Unlock, Lock,
-  Diff, FileType, Crop, Paintbrush, PanelTop,
+  Diff, FileType, Crop, Paintbrush, PanelTop, FileSpreadsheet,
   Image as ImageIcon, Expand, Wand2, CircleEllipsis, Type, ArrowRightLeft, ImageUp,
   BrainCircuit, QrCode, Link as LinkIcon, Scale, Calculator, Bot, Waypoints, FileJson
 } from 'lucide-react';
