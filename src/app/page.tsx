@@ -1,7 +1,11 @@
 
+"use client";
+
+import { useState, useMemo } from 'react';
 import { FeatureCard } from '@/components/feature/feature-card';
+import { Input } from '@/components/ui/input';
 import { 
-  Files, Image, QrCode, Scale, Calculator, Globe, Link as LinkIcon, BrainCircuit, Bot
+  Files, Image, QrCode, Scale, Calculator, Globe, Link as LinkIcon, BrainCircuit, Bot, Search, XCircle
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -26,6 +30,18 @@ const toolCategories: ToolCategory[] = [
 ];
 
 export default function HomePage() {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredTools = useMemo(() => {
+    if (!searchTerm) {
+      return toolCategories;
+    }
+    return toolCategories.filter(tool =>
+      tool.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tool.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm]);
+
   return (
     <div className="space-y-12 md:space-y-16 pb-16">
       <section className="text-center pt-12 pb-8 md:pt-16 md:pb-12">
@@ -41,21 +57,45 @@ export default function HomePage() {
 
       <section>
         <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto mb-10">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search for a tool (e.g., Merge PDF, Compress Image...)"
+                className="w-full pl-10 h-12 text-base"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+          
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-6 md:mb-8 text-center">
             Explore Our Tool Categories
           </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
-            {toolCategories.map((tool) => (
-              <FeatureCard
-                key={tool.title}
-                title={tool.title}
-                description={tool.description}
-                href={tool.href}
-                Icon={tool.Icon}
-                iconColor={tool.iconColor}
-              />
-            ))}
-          </div>
+
+          {filteredTools.length > 0 ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
+              {filteredTools.map((tool) => (
+                <FeatureCard
+                  key={tool.title}
+                  title={tool.title}
+                  description={tool.description}
+                  href={tool.href}
+                  Icon={tool.Icon}
+                  iconColor={tool.iconColor}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center max-w-md mx-auto py-12 px-4 border border-dashed rounded-lg bg-muted/20">
+              <XCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-xl font-semibold">No Tools Found</h3>
+              <p className="text-muted-foreground mt-2">
+                Your search for "{searchTerm}" did not match any of our tools. Please try a different keyword.
+              </p>
+            </div>
+          )}
         </div>
       </section>
     </div>
