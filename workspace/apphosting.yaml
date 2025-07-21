@@ -24,6 +24,7 @@ env:
   # Secret for encrypting session cookies. Must be a private string of at least 32 characters.
   # This value is now managed in the Firebase console for deployed environments and in .env for local development.
   - variable: SECRET_COOKIE_PASSWORD
+    secret: SECRET_COOKIE_PASSWORD
 
   # Public URL of your deployed application (e.g., https://your-project-id.web.app)
   - variable: NEXT_PUBLIC_BASE_URL
