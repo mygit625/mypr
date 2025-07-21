@@ -25,8 +25,7 @@ export function SearchComponent() {
         tool.title.toLowerCase().includes(lowerCaseQuery) ||
         tool.description.toLowerCase().includes(lowerCaseQuery) ||
         tool.category.toLowerCase().includes(lowerCaseQuery)
-      )
-      .slice(0, 7); // Limit results to a reasonable number
+      );
   }, [query]);
 
   useEffect(() => {
