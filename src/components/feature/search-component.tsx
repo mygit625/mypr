@@ -71,12 +71,12 @@ export function SearchComponent() {
                     key={tool.href}
                     value={tool.title}
                     onSelect={() => handleSelect(tool.href)}
-                    className="cursor-pointer"
+                    className="cursor-pointer p-0"
                   >
-                    <div className="flex items-center gap-3">
-                        <tool.Icon className="h-4 w-4 text-muted-foreground"/>
-                        <span>{tool.title}</span>
-                    </div>
+                    <Link href={tool.href} className="flex items-center gap-3 p-2 w-full h-full">
+                      <tool.Icon className="h-4 w-4 text-muted-foreground"/>
+                      <span>{tool.title}</span>
+                    </Link>
                   </CommandItem>
                 ))}
               </CommandGroup>
