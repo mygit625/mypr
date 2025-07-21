@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -32,8 +33,10 @@ import {
   X,
   ChevronDown,
   ChevronRight,
-  Calculator
+  Calculator,
+  LogOut,
 } from 'lucide-react';
+import { logoutAction } from './login/actions';
 
 interface MenuItem {
   title: string;
@@ -138,6 +141,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const pathname = usePathname();
+
+  // Don't render layout for login page
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
 
   const toggleExpanded = (href: string) => {
     setExpandedItems(prev => 
@@ -252,6 +260,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <p className="text-sm font-medium truncate">Admin User</p>
                 <p className="text-xs text-muted-foreground truncate">admin@toolsinn.com</p>
               </div>
+              <form action={logoutAction}>
+                <Button variant="ghost" size="sm" type="submit" title="Logout">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </form>
             </div>
           </div>
         </div>
