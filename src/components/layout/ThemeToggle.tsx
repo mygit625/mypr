@@ -61,7 +61,7 @@ export function ThemeToggle() {
       <span
         className={cn(
           "absolute top-1 left-1 flex items-center justify-center h-7 w-7 rounded-full bg-white shadow-md transform transition-transform duration-500 ease-in-out",
-          isDarkMode ? "translate-x-0" : "translate-x-[3.75rem]"
+          isDarkMode ? "translate-x-15" : "translate-x-0"
         )}
       >
         <div className={cn("transition-transform duration-500 ease-in-out", isDarkMode ? 'rotate-0' : 'rotate-180')}>
