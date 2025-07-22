@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, LayoutGrid, Files, Scale, Settings, QrCode, Link as LinkIcon, Image, BrainCircuit } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
-import { ThemeSwitcher } from './theme-switcher';
+import { ThemeToggle } from './ThemeToggle';
 
 const navItems = [
   { href: '/', label: 'All Tools', Icon: LayoutGrid },
@@ -53,7 +53,7 @@ export default function Navbar() {
               </Button>
             </>
           )}
-          <ThemeSwitcher />
+          <ThemeToggle />
         </div>
 
         <div className="md:hidden">
@@ -81,7 +81,7 @@ export default function Navbar() {
                   </>
                 )}
                 <div className="pt-4">
-                  <ThemeSwitcher />
+                  <ThemeToggle />
                 </div>
               </div>
             </SheetContent>
