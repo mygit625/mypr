@@ -67,6 +67,13 @@ export default {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+        boxShadow: {
+          'toggle-container': 'inset 0 5px 10px rgba(0, 0, 0, 0.2), inset 0 -5px 10px rgba(255, 255, 255, 0.4), 0 10px 20px rgba(0, 0, 0, 0.2), 0 5px 10px rgba(0, 0, 0, 0.15)',
+          'toggle-circle': '0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2), inset 0 2px 5px rgba(0, 0, 0, 0.1), inset 0 -2px 5px rgba(255, 255, 255, 0.3)',
+        },
+        textShadow: {
+            md: '0 2px 4px rgba(0, 0, 0, 0.3)',
+        },
   		keyframes: {
   			'accordion-down': {
   				from: {
@@ -93,5 +100,12 @@ export default {
   },
   plugins: [
     require("tailwindcss-animate"),
+    function({ addUtilities }: { addUtilities: (utilities: Record<string, any>) => void }) {
+        addUtilities({
+            '.text-shadow-md': {
+                textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+            },
+        })
+    },
   ],
 } satisfies Config;

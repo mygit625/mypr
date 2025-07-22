@@ -3,26 +3,29 @@
 
 import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const SunIcon = () => (
-    <svg
-        width="24"
-        height="24"
+    <svg 
+        className="w-10 h-10 text-yellow-400"
+        fill="currentColor" 
         viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-6 w-6 text-yellow-500"
     >
-        <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-        <path
-            d="M12 1V3M12 21V23M4.22 4.22L5.64 5.64M18.36 18.36L19.78 19.78M1 12H3M21 12H23M4.22 19.78L5.64 18.36M18.36 5.64L19.78 4.22"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
+        <path d="M12 18a6 6 0 100-12 6 6 0 000 12zM12 22a1 1 0 001-1v-2a1 1 0 10-2 0v2a1 1 0 001 1zM22 12a1 1 0 00-1-1h-2a1 1 0 100 2h2a1 1 0 001-1zM4 12a1 1 0 00-1-1H1a1 1 0 100 2h2a1 1 0 001-1zM12 4a1 1 0 001-1V1a1 1 0 10-2 0v2a1 1 0 001 1zM19.07 6.344a1 1 0 00.707-.293l1.414-1.414a1 1 0 10-1.414-1.414l-1.414 1.414a1 1 0 00.707 1.707zM3.515 20.485a1 1 0 00.707-.293l1.414-1.414a1 1 0 10-1.414-1.414L3.515 18.78a1 1 0 00.707 1.707zM20.485 20.485a1 1 0 001.414 0 1 1 0 000-1.414l-1.414-1.414a1 1 0 10-1.414 1.414l1.414 1.414zM4.929 6.344a1 1 0 001.414 0 1 1 0 000-1.414L4.929 3.515a1 1 0 10-1.414 1.414l1.414 1.414z"/>
+    </svg>
+);
+
+const MoonIcon = () => (
+    <svg 
+        className="w-10 h-10 text-blue-400"
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    >
+        <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
     </svg>
 );
 
@@ -34,7 +37,7 @@ export default function ThemeToggle() {
 
     if (!mounted) {
         // Render a placeholder to avoid layout shift, matching the final component's size
-        return <div className="w-[152px] h-9 rounded-full bg-muted animate-pulse" />;
+        return <div className="w-[180px] h-[80px] rounded-full bg-muted animate-pulse" />;
     }
 
     const isDarkMode = theme === 'dark';
@@ -47,30 +50,56 @@ export default function ThemeToggle() {
         <button
             onClick={toggleTheme}
             className={cn(
-                "relative flex h-9 w-[152px] items-center rounded-full p-1 transition-all duration-300",
-                "shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]",
-                isDarkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900' : 'bg-gradient-to-br from-orange-300 to-yellow-200'
+                "relative flex items-center w-[180px] h-[80px] rounded-full cursor-pointer overflow-hidden transition-all duration-300",
+                "shadow-toggle-container"
             )}
             aria-label="Toggle theme"
         >
-            {/* Thumb */}
-            <div
-                className={cn(
-                    "absolute flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 transition-transform duration-300 ease-in-out",
-                    isDarkMode ? 'translate-x-[4px]' : 'translate-x-[118px]'
-                )}
-            >
-                {isDarkMode ? <Moon className="h-5 w-5 text-slate-800" /> : <SunIcon />}
+            {/* Background Gradient */}
+            <div className={cn(
+                "absolute top-0 left-0 w-full h-full rounded-full transition-opacity duration-300",
+                isDarkMode ? "bg-gradient-to-r from-blue-400 to-purple-400 opacity-100" : "opacity-0"
+            )}></div>
+             <div className={cn(
+                "absolute top-0 left-0 w-full h-full rounded-full transition-opacity duration-300",
+                !isDarkMode ? "bg-gradient-to-r from-yellow-300 to-orange-400 opacity-100" : "opacity-0"
+            )}></div>
+
+            {/* Day Mode Text */}
+            <div className={cn(
+                "absolute left-[95px] flex flex-col items-center font-bold text-white transition-opacity duration-300 text-shadow-md",
+                isDarkMode ? "opacity-0" : "opacity-100"
+            )}>
+                <span className="text-xl leading-none">DAY</span>
+                <span className="text-xl leading-none">MODE</span>
+            </div>
+            
+            {/* Night Mode Text */}
+            <div className={cn(
+                "absolute right-[95px] flex flex-col items-center font-bold text-white transition-opacity duration-300 text-shadow-md",
+                isDarkMode ? "opacity-100" : "opacity-0"
+            )}>
+                 <span className="text-xl leading-none">NIGHT</span>
+                <span className="text-xl leading-none">MODE</span>
             </div>
 
-            {/* Text Labels */}
-            <div className="w-full flex justify-between items-center px-2 text-white font-bold text-xs">
-                <span className={cn("transition-opacity duration-300 text-center text-yellow-900/80", isDarkMode ? "opacity-0" : "opacity-100")}>
-                    DAY<br/>MODE
-                </span>
-                <span className={cn("transition-opacity duration-300 text-center text-blue-200/80", isDarkMode ? "opacity-100" : "opacity-0")}>
-                    NIGHT<br/>MODE
-                </span>
+            {/* Sliding Circle */}
+            <div
+                className={cn(
+                    "absolute w-[70px] h-[70px] bg-white rounded-full flex justify-center items-center transition-transform duration-300 ease-in-out shadow-toggle-circle z-10",
+                    isDarkMode ? 'translate-x-[105px]' : 'translate-x-[5px]'
+                )}
+            >
+                <div className="relative w-10 h-10 flex items-center justify-center">
+                    {/* Sun Icon */}
+                    <div className={cn("absolute transition-opacity duration-300", isDarkMode ? "opacity-0" : "opacity-100")}>
+                        <SunIcon />
+                    </div>
+                    {/* Moon Icon */}
+                    <div className={cn("absolute transition-opacity duration-300", isDarkMode ? "opacity-100" : "opacity-0")}>
+                        <MoonIcon />
+                    </div>
+                </div>
             </div>
         </button>
     );
