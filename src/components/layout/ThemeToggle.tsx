@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -37,8 +36,8 @@ export function ThemeToggle() {
   useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    // Render a placeholder to avoid layout shift, matching the final component's size.
-    return <div className="w-[180px] h-[48px] rounded-full bg-muted animate-pulse" />;
+    // Render a placeholder to avoid layout shift, matching the final component's size
+    return <div className="w-36 h-9 rounded-full bg-muted animate-pulse" />;
   }
 
   const isDarkMode = theme === 'dark';
@@ -51,14 +50,14 @@ export function ThemeToggle() {
     <button
       onClick={toggleTheme}
       className={cn(
-        "relative flex items-center w-[180px] h-[48px] rounded-full p-1 cursor-pointer transition-all duration-300 shadow-md",
-        "bg-gray-200" // A neutral base for the shadow
+        "relative flex items-center w-36 h-9 rounded-full p-1 cursor-pointer transition-all duration-500 shadow-md",
+        isDarkMode ? 'bg-gray-800' : 'bg-gray-200'
       )}
       aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
     >
       {/* 3D Recessed Track */}
       <div className={cn(
-        "absolute inset-[3px] rounded-full transition-all duration-300",
+        "absolute inset-[3px] rounded-full transition-all duration-500",
         "shadow-[inset_0px_2px_4px_rgba(0,0,0,0.2)]", // Inner shadow for 3D effect
         isDarkMode ? 'bg-gradient-to-r from-blue-500 to-indigo-700' : 'bg-gradient-to-r from-pink-400 to-orange-400'
       )} />
@@ -66,10 +65,10 @@ export function ThemeToggle() {
       {/* Sliding Thumb */}
       <div
         className={cn(
-          "absolute top-[3px] left-[3px] h-[42px] w-[42px] rounded-full flex items-center justify-center transition-transform duration-300 ease-in-out",
+          "absolute top-[3px] h-[30px] w-[30px] rounded-full flex items-center justify-center transition-transform duration-500 ease-in-out",
           "bg-white shadow-lg",
           "border-2 border-white/50",
-          isDarkMode ? 'translate-x-0' : 'translate-x-[130px]'
+          isDarkMode ? 'translate-x-[3px]' : 'translate-x-[111px]'
         )}
       >
         {/* Sun Icon (visible in light mode) */}
@@ -83,18 +82,18 @@ export function ThemeToggle() {
       </div>
 
       {/* Text Labels */}
-      <div className="relative w-full h-full flex items-center justify-between px-5">
+      <div className="relative w-full h-full flex items-center justify-between px-2">
         <span className={cn(
-            "text-white font-bold text-sm transition-opacity duration-300",
-            isDarkMode ? 'opacity-100' : 'opacity-0'
-        )}>
-          NIGHT MODE
-        </span>
-        <span className={cn(
-            "text-white font-bold text-sm transition-opacity duration-300",
+            "text-white font-bold text-xs transition-opacity duration-300 pl-1",
             isDarkMode ? 'opacity-0' : 'opacity-100'
         )}>
           DAY MODE
+        </span>
+        <span className={cn(
+            "text-white font-bold text-xs transition-opacity duration-300 pr-1",
+            isDarkMode ? 'opacity-100' : 'opacity-0'
+        )}>
+          NIGHT MODE
         </span>
       </div>
     </button>
