@@ -20,7 +20,7 @@ const SunIcon = () => (
   </svg>
 );
 
-// Custom Moon Icon Component - Updated to match the design
+// Custom Moon Icon Component - Corrected to match the design
 const MoonIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M14.5 2.5C10.0817 2.5 6.5 6.08172 6.5 10.5C6.5 14.9183 10.0817 18.5 14.5 18.5C15.8953 18.5 17.2033 18.1537 18.3635 17.5458C17.7383 18.9953 16.2513 20 14.5 20C10.3579 20 7 16.6421 7 12.5C7 8.35786 10.3579 5 14.5 5C16.2513 5 17.7383 6.00473 18.3635 7.45421C17.2033 6.84632 15.8953 6.5 14.5 6.5C10.3579 6.5 7 9.85786 7 14C7 14.4133 7.02284 14.8194 7.0667 15.2154C7.50291 10.5393 10.6133 7 14.5 7C14.5 2.5 14.5 2.5 14.5 2.5Z" fill="#67E8F9"/>
@@ -72,7 +72,7 @@ export function ThemeToggle() {
           isDarkMode ? 'translate-x-[3px]' : 'translate-x-[111px]'
         )}
       >
-        <SunIcon />
+        {isDarkMode ? <MoonIcon /> : <SunIcon />}
       </div>
 
       {/* Text Labels */}
