@@ -26,36 +26,36 @@ const SunIcon = () => (
 );
 
 const MoonIcon = () => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-6 text-blue-300"
-  >
-    <path
-      d="M11.5 2.5C5.1 2.5 1.5 8.1 3.5 14C5.5 20 12 22.5 17.5 20C20.5 18.5 22.5 15.5 22.5 12C22.5 6.5 17.5 2.5 11.5 2.5Z"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M16 5L17.5 8L16 11"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M19 6L20 8L19 10"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
+    <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-6 w-6 text-blue-300"
+    >
+        <path
+            d="M12.1 2.8415C6.42004 3.3415 2.38004 8.4415 4.02004 13.9115C5.66004 19.3815 11.51 22.4615 16.98 20.8215C22.45 19.1815 25.53 13.3315 23.89 7.8615C23.3615 5.99251 22.251 4.34141 20.78 3.2215C18.2 1.3015 14.88 1.8315 12.1 2.8415Z"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <path
+            d="M17.5 5.5L16 4M17.5 5.5L19 4M17.5 5.5L16 7M17.5 5.5L19 7"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <path
+            d="M20.5 9.5L19 8M20.5 9.5L22 8M20.5 9.5L19 11M20.5 9.5L22 11"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+    </svg>
 );
 
 export default function ThemeToggle() {
