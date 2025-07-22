@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, LayoutGrid, Files, Scale, Settings, QrCode, Link as LinkIcon, Image, BrainCircuit } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
-import { ThemeToggle } from './ThemeToggle';
 
 const navItems = [
   { href: '/', label: 'All Tools', Icon: LayoutGrid },
@@ -53,11 +52,9 @@ export default function Navbar() {
               </Button>
             </>
           )}
-          <ThemeToggle />
         </div>
 
         <div className="md:hidden flex items-center gap-2">
-          <ThemeToggle />
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">

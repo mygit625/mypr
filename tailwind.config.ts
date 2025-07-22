@@ -1,9 +1,6 @@
 
 import type { Config } from "tailwindcss";
 
-// Custom plugin for backface-visibility utility
-const plugin = require('tailwindcss/plugin');
-
 export default {
     darkMode: ["class"],
     content: [
@@ -96,13 +93,5 @@ export default {
   },
   plugins: [
     require("tailwindcss-animate"),
-    plugin(function({ addUtilities }: { addUtilities: any }) {
-      addUtilities({
-        '.backface-hidden': {
-          'backface-visibility': 'hidden',
-          '-webkit-backface-visibility': 'hidden',
-        },
-      })
-    }),
   ],
 } satisfies Config;
