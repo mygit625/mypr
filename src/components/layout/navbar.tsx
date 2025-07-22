@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -7,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, LayoutGrid, Files, Scale, Settings, QrCode, Link as LinkIcon, Image, BrainCircuit } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
-import { ThemeToggle } from './ThemeToggle';
 
 const navItems = [
   { href: '/', label: 'All Tools', Icon: LayoutGrid },
@@ -53,7 +51,6 @@ export default function Navbar() {
               </Button>
             </>
           )}
-          <ThemeToggle />
         </div>
 
         <div className="md:hidden">
@@ -65,7 +62,7 @@ export default function Navbar() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
-              <SheetHeader className="text-left">
+              <SheetHeader>
                 <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
               </SheetHeader>
               <div className="mt-8 flex flex-col space-y-2">
@@ -83,9 +80,6 @@ export default function Navbar() {
                     </Button>
                   </>
                 )}
-                <div className="pt-4">
-                  <ThemeToggle />
-                </div>
               </div>
             </SheetContent>
           </Sheet>

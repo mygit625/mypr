@@ -5,7 +5,6 @@ import './globals.css';
 import Navbar from '@/components/layout/navbar';
 import { Toaster } from '@/components/ui/toaster';
 import Footer from '@/components/layout/footer';
-import { ThemeProvider } from '@/components/layout/theme-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -48,19 +47,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background`}
         suppressHydrationWarning={true}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <Navbar />
-          <main className="flex-grow container mx-auto px-4 py-6 md:py-10">
-            {children}
-          </main>
-          <Toaster />
-          <Footer />
-        </ThemeProvider>
+        <Navbar />
+        <main className="flex-grow container mx-auto px-4 py-6 md:py-10">
+          {children}
+        </main>
+        <Toaster />
+        <Footer />
       </body>
     </html>
   );
