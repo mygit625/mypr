@@ -36,8 +36,6 @@ const MoonIcon = () => (
     >
         <path d="M14.52 2.48a9.5 9.5 0 0 0-11 11 9.5 9.5 0 0 0 11-11Z"
             stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="m16 5.5 1 1m3-3-1 1"
-            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
 );
 
