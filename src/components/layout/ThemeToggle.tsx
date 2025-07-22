@@ -29,6 +29,7 @@ const MoonIcon = () => (
     </svg>
 );
 
+
 export default function ThemeToggle() {
     const [mounted, setMounted] = useState(false);
     const { theme, setTheme } = useTheme();
@@ -51,7 +52,7 @@ export default function ThemeToggle() {
             onClick={toggleTheme}
             className={cn(
                 "relative flex items-center w-[90px] h-10 rounded-full cursor-pointer overflow-hidden transition-all duration-300",
-                "shadow-toggle-container-sm" // Use smaller shadow
+                "shadow-toggle-container-sm"
             )}
             aria-label="Toggle theme"
         >
@@ -67,7 +68,7 @@ export default function ThemeToggle() {
 
             {/* Day Mode Text */}
             <div className={cn(
-                "absolute left-[42px] flex flex-col items-center font-bold text-white transition-opacity duration-300 text-shadow-sm", // Use smaller shadow
+                "absolute left-[42px] flex flex-col items-center font-bold text-white transition-opacity duration-300 text-shadow-sm",
                 isDarkMode ? "opacity-0" : "opacity-100"
             )}>
                 <span className="text-[10px] leading-tight">DAY</span>
@@ -76,7 +77,7 @@ export default function ThemeToggle() {
             
             {/* Night Mode Text */}
             <div className={cn(
-                "absolute right-[42px] flex flex-col items-center font-bold text-white transition-opacity duration-300 text-shadow-sm", // Use smaller shadow
+                "absolute right-[42px] flex flex-col items-center font-bold text-white transition-opacity duration-300 text-shadow-sm",
                 isDarkMode ? "opacity-100" : "opacity-0"
             )}>
                  <span className="text-[10px] leading-tight">NIGHT</span>
@@ -86,7 +87,7 @@ export default function ThemeToggle() {
             {/* Sliding Circle */}
             <div
                 className={cn(
-                    "absolute w-8 h-8 bg-white rounded-full flex justify-center items-center transition-transform duration-300 ease-in-out shadow-toggle-circle-sm z-10", // Use smaller shadow
+                    "absolute w-8 h-8 bg-white rounded-full flex justify-center items-center transition-transform duration-300 ease-in-out shadow-toggle-circle-sm z-10",
                     isDarkMode ? 'translate-x-[54px]' : 'translate-x-[4px]'
                 )}
             >
