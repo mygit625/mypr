@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/icons/logo';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, LayoutGrid, Files, Scale, Settings, QrCode, Link as LinkIcon, Image, BrainCircuit } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from './ThemeToggle';
@@ -65,6 +65,9 @@ export default function Navbar() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+              <SheetHeader className="text-left">
+                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+              </SheetHeader>
               <div className="mt-8 flex flex-col space-y-2">
                 {renderNavLinks(true)}
                 <hr className="my-2"/>
