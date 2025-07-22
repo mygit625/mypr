@@ -3,7 +3,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
 import { Logo } from '@/components/icons/logo';
 import { Button } from '@/components/ui/button';
@@ -37,6 +36,7 @@ import {
   Calculator,
   LogOut,
 } from 'lucide-react';
+import { logoutAction } from './login/actions';
 
 interface MenuItem {
   title: string;
@@ -141,17 +141,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const pathname = usePathname();
-  const router = useRouter();
 
   // Don't render layout for login page
   if (pathname === '/admin/login') {
     return <>{children}</>;
   }
-  
-  const handleLogout = () => {
-    // Placeholder for actual logout logic
-    router.push('/admin/login');
-  };
 
   const toggleExpanded = (href: string) => {
     setExpandedItems(prev => 
@@ -266,9 +260,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <p className="text-sm font-medium truncate">Admin User</p>
                 <p className="text-xs text-muted-foreground truncate">admin@toolsinn.com</p>
               </div>
-              <Button variant="ghost" size="sm" onClick={handleLogout} title="Logout">
-                <LogOut className="h-4 w-4" />
-              </Button>
+              <form action={logoutAction}>
+                <Button variant="ghost" size="sm" type="submit" title="Logout">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </form>
             </div>
           </div>
         </div>

@@ -1,10 +1,19 @@
-
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  // Admin authentication logic has been temporarily removed to resolve deployment issues.
-  // We will re-implement this with a more robust solution like Firebase Auth.
+  const { pathname } = request.nextUrl;
+  const isAdminPath = pathname.startsWith('/admin');
+  const isLoggedIn = request.cookies.get('admin_logged_in')?.value === 'true';
+
+  if (isAdminPath && !isLoggedIn && pathname !== '/admin/login') {
+    return NextResponse.redirect(new URL('/admin/login', request.url));
+  }
+
+  if (pathname === '/admin/login' && isLoggedIn) {
+    return NextResponse.redirect(new URL('/admin', request.url));
+  }
+
   return NextResponse.next();
 }
 
