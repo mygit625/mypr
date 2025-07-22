@@ -8,13 +8,12 @@ import { cn } from "@/lib/utils";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-
-  // We need to wait for the component to mount to know the current theme.
   const [mounted, setMounted] = React.useState(false);
+
   React.useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    // Render a placeholder or nothing until mounted
+    // Render a placeholder to avoid layout shift, matching the final component's size
     return <div className="w-36 h-9 rounded-full bg-muted animate-pulse" />;
   }
 
@@ -28,20 +27,33 @@ export function ThemeToggle() {
     <button
       onClick={toggleTheme}
       className={cn(
-        "relative inline-flex items-center h-9 w-36 rounded-full transition-colors duration-300 ease-in-out shadow-inner focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
-        isDarkMode ? "bg-gradient-to-r from-sky-500 to-blue-700" : "bg-gradient-to-r from-pink-400 to-orange-400"
+        "relative inline-flex items-center h-9 w-36 rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+        "shadow-inner bg-gray-200" // Base background with inner shadow
       )}
       aria-label={isDarkMode ? "Activate light mode" : "Activate dark mode"}
     >
       <span className="sr-only">Toggle theme</span>
       
-      {/* Text Container */}
-      <div className="flex justify-around w-full px-4 text-white font-bold text-[10px] tracking-widest uppercase">
-        <span className={cn("transition-opacity duration-300", isDarkMode ? "opacity-100" : "opacity-0")}>
-          NIGHT
+      {/* Gradient Background Layer */}
+      <div className={cn(
+        "absolute inset-0 rounded-full transition-opacity duration-500",
+        isDarkMode ? "bg-gradient-to-r from-sky-500 to-blue-700" : "bg-gradient-to-r from-pink-400 to-orange-400",
+        isDarkMode ? "opacity-100" : "opacity-100"
+      )}></div>
+
+      {/* Text Labels */}
+      <div className="absolute inset-0 flex justify-between items-center px-4">
+        <span className={cn(
+          "text-white font-bold text-[10px] tracking-widest uppercase transition-opacity duration-300",
+          isDarkMode ? "opacity-0" : "opacity-100" // DAY MODE visible
+        )}>
+          DAY MODE
         </span>
-        <span className={cn("transition-opacity duration-300", isDarkMode ? "opacity-0" : "opacity-100")}>
-          DAY
+        <span className={cn(
+          "text-white font-bold text-[10px] tracking-widest uppercase transition-opacity duration-300",
+          isDarkMode ? "opacity-100" : "opacity-0" // NIGHT MODE visible
+        )}>
+          NIGHT MODE
         </span>
       </div>
 
@@ -49,14 +61,16 @@ export function ThemeToggle() {
       <span
         className={cn(
           "absolute top-1 left-1 flex items-center justify-center h-7 w-7 rounded-full bg-white shadow-md transform transition-transform duration-500 ease-in-out",
-          isDarkMode ? "translate-x-0" : "translate-x-[6.75rem]"
+          isDarkMode ? "translate-x-0" : "translate-x-[6.75rem]" // 108px = 9rem - 1.75rem (width) - 0.25rem (padding)
         )}
       >
-        {isDarkMode ? (
-          <Moon className="h-4 w-4 text-sky-500" />
-        ) : (
-          <Sun className="h-4 w-4 text-yellow-500" />
-        )}
+        <div className={cn("transition-transform duration-500 ease-in-out", isDarkMode ? 'rotate-0' : 'rotate-180')}>
+            {isDarkMode ? (
+              <Moon className="h-4 w-4 text-sky-500" />
+            ) : (
+              <Sun className="h-4 w-4 text-yellow-500" />
+            )}
+        </div>
       </span>
     </button>
   );
