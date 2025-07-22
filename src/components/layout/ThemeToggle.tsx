@@ -41,37 +41,26 @@ export function ThemeToggle() {
         "opacity-100"
       )}></div>
 
-      {/* Text Labels */}
-      <div className="absolute inset-0 flex justify-between items-center px-3">
-        <span className={cn(
-          "text-white font-bold text-[10px] tracking-widest uppercase transition-opacity duration-300",
-          !isDarkMode ? "opacity-100" : "opacity-0"
-        )}>
-          DAY
-        </span>
-        <span className={cn(
-          "text-white font-bold text-[10px] tracking-widest uppercase transition-opacity duration-300",
-          isDarkMode ? "opacity-100" : "opacity-0"
-        )}>
-          NIGHT
-        </span>
-      </div>
-
-      {/* Sliding Circle */}
-      <span
+      {/* Sliding Circle with Text and Icon */}
+      <div
         className={cn(
-          "absolute top-1 left-1 flex items-center justify-center h-7 w-7 rounded-full bg-white shadow-md transform transition-transform duration-500 ease-in-out",
-          isDarkMode ? "translate-x-[3.75rem]" : "translate-x-0"
+          "absolute top-1 left-1 flex items-center justify-center h-7 w-14 rounded-full bg-white shadow-md transform transition-transform duration-500 ease-in-out",
+          isDarkMode ? "translate-x-[2.25rem]" : "translate-x-0"
         )}
       >
-        <div className={cn("transition-transform duration-500 ease-in-out", isDarkMode ? 'rotate-0' : 'rotate-180')}>
-            {isDarkMode ? (
-              <Moon className="h-4 w-4 text-sky-500" />
-            ) : (
-              <Sun className="h-4 w-4 text-yellow-500" />
-            )}
+        <div className="relative flex items-center justify-center w-full h-full">
+            {/* Day Content */}
+            <div className={cn("absolute flex items-center justify-center gap-1 transition-opacity duration-500", isDarkMode ? "opacity-0" : "opacity-100")}>
+                <Sun className="h-4 w-4 text-yellow-500" />
+                <span className="font-bold text-[10px] text-gray-600 tracking-widest uppercase">DAY</span>
+            </div>
+            {/* Night Content */}
+            <div className={cn("absolute flex items-center justify-center gap-1 transition-opacity duration-500", isDarkMode ? "opacity-100" : "opacity-0")}>
+                <Moon className="h-4 w-4 text-sky-500" />
+                <span className="font-bold text-[10px] text-gray-600 tracking-widest uppercase">NIGHT</span>
+            </div>
         </div>
-      </span>
+      </div>
     </button>
   );
 }
