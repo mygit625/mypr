@@ -36,7 +36,7 @@ export function ThemeToggle() {
       <span className="sr-only">Toggle theme</span>
       
       {/* Text Container */}
-      <div className="flex justify-around w-full px-2 text-white font-bold text-[10px] tracking-widest">
+      <div className="flex justify-around w-full px-4 text-white font-bold text-[10px] tracking-widest uppercase">
         <span className={cn("transition-opacity duration-300", isDarkMode ? "opacity-100" : "opacity-0")}>
           NIGHT
         </span>
