@@ -2,32 +2,19 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
-import { sessionOptions, type SessionData } from '@/lib/session';
+
+// Note: iron-session based login has been removed to fix deployment issues.
+// A new authentication method (e.g., Firebase Auth) will be implemented.
 
 export async function loginAction(
   prevState: { message: string | null },
   formData: FormData
 ): Promise<{ message: string | null }> {
-  const session = await getIronSession<SessionData>(cookies(), sessionOptions);
-
-  const username = formData.get('username') as string;
-  const password = formData.get('password') as string;
-
-  // In a real application, you would look up the user in a database
-  // and check their hashed password.
-  if (username === 'admin' && password === 'admin') {
-    session.isLoggedIn = true;
-    await session.save();
-    redirect('/admin');
-  }
-
-  return { message: 'Invalid username or password.' };
+  // This is a placeholder and won't be called by the disabled form.
+  redirect('/admin');
 }
 
 export async function logoutAction() {
-  const session = await getIronSession<SessionData>(cookies(), sessionOptions);
-  session.destroy();
+  // This is a placeholder. The actual logout logic will depend on the new auth system.
   redirect('/admin/login');
 }

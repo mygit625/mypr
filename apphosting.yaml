@@ -1,3 +1,4 @@
+
 # Firebase App Hosting configuration file.
 # This file is used to configure the server-side rendering of your Next.js app.
 # See https://firebase.google.com/docs/hosting/frameworks/nextjs
@@ -21,13 +22,6 @@ run:
 #
 # You will need to set values for all of these in your Firebase App Hosting backend settings.
 env:
-  # Secret for encrypting session cookies. Must be a private string of at least 32 characters.
-  # This value is now managed in the Firebase console for deployed environments.
-  - variable: SECRET_COOKIE_PASSWORD
-    secret: SECRET_COOKIE_PASSWORD
-    availability:
-      - RUNTIME
-
   # Public URL of your deployed application (e.g., https://your-project-id.web.app)
   - variable: NEXT_PUBLIC_BASE_URL
     value: 'https://toolsinn.com'
