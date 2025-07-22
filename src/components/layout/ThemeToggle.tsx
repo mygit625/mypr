@@ -36,20 +36,20 @@ export function ThemeToggle() {
       <span className="sr-only">Toggle theme</span>
       
       {/* Text Container */}
-      <div className="flex justify-between w-full px-4 text-white font-bold text-xs tracking-wider">
+      <div className="flex justify-around w-full px-2 text-white font-bold text-[10px] tracking-widest">
         <span className={cn("transition-opacity duration-300", isDarkMode ? "opacity-100" : "opacity-0")}>
-          NIGHT MODE
+          NIGHT
         </span>
         <span className={cn("transition-opacity duration-300", isDarkMode ? "opacity-0" : "opacity-100")}>
-          DAY MODE
+          DAY
         </span>
       </div>
 
       {/* Sliding Circle */}
       <span
         className={cn(
-          "absolute top-1 left-1 flex items-center justify-center h-7 w-7 rounded-full bg-white shadow-md transform transition-transform duration-300 ease-in-out",
-          isDarkMode ? "translate-x-0" : "translate-x-[6.75rem]" // 108px = 27 * 4px (w-36 - w-7 - p-1*2)
+          "absolute top-1 left-1 flex items-center justify-center h-7 w-7 rounded-full bg-white shadow-md transform transition-transform duration-500 ease-in-out",
+          isDarkMode ? "translate-x-0" : "translate-x-[6.75rem]"
         )}
       >
         {isDarkMode ? (
