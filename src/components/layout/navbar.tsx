@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, LayoutGrid, Files, Scale, Settings, QrCode, Link as LinkIcon, Image, BrainCircuit } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
+import { ThemeSwitcher } from './theme-switcher';
 
 const navItems = [
   { href: '/', label: 'All Tools', Icon: LayoutGrid },
@@ -52,6 +53,7 @@ export default function Navbar() {
               </Button>
             </>
           )}
+          <ThemeSwitcher />
         </div>
 
         <div className="md:hidden">
@@ -78,6 +80,9 @@ export default function Navbar() {
                     </Button>
                   </>
                 )}
+                <div className="pt-4">
+                  <ThemeSwitcher />
+                </div>
               </div>
             </SheetContent>
           </Sheet>
