@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
+import { Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const SunIcon = () => (
@@ -25,21 +26,6 @@ const SunIcon = () => (
     </svg>
 );
 
-const MoonIcon = () => (
-    <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-6 w-6 text-cyan-400"
-    >
-        <path d="M14.52 2.48a9.5 9.5 0 0 0-11 11 9.5 9.5 0 0 0 11-11Z"
-            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-);
-
-
 export default function ThemeToggle() {
     const [mounted, setMounted] = useState(false);
     const { theme, setTheme } = useTheme();
@@ -61,9 +47,9 @@ export default function ThemeToggle() {
         <button
             onClick={toggleTheme}
             className={cn(
-                "relative flex h-9 w-[152px] items-center rounded-full p-1 transition-all duration-300 shadow-inner",
+                "relative flex h-9 w-[152px] items-center rounded-full p-1 transition-all duration-300",
                 "shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]",
-                isDarkMode ? 'bg-gradient-to-br from-blue-900 to-sky-600' : 'bg-gradient-to-br from-orange-400 to-yellow-300'
+                isDarkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900' : 'bg-gradient-to-br from-orange-300 to-yellow-200'
             )}
             aria-label="Toggle theme"
         >
@@ -71,18 +57,18 @@ export default function ThemeToggle() {
             <div
                 className={cn(
                     "absolute flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 transition-transform duration-300 ease-in-out",
-                    isDarkMode ? 'translate-x-0' : 'translate-x-[120px]'
+                    isDarkMode ? 'translate-x-[4px]' : 'translate-x-[118px]'
                 )}
             >
-                {isDarkMode ? <MoonIcon /> : <SunIcon />}
+                {isDarkMode ? <Moon className="h-5 w-5 text-slate-800" /> : <SunIcon />}
             </div>
 
             {/* Text Labels */}
             <div className="w-full flex justify-between items-center px-2 text-white font-bold text-xs">
-                <span className={cn("transition-opacity duration-300 text-center", isDarkMode ? "opacity-0" : "opacity-100")}>
+                <span className={cn("transition-opacity duration-300 text-center text-yellow-900/80", isDarkMode ? "opacity-0" : "opacity-100")}>
                     DAY<br/>MODE
                 </span>
-                <span className={cn("transition-opacity duration-300 text-center", isDarkMode ? "opacity-100" : "opacity-0")}>
+                <span className={cn("transition-opacity duration-300 text-center text-blue-200/80", isDarkMode ? "opacity-100" : "opacity-0")}>
                     NIGHT<br/>MODE
                 </span>
             </div>
