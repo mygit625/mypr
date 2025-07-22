@@ -68,7 +68,7 @@ export function SearchComponent() {
               <CommandGroup>
                 {filteredTools.map((tool) => (
                   <CommandItem
-                    key={tool.href}
+                    key={tool.title}
                     value={tool.title}
                     onSelect={() => handleSelect(tool.href)}
                     className="cursor-pointer p-0"
