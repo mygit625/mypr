@@ -32,7 +32,7 @@ const MoonIcon = () => (
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="h-6 w-6 text-blue-400"
+        className="h-6 w-6 text-cyan-400"
     >
         <path d="M14.52 2.48a9.5 9.5 0 0 0-11 11 9.5 9.5 0 0 0 11-11Z"
             stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -50,7 +50,7 @@ export default function ThemeToggle() {
 
     if (!mounted) {
         // Render a placeholder to avoid layout shift, matching the final component's size
-        return <div className="w-36 h-9 rounded-full bg-muted animate-pulse" />;
+        return <div className="w-[152px] h-9 rounded-full bg-muted animate-pulse" />;
     }
 
     const isDarkMode = theme === 'dark';
@@ -63,19 +63,17 @@ export default function ThemeToggle() {
         <button
             onClick={toggleTheme}
             className={cn(
-                "relative flex h-9 w-36 items-center rounded-full p-1 transition-colors duration-300 shadow-inner shadow-black/10",
+                "relative flex h-9 w-[152px] items-center rounded-full p-1 transition-all duration-300 shadow-inner",
+                "shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]",
                 isDarkMode ? 'bg-gradient-to-br from-blue-900 to-sky-600' : 'bg-gradient-to-br from-orange-400 to-yellow-300'
             )}
-            style={{
-                boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.1)'
-            }}
             aria-label="Toggle theme"
         >
             {/* Thumb */}
             <div
                 className={cn(
                     "absolute flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 transition-transform duration-300 ease-in-out",
-                    isDarkMode ? 'translate-x-0' : 'translate-x-[6.75rem]'
+                    isDarkMode ? 'translate-x-0' : 'translate-x-[120px]'
                 )}
             >
                 {isDarkMode ? <MoonIcon /> : <SunIcon />}
@@ -83,10 +81,10 @@ export default function ThemeToggle() {
 
             {/* Text Labels */}
             <div className="w-full flex justify-between items-center px-2 text-white font-bold text-xs">
-                <span className={cn("transition-opacity duration-300", isDarkMode ? "opacity-0" : "opacity-100")}>
+                <span className={cn("transition-opacity duration-300 text-center", isDarkMode ? "opacity-0" : "opacity-100")}>
                     DAY<br/>MODE
                 </span>
-                <span className={cn("transition-opacity duration-300", isDarkMode ? "opacity-100" : "opacity-0")}>
+                <span className={cn("transition-opacity duration-300 text-center", isDarkMode ? "opacity-100" : "opacity-0")}>
                     NIGHT<br/>MODE
                 </span>
             </div>
