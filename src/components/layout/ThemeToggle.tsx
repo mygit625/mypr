@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 const SunIcon = () => (
     <svg 
-        className="w-10 h-10 text-yellow-400"
+        className="w-5 h-5 text-yellow-400"
         fill="currentColor" 
         viewBox="0 0 24 24"
     >
@@ -16,8 +16,8 @@ const SunIcon = () => (
 );
 
 const MoonIcon = () => (
-    <svg 
-        className="w-10 h-10 text-blue-400"
+    <svg
+        className="w-5 h-5 text-blue-400"
         fill="none" 
         stroke="currentColor" 
         viewBox="0 0 24 24"
@@ -37,7 +37,7 @@ export default function ThemeToggle() {
 
     if (!mounted) {
         // Render a placeholder to avoid layout shift, matching the final component's size
-        return <div className="w-[180px] h-[80px] rounded-full bg-muted animate-pulse" />;
+        return <div className="w-[90px] h-10 rounded-full bg-muted animate-pulse" />;
     }
 
     const isDarkMode = theme === 'dark';
@@ -50,8 +50,8 @@ export default function ThemeToggle() {
         <button
             onClick={toggleTheme}
             className={cn(
-                "relative flex items-center w-[180px] h-[80px] rounded-full cursor-pointer overflow-hidden transition-all duration-300",
-                "shadow-toggle-container"
+                "relative flex items-center w-[90px] h-10 rounded-full cursor-pointer overflow-hidden transition-all duration-300",
+                "shadow-toggle-container-sm" // Use smaller shadow
             )}
             aria-label="Toggle theme"
         >
@@ -67,30 +67,30 @@ export default function ThemeToggle() {
 
             {/* Day Mode Text */}
             <div className={cn(
-                "absolute left-[95px] flex flex-col items-center font-bold text-white transition-opacity duration-300 text-shadow-md",
+                "absolute left-[42px] flex flex-col items-center font-bold text-white transition-opacity duration-300 text-shadow-sm", // Use smaller shadow
                 isDarkMode ? "opacity-0" : "opacity-100"
             )}>
-                <span className="text-xl leading-none">DAY</span>
-                <span className="text-xl leading-none">MODE</span>
+                <span className="text-[10px] leading-tight">DAY</span>
+                <span className="text-[10px] leading-tight">MODE</span>
             </div>
             
             {/* Night Mode Text */}
             <div className={cn(
-                "absolute right-[95px] flex flex-col items-center font-bold text-white transition-opacity duration-300 text-shadow-md",
+                "absolute right-[42px] flex flex-col items-center font-bold text-white transition-opacity duration-300 text-shadow-sm", // Use smaller shadow
                 isDarkMode ? "opacity-100" : "opacity-0"
             )}>
-                 <span className="text-xl leading-none">NIGHT</span>
-                <span className="text-xl leading-none">MODE</span>
+                 <span className="text-[10px] leading-tight">NIGHT</span>
+                <span className="text-[10px] leading-tight">MODE</span>
             </div>
 
             {/* Sliding Circle */}
             <div
                 className={cn(
-                    "absolute w-[70px] h-[70px] bg-white rounded-full flex justify-center items-center transition-transform duration-300 ease-in-out shadow-toggle-circle z-10",
-                    isDarkMode ? 'translate-x-[105px]' : 'translate-x-[5px]'
+                    "absolute w-8 h-8 bg-white rounded-full flex justify-center items-center transition-transform duration-300 ease-in-out shadow-toggle-circle-sm z-10", // Use smaller shadow
+                    isDarkMode ? 'translate-x-[54px]' : 'translate-x-[4px]'
                 )}
             >
-                <div className="relative w-10 h-10 flex items-center justify-center">
+                <div className="relative w-5 h-5 flex items-center justify-center">
                     {/* Sun Icon */}
                     <div className={cn("absolute transition-opacity duration-300", isDarkMode ? "opacity-0" : "opacity-100")}>
                         <SunIcon />
