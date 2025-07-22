@@ -14,7 +14,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     // Render a placeholder to avoid layout shift, matching the final component's size
-    return <div className="w-36 h-9 rounded-full bg-muted animate-pulse" />;
+    return <div className="w-28 h-9 rounded-full bg-muted animate-pulse" />;
   }
 
   const isDarkMode = theme === 'dark';
@@ -27,7 +27,7 @@ export function ThemeToggle() {
     <button
       onClick={toggleTheme}
       className={cn(
-        "relative inline-flex items-center h-9 w-36 rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+        "relative inline-flex items-center h-9 w-28 rounded-full transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
         "shadow-inner bg-gray-200" // Base background with inner shadow
       )}
       aria-label={isDarkMode ? "Activate light mode" : "Activate dark mode"}
@@ -38,11 +38,11 @@ export function ThemeToggle() {
       <div className={cn(
         "absolute inset-0 rounded-full transition-opacity duration-500",
         isDarkMode ? "bg-gradient-to-r from-sky-500 to-blue-700" : "bg-gradient-to-r from-pink-400 to-orange-400",
-        isDarkMode ? "opacity-100" : "opacity-100"
+        "opacity-100"
       )}></div>
 
       {/* Text Labels */}
-      <div className="absolute inset-0 flex justify-between items-center px-4">
+      <div className="absolute inset-0 flex justify-between items-center px-3">
         <span className={cn(
           "text-white font-bold text-[10px] tracking-widest uppercase transition-opacity duration-300",
           isDarkMode ? "opacity-0" : "opacity-100" // DAY MODE visible
@@ -61,7 +61,7 @@ export function ThemeToggle() {
       <span
         className={cn(
           "absolute top-1 left-1 flex items-center justify-center h-7 w-7 rounded-full bg-white shadow-md transform transition-transform duration-500 ease-in-out",
-          isDarkMode ? "translate-x-0" : "translate-x-[6.75rem]" // 108px = 9rem - 1.75rem (width) - 0.25rem (padding)
+          isDarkMode ? "translate-x-0" : "translate-x-[4.75rem]" // Adjusted for w-28
         )}
       >
         <div className={cn("transition-transform duration-500 ease-in-out", isDarkMode ? 'rotate-0' : 'rotate-180')}>
