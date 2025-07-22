@@ -57,7 +57,6 @@ export default function Navbar() {
         </div>
 
         <div className="md:hidden flex items-center gap-2">
-          <ThemeToggle />
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -84,6 +83,9 @@ export default function Navbar() {
                     </Button>
                   </>
                 )}
+                 <div className="pt-4 flex justify-center">
+                    <ThemeToggle />
+                </div>
               </div>
             </SheetContent>
           </Sheet>
