@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
@@ -26,7 +27,7 @@ export function SearchComponent() {
         tool.description.toLowerCase().includes(lowerCaseQuery) ||
         tool.category.toLowerCase().includes(lowerCaseQuery)
       )
-      .slice(0, 10); // Limit to 10 results
+      .slice(0, 10);
   }, [query]);
 
   const showSuggestions = isFocused && filteredTools.length > 0;
@@ -36,8 +37,17 @@ export function SearchComponent() {
     setQuery('');
     setIsFocused(false);
   };
+  
+  const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (query.trim()) {
+      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+      setQuery('');
+      setIsFocused(false);
+    }
+  };
 
-  // Handle clicks outside the search component to close suggestions
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
@@ -52,8 +62,7 @@ export function SearchComponent() {
 
   return (
     <div className="relative" ref={searchContainerRef}>
-      <div className="flex items-center w-full bg-card border rounded-full shadow-md p-2">
-        <Search className="mx-3 h-5 w-5 text-muted-foreground flex-shrink-0" />
+      <form onSubmit={handleSearchSubmit} className="flex items-center w-full bg-card border rounded-full shadow-md p-2 has-[:focus]:ring-2 has-[:focus]:ring-ring transition-all">
         <Input
           type="search"
           placeholder="Search for a tool (e.g., Merge PDF, Compress Image...)"
@@ -63,10 +72,10 @@ export function SearchComponent() {
           onFocus={() => setIsFocused(true)}
           autoComplete="off"
         />
-        <Button className="rounded-full px-6 text-base font-semibold">
-          Search
+        <Button type="submit" className="rounded-full px-5 py-5 text-base font-semibold" size="icon" aria-label="Search">
+            <Search className="h-5 w-5" />
         </Button>
-      </div>
+      </form>
 
       {showSuggestions && (
         <div className="absolute top-full mt-2 w-full bg-card border rounded-md shadow-lg z-50">
@@ -80,7 +89,7 @@ export function SearchComponent() {
                       href={tool.href}
                       className="flex items-center gap-3 px-3 py-2 text-sm text-card-foreground hover:bg-accent rounded-md transition-colors"
                       onClick={() => handleSelect(tool.href)}
-                      onMouseDown={(e) => e.preventDefault()} // Prevents input blur before navigation
+                      onMouseDown={(e) => e.preventDefault()}
                     >
                       {Icon && <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
                       <span>{tool.title}</span>
