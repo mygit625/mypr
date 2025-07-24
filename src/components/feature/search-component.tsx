@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -9,6 +8,8 @@ import { Search } from 'lucide-react';
 import { allTools } from '@/lib/all-tools';
 import { getToolIcon } from '@/components/icons/tool-icons';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export function SearchComponent() {
   const [query, setQuery] = useState('');
@@ -51,16 +52,22 @@ export function SearchComponent() {
 
   return (
     <div className="relative" ref={searchContainerRef}>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-      <Input
-        type="search"
-        placeholder="Search for a tool (e.g., Merge PDF, Compress Image...)"
-        className="w-full pl-10 h-12 text-base"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => setIsFocused(true)}
-        autoComplete="off"
-      />
+      <div className="flex items-center w-full bg-card border rounded-full shadow-md p-2">
+        <Search className="mx-3 h-5 w-5 text-muted-foreground flex-shrink-0" />
+        <Input
+          type="search"
+          placeholder="Search for a tool (e.g., Merge PDF, Compress Image...)"
+          className="w-full h-10 text-base border-none shadow-none focus-visible:ring-0 bg-transparent"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          autoComplete="off"
+        />
+        <Button className="rounded-full px-6 text-base font-semibold">
+          Search
+        </Button>
+      </div>
+
       {showSuggestions && (
         <div className="absolute top-full mt-2 w-full bg-card border rounded-md shadow-lg z-50">
           <ul className="py-1">
