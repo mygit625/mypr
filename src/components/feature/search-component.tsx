@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -67,7 +68,7 @@ export function SearchComponent() {
               filteredTools.map((tool) => {
                 const Icon = getToolIcon(tool.Icon);
                 return (
-                  <li key={tool.href}>
+                  <li key={tool.title}>
                     <Link
                       href={tool.href}
                       className="flex items-center gap-3 px-3 py-2 text-sm text-card-foreground hover:bg-accent rounded-md transition-colors"
