@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -6,84 +5,89 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 
-import { allTools, type Tool } from '@/lib/all-tools';
+import { allTools } from '@/lib/all-tools';
+import { getToolIcon } from '@/components/icons/tool-icons';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 export function SearchComponent() {
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const filteredTools = useMemo(() => {
-    if (!query) return [];
+    if (!query || query.length < 2) return [];
     const lowerCaseQuery = query.toLowerCase();
     return allTools
       .filter(tool =>
         tool.title.toLowerCase().includes(lowerCaseQuery) ||
         tool.description.toLowerCase().includes(lowerCaseQuery) ||
         tool.category.toLowerCase().includes(lowerCaseQuery)
-      );
+      )
+      .slice(0, 10); // Limit to 10 results
   }, [query]);
 
-  useEffect(() => {
-    setOpen(query.length > 1 && filteredTools.length > 0);
-  }, [query, filteredTools.length]);
+  const showSuggestions = isFocused && filteredTools.length > 0;
 
   const handleSelect = (href: string) => {
     router.push(href);
     setQuery('');
-    setOpen(false);
-    inputRef.current?.blur();
+    setIsFocused(false);
   };
-  
+
+  // Handle clicks outside the search component to close suggestions
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsFocused(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverAnchor asChild>
-         <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-             <Input
-                ref={inputRef}
-                type="search"
-                placeholder="Search for a tool (e.g., Merge PDF, Compress Image...)"
-                className="w-full pl-10 h-12 text-base"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => {
-                  if (query.length > 1 && filteredTools.length > 0) {
-                    setOpen(true);
-                  }
-                }}
-              />
-          </div>
-      </PopoverAnchor>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandList>
-            {filteredTools.length === 0 && query.length > 1 ? (
-                 <CommandEmpty>No results found.</CommandEmpty>
-            ) : (
-              <CommandGroup>
-                {filteredTools.map((tool) => (
-                  <CommandItem
-                    key={tool.title}
-                    value={tool.title}
-                    onSelect={() => handleSelect(tool.href)}
-                    className="cursor-pointer p-0"
-                  >
-                    <Link href={tool.href} className="flex items-center gap-3 p-2 w-full h-full">
-                      <tool.Icon className="h-4 w-4 text-muted-foreground"/>
+    <div className="relative" ref={searchContainerRef}>
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+      <Input
+        type="search"
+        placeholder="Search for a tool (e.g., Merge PDF, Compress Image...)"
+        className="w-full pl-10 h-12 text-base"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onFocus={() => setIsFocused(true)}
+        autoComplete="off"
+      />
+      {showSuggestions && (
+        <div className="absolute top-full mt-2 w-full bg-card border rounded-md shadow-lg z-50">
+          <ul className="py-1">
+            {filteredTools.length > 0 ? (
+              filteredTools.map((tool) => {
+                const Icon = getToolIcon(tool.Icon);
+                return (
+                  <li key={tool.href}>
+                    <Link
+                      href={tool.href}
+                      className="flex items-center gap-3 px-3 py-2 text-sm text-card-foreground hover:bg-accent rounded-md transition-colors"
+                      onClick={() => handleSelect(tool.href)}
+                      onMouseDown={(e) => e.preventDefault()} // Prevents input blur before navigation
+                    >
+                      {Icon && <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
                       <span>{tool.title}</span>
                     </Link>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+                  </li>
+                );
+              })
+            ) : (
+              <li className="px-3 py-2 text-sm text-muted-foreground">
+                No results found.
+              </li>
             )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }

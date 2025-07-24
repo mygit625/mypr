@@ -1,0 +1,72 @@
+"use client";
+
+import {
+  Combine, Split, Minimize2, LayoutGrid, RotateCcw, FileMinus2, FilePlus2,
+  FileText, Wrench, ScanText, FileCode, Presentation, Table2, ImagePlus, Globe,
+  BarChart3, FileImage, Archive, Edit3, ListOrdered, Droplets, Unlock, Lock,
+  Diff, FileType, Crop, Paintbrush, PanelTop, FileSpreadsheet,
+  Image as ImageIcon, Expand, Wand2, CircleEllipsis, Type, ArrowRightLeft, ImageUp,
+  BrainCircuit, QrCode, Link as LinkIcon, Scale, Calculator, Bot, Waypoints, FileJson,
+  Files,
+  type LucideIcon
+} from 'lucide-react';
+
+const iconMap: Record<string, LucideIcon> = {
+  'Merge PDF': Combine,
+  'Split PDF': Split,
+  'Compress PDF': Minimize2,
+  'Organize PDF': LayoutGrid,
+  'Rotate PDF': RotateCcw,
+  'Remove PDF Pages': FileMinus2,
+  'Add PDF Pages': FilePlus2,
+  'Summarize PDF': FileText,
+  'Repair PDF': Wrench,
+  'OCR PDF': ScanText,
+  'Word to PDF': FileCode,
+  'PowerPoint to PDF': Presentation,
+  'Excel to PDF': Table2,
+  'JPG to PDF': ImagePlus,
+  'HTML to PDF': Globe,
+  'PDF to Word': FileCode,
+  'PDF to PowerPoint': BarChart3,
+  'PDF to Excel': FileSpreadsheet,
+  'PDF to JPG': FileImage,
+  'PDF to PDF/A': Archive,
+  'Edit PDF': Edit3,
+  'Add Page Numbers': ListOrdered,
+  'Watermark PDF': Droplets,
+  'Unlock PDF': Unlock,
+  'Protect PDF': Lock,
+  'Compare PDF': Diff,
+  'PDF Reader': FileType,
+  'Crop PDF': Crop,
+  'Redact PDF': Paintbrush,
+  'Add Header/Footer': PanelTop,
+  'Compress Image': Minimize2,
+  'Resize Image': Expand,
+  'Crop Image': Crop,
+  'Circle Crop Image': CircleEllipsis,
+  'Image Editor': Wand2,
+  'Watermark Image': Droplets,
+  'Remove Background': ImageIcon,
+  'Convert to JPG': ArrowRightLeft,
+  'Convert from JPG': ArrowRightLeft,
+  'Upscale Image': ImageUp,
+  'Add Text to Image': Type,
+  'AI Cover Letter Generator': BrainCircuit,
+  'QR Code Generator': QrCode,
+  'URL Shortener': LinkIcon,
+  'Unit Converters': Scale,
+  'Calculators': Calculator,
+  'N8N Templates': Bot,
+  'Sitemap Generator': Waypoints,
+  'JSON to CSV': FileJson,
+  'PDF Tools': Files,
+  'Image Tools': ImageIcon,
+  'Automation Tools': Bot,
+  'Multi-direction URL Shortener': LinkIcon
+};
+
+export const getToolIcon = (iconName: string): LucideIcon => {
+  return iconMap[iconName] || FileText; // Return FileText as a default fallback
+};
