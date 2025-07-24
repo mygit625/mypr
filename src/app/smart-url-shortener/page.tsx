@@ -11,13 +11,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, Download, BarChart2 } from 'lucide-react';
+import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, Download, BarChart2, UserPlus, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { QRCodeCanvas } from 'qrcode.react';
 import { downloadDataUri } from '@/lib/download-utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import Link from 'next/link';
 
 
 function SubmitButton() {
@@ -190,6 +191,17 @@ export default function UrlShortenerPage() {
           Forward your visitors to multiple directions based on their devices with one shortlink.
         </p>
       </header>
+
+      <Alert>
+          <UserPlus className="h-4 w-4" />
+          <AlertTitle>Want to save and manage your links?</AlertTitle>
+          <AlertDescription>
+              Sign up for a free account to keep track of all your created shortlinks, view detailed analytics, and manage them from a central dashboard.
+              <Button variant="link" asChild className="p-0 h-auto ml-1">
+                <Link href="#">Get started!</Link>
+              </Button>
+          </AlertDescription>
+      </Alert>
 
       <Card>
         <form action={formAction} ref={formRef}>
