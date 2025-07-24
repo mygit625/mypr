@@ -62,19 +62,22 @@ export function SearchComponent() {
 
   return (
     <div className="relative" ref={searchContainerRef}>
-      <form onSubmit={handleSearchSubmit} className="flex items-center w-full bg-card border rounded-full shadow-md p-2 has-[:focus]:ring-2 has-[:focus]:ring-ring transition-all">
-        <Input
-          type="search"
-          placeholder="Search for a tool (e.g., Merge PDF, Compress Image...)"
-          className="w-full h-10 text-base border-none shadow-none focus-visible:ring-0 bg-transparent"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setIsFocused(true)}
-          autoComplete="off"
-        />
-        <Button type="submit" className="rounded-full px-5 py-5 text-base font-semibold" size="icon" aria-label="Search">
-            <Search className="h-5 w-5" />
-        </Button>
+      <form onSubmit={handleSearchSubmit} className="w-full">
+         <div className="relative flex items-center w-full bg-card border rounded-full shadow-lg p-1.5 has-[:focus]:ring-2 has-[:focus]:ring-ring transition-all">
+            <Search className="absolute left-4 h-5 w-5 text-muted-foreground pointer-events-none" />
+            <Input
+              type="search"
+              placeholder="Search"
+              className="w-full h-10 text-base border-none shadow-none focus-visible:ring-0 bg-transparent pl-12"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              autoComplete="off"
+            />
+            <Button type="submit" className="rounded-full px-6 py-2 text-base font-semibold" size="lg">
+                Search
+            </Button>
+        </div>
       </form>
 
       {showSuggestions && (
