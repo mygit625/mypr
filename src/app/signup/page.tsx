@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -64,6 +65,26 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="grid gap-4 mb-4">
+            <Button variant="outline" className="w-full" onClick={() => handleSocialSignup('google')} disabled={isLoading}>
+                <Chrome className="mr-2 h-4 w-4" />
+                Sign up with Google
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => handleSocialSignup('github')} disabled={isLoading}>
+                <Github className="mr-2 h-4 w-4" />
+                Sign up with GitHub
+            </Button>
+          </div>
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with email
+              </span>
+            </div>
+          </div>
           <form onSubmit={handleEmailSignup} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -99,17 +120,7 @@ export default function SignupPage() {
               {isLoading ? <Loader2 className="animate-spin" /> : 'Create an account'}
             </Button>
           </form>
-          <Separator className="my-4" />
-          <div className="grid gap-4">
-            <Button variant="outline" className="w-full" onClick={() => handleSocialSignup('google')} disabled={isLoading}>
-                <Chrome className="mr-2 h-4 w-4" />
-                Sign up with Google
-            </Button>
-            <Button variant="outline" className="w-full" onClick={() => handleSocialSignup('github')} disabled={isLoading}>
-                <Github className="mr-2 h-4 w-4" />
-                Sign up with GitHub
-            </Button>
-          </div>
+          
           <div className="mt-4 text-center text-sm">
             Already have an account?{" "}
             <Link href="/login" className="underline">
