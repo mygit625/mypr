@@ -31,6 +31,7 @@ const toolPaths = [
   '/qr-code',
   '/cover-letter-generator',
   '/circle-crop',
+  '/crop-image',
   '/smart-url-shortener',
 ];
 

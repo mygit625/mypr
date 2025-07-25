@@ -46,7 +46,7 @@ export const allTools: Tool[] = [
   // Image Tools
   { title: 'Compress Image', description: 'Reduce file size of JPG, PNG, and GIF images.', href: '#', Icon: Minimize2, category: 'Image' },
   { title: 'Resize Image', description: 'Change the dimensions of your images.', href: '#', Icon: Expand, category: 'Image' },
-  { title: 'Crop Image', description: 'Cut your images to a specific size.', href: '#', Icon: Crop, category: 'Image' },
+  { title: 'Crop Image', description: 'Cut your images to a specific size.', href: '/crop-image', Icon: Crop, category: 'Image' },
   { title: 'Circle Crop Image', description: 'Crop your image into a perfect circle.', href: '/circle-crop', Icon: CircleEllipsis, category: 'Image' },
   { title: 'Image Editor', description: 'Add text, filters, or annotations to photos.', href: '#', Icon: Wand2, category: 'Image' },
   { title: 'Watermark Image', description: 'Stamp a text or image watermark over pictures.', href: '#', Icon: Droplets, category: 'Image' },
