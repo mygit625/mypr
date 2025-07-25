@@ -31,7 +31,7 @@ env:
 
   # Firebase project configuration details
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: 'AIzaSyAI_zg4k1jXSlY44KsI5RlwII76o5yPJIU'
+    value: 'AIzaSyAI_zg4k1jXSlY44KsI5RlWII76o5yPJIU'
     availability:
       - BUILD
       - RUNTIME
