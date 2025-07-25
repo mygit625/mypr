@@ -1,4 +1,4 @@
-import admin from 'firebase-admin';
+import { admin } from 'firebase-admin';
 import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
@@ -9,13 +9,19 @@ let app: App;
 
 if (getApps().length === 0) {
   if (serviceAccountKey) {
-    app = initializeApp({
-      credential: cert(JSON.parse(serviceAccountKey)),
-    });
+    try {
+      const parsedKey = JSON.parse(serviceAccountKey);
+      app = initializeApp({
+        credential: cert(parsedKey),
+      });
+    } catch (e) {
+      console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. Admin SDK not initialized.", e);
+      // Initialize without credentials to prevent crashing, but admin operations will fail.
+      app = initializeApp();
+    }
   } else {
+    console.warn("FIREBASE_SERVICE_ACCOUNT_KEY is not set. Admin SDK is not initialized with admin privileges.");
     // Initialize without credentials in environments where the key is not available
-    // (like the client-side or build environments that don't need admin access).
-    // Operations requiring authentication will fail, but the app won't crash.
     app = initializeApp();
   }
 } else {
