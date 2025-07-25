@@ -2,6 +2,10 @@
 import type {NextConfig} from 'next';
 import type { Configuration as WebpackConfiguration } from 'webpack';
 
+// Load environment variables from .env file
+import { config } from 'dotenv';
+config();
+
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
