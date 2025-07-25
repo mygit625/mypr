@@ -35,7 +35,11 @@ export default function LoginPage() {
       await signInWithEmail(email, password);
       router.push('/');
     } catch (err: any) {
-      setError(err.message);
+      if (err.code === 'auth/invalid-credential') {
+        setError('Invalid email or password. Please try again.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setIsLoading(false);
     }
