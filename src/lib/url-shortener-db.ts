@@ -1,7 +1,8 @@
 
 'use server';
 
-import { db } from './firebase';
+import { db as adminDb } from './firebase-admin';
+import { db as clientDb } from './firebase'; 
 import {
   collection,
   doc,
@@ -14,7 +15,8 @@ import {
   updateDoc,
   addDoc,
   increment,
-  getCountFromServer
+  getCountFromServer,
+  Timestamp,
 } from 'firebase/firestore';
 
 export interface Links {
@@ -28,7 +30,7 @@ export interface DynamicLink {
   links: Links;
   createdAt: number;
   clickCount: number;
-  recentClicks?: ClickData[]; // Optional: for holding recent clicks data on the client
+  recentClicks?: ClickData[];
 }
 
 export interface ClickData {
@@ -43,46 +45,53 @@ export interface ClickData {
   };
 }
 
-const linksCollection = collection(db, 'dynamicLinks');
-const clicksSubcollection = (linkId: string) => collection(db, `dynamicLinks/${linkId}/clicks`);
+const linksCollection = (db: typeof adminDb | typeof clientDb) => collection(db, 'dynamicLinks');
+const clicksSubcollection = (db: typeof adminDb | typeof clientDb, linkId: string) => collection(db, `dynamicLinks/${linkId}/clicks`);
 
 export async function isCodeUnique(code: string): Promise<boolean> {
-  const docRef = doc(linksCollection, code);
+  const docRef = doc(clientDb, 'dynamicLinks', code);
   const docSnap = await getDoc(docRef);
   return !docSnap.exists();
 }
 
 export async function createDynamicLink(code: string, links: Links): Promise<void> {
-  const docRef = doc(linksCollection, code);
-  const newLink: Omit<DynamicLink, 'id'> = {
+  const docRef = adminDb.collection('dynamicLinks').doc(code);
+  const newLink = {
     links,
-    createdAt: Date.now(),
+    createdAt: Timestamp.now(),
     clickCount: 0,
   };
-  await setDoc(docRef, newLink);
+  await docRef.set(newLink);
 }
 
 export async function getLink(code: string): Promise<DynamicLink | null> {
-  const docRef = doc(linksCollection, code);
+  const docRef = doc(clientDb, 'dynamicLinks', code);
   const docSnap = await getDoc(docRef);
   if (!docSnap.exists()) return null;
-  return { id: docSnap.id, ...docSnap.data() } as DynamicLink;
+  
+  const data = docSnap.data();
+  // Convert Firestore Timestamp to number if it exists
+  const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : data.createdAt;
+
+  return { id: docSnap.id, ...data, createdAt } as DynamicLink;
 }
 
+
 export async function logClick(code: string, clickData: Omit<ClickData, 'timestamp'>): Promise<void> {
-    const linkDocRef = doc(linksCollection, code);
-    const clicksCollectionRef = clicksSubcollection(code);
+    const linkDocRef = adminDb.collection('dynamicLinks').doc(code);
+    const clicksCollectionRef = linkDocRef.collection('clicks');
 
     try {
-        const completeClickData: ClickData = {
+        const completeClickData = {
             ...clickData,
-            timestamp: Date.now(),
+            timestamp: Timestamp.now(),
         };
-        // Perform writes in parallel
-        await Promise.all([
-            addDoc(clicksCollectionRef, completeClickData),
-            updateDoc(linkDocRef, { clickCount: increment(1) })
-        ]);
+        // Use batch write for atomicity
+        const batch = adminDb.batch();
+        batch.set(clicksCollectionRef.doc(), completeClickData);
+        batch.update(linkDocRef, { clickCount: adminDb.FieldValue.increment(1) });
+        await batch.commit();
+
     } catch (e) {
         console.error(`[FATAL] Click logging failed for code ${code}:`, e);
     }
@@ -90,40 +99,55 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
 
 
 export async function getRecentLinks(): Promise<DynamicLink[]> {
-  const q = query(linksCollection, orderBy('createdAt', 'desc'), limit(10));
+  const q = query(linksCollection(clientDb), orderBy('createdAt', 'desc'), limit(10));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DynamicLink));
+  return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : data.createdAt;
+      return { id: doc.id, ...data, createdAt } as DynamicLink;
+  });
 }
 
 
 export async function getRecentClicksForLink(linkId: string, count: number = 5): Promise<ClickData[]> {
-    const q = query(clicksSubcollection(linkId), orderBy('timestamp', 'desc'), limit(count));
+    const q = query(clicksSubcollection(clientDb, linkId), orderBy('timestamp', 'desc'), limit(count));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as ClickData);
+    return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        const timestamp = data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : data.timestamp;
+        return { ...data, timestamp } as ClickData;
+    });
 }
 
 export async function getClicksForLink(linkId: string): Promise<ClickData[]> {
-    const q = query(clicksSubcollection(linkId), orderBy('timestamp', 'desc'));
+    const q = query(clicksSubcollection(clientDb, linkId), orderBy('timestamp', 'desc'));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as ClickData);
+     return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        const timestamp = data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : data.timestamp;
+        return { ...data, timestamp } as ClickData;
+    });
 }
 
 
-// New function for admin tool
 export async function recalculateAllClickCounts(): Promise<{success: boolean, updatedCount: number, error?: string}> {
   try {
-    const querySnapshot = await getDocs(linksCollection);
+    const linksSnapshot = await adminDb.collection('dynamicLinks').get();
     let updatedCount = 0;
+    
+    const batch = adminDb.batch();
 
-    for (const linkDoc of querySnapshot.docs) {
+    for (const linkDoc of linksSnapshot.docs) {
       const linkId = linkDoc.id;
-      const clicksRef = clicksSubcollection(linkId);
-      const snapshot = await getCountFromServer(clicksRef);
-      const clickCount = snapshot.data().count;
+      const clicksSnapshot = await adminDb.collection('dynamicLinks').doc(linkId).collection('clicks').get();
+      const clickCount = clicksSnapshot.size;
       
-      await updateDoc(doc(linksCollection, linkId), { clickCount: clickCount });
+      const linkRef = adminDb.collection('dynamicLinks').doc(linkId);
+      batch.update(linkRef, { clickCount: clickCount });
       updatedCount++;
     }
+
+    await batch.commit();
     return { success: true, updatedCount };
   } catch (e: any) {
     console.error("Failed to recalculate click counts:", e);

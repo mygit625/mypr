@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, getApp, FirebaseOptions } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
@@ -10,8 +11,8 @@ const firebaseConfig: FirebaseOptions = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase for the client
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export { app, db };
