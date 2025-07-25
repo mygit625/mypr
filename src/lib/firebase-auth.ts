@@ -14,7 +14,9 @@ import {
 import { app } from './firebase'; // Use the initialized client-side app
 import { createUserDocument } from './user-db';
 
-const auth = getAuth(app);
+// Defer getAuth() call to ensure it runs only on the client-side when needed.
+const getClientAuth = () => getAuth(app);
+
 const googleProvider = new GoogleAuthProvider();
 const githubProvider = new GithubAuthProvider();
 
@@ -33,6 +35,7 @@ const handleUserCreation = async (user: User) => {
 
 // Sign in with Google
 export const signInWithGoogle = async () => {
+  const auth = getClientAuth();
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return await handleUserCreation(result.user);
@@ -44,6 +47,7 @@ export const signInWithGoogle = async () => {
 
 // Sign in with GitHub
 export const signInWithGitHub = async () => {
+  const auth = getClientAuth();
   try {
     const result = await signInWithPopup(auth, githubProvider);
     return await handleUserCreation(result.user);
@@ -55,6 +59,7 @@ export const signInWithGitHub = async () => {
 
 // Sign up with Email and Password
 export const signUpWithEmail = async (email: string, password: string) => {
+  const auth = getClientAuth();
   try {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     return await handleUserCreation(result.user);
@@ -66,11 +71,10 @@ export const signUpWithEmail = async (email: string, password: string) => {
 
 // Sign in with Email and Password
 export const signInWithEmail = async (email: string, password: string) => {
+  const auth = getClientAuth();
   try {
     const result = await signInWithEmailAndPassword(auth, email, password);
     // Note: We don't call handleUserCreation here as this is for existing users.
-    // However, if you want to create a DB entry for users who signed up before this was implemented,
-    // you could add a check here to create the document if it doesn't exist.
     return result.user;
   } catch (error) {
     console.error("Error signing in with email and password", error);
@@ -80,6 +84,7 @@ export const signInWithEmail = async (email: string, password: string) => {
 
 // Sign out
 export const signOut = async () => {
+  const auth = getClientAuth();
   try {
     await firebaseSignOut(auth);
   } catch (error) {
@@ -90,5 +95,6 @@ export const signOut = async () => {
 
 // Auth state observer
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
+  const auth = getClientAuth();
   return onAuthStateChanged(auth, callback);
 };
