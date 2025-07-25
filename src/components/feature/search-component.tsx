@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
@@ -40,14 +41,21 @@ export function SearchComponent() {
     };
   }, []);
 
-  const handleSuggestionClick = (e: React.MouseEvent) => {
-    // We let the Link component handle navigation, so we stop the form submission.
+  const handleSuggestionClick = () => {
+    setQuery('');
+    setIsFocused(false);
+  };
+
+  const handleSearchSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (query.trim()) {
+      router.push(`/search?q=${encodeURIComponent(query)}`);
+    }
   };
 
   return (
     <div ref={searchContainerRef} className="relative max-w-2xl mx-auto">
-      <form action="/search" method="GET" className="relative">
+      <form onSubmit={handleSearchSubmit} className="relative">
         <div className="relative flex items-center w-full">
            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
           <Input
@@ -72,10 +80,9 @@ export function SearchComponent() {
       {showSuggestions && (
         <div 
           className="absolute z-10 top-full mt-2 w-full bg-card border rounded-lg shadow-lg"
-          // This prevents the suggestion list from stealing focus from the input
           onMouseDown={(e) => e.preventDefault()}
         >
-          <ul className="py-2">
+          <ul className="py-2 max-h-80 overflow-y-auto">
             {filteredTools.slice(0, 7).map((tool) => {
               const Icon = getToolIcon(tool.Icon as any);
               return (
