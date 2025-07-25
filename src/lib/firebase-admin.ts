@@ -3,16 +3,21 @@ import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-  : undefined;
+const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
 let app: App;
 
 if (getApps().length === 0) {
-  app = initializeApp({
-    credential: serviceAccount ? cert(serviceAccount) : undefined,
-  });
+  if (serviceAccountKey) {
+    app = initializeApp({
+      credential: cert(JSON.parse(serviceAccountKey)),
+    });
+  } else {
+    // Initialize without credentials in environments where the key is not available
+    // (like the client-side or build environments that don't need admin access).
+    // Operations requiring authentication will fail, but the app won't crash.
+    app = initializeApp();
+  }
 } else {
   app = getApps()[0];
 }
