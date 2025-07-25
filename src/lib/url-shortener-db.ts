@@ -1,7 +1,7 @@
 
 'use server';
 
-import { db as adminDb } from './firebase-admin';
+import { admin, db as adminDb } from './firebase-admin';
 import { db as clientDb } from './firebase'; 
 import {
   collection,
@@ -89,7 +89,7 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
         // Use batch write for atomicity
         const batch = adminDb.batch();
         batch.set(clicksCollectionRef.doc(), completeClickData);
-        batch.update(linkDocRef, { clickCount: adminDb.FieldValue.increment(1) });
+        batch.update(linkDocRef, { clickCount: admin.firestore.FieldValue.increment(1) });
         await batch.commit();
 
     } catch (e) {
