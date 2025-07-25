@@ -46,10 +46,10 @@ export default function Navbar() {
           ) : (
             <>
               <Button variant="ghost" asChild>
-                <Link href="#">Log in</Link>
+                <Link href="/login">Log in</Link>
               </Button>
               <Button variant="default" asChild>
-                <Link href="#">Sign up</Link>
+                <Link href="/signup">Sign up</Link>
               </Button>
               <ThemeToggle />
             </>
@@ -76,10 +76,10 @@ export default function Navbar() {
                 ) : (
                   <>
                     <Button variant="ghost" asChild className="w-full justify-start text-base py-2 px-4">
-                      <Link href="#">Log in</Link>
+                      <Link href="/login">Log in</Link>
                     </Button>
                     <Button variant="default" asChild className="w-full justify-start text-base py-2 px-4">
-                      <Link href="#">Sign up</Link>
+                      <Link href="/signup">Sign up</Link>
                     </Button>
                   </>
                 )}
