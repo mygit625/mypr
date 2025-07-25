@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -58,13 +59,33 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-[calc(100vh-200px)] py-12">
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardTitle className="text-2xl">Login / Sign up</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            Sign in or create an account to continue
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleEmailLogin} className="grid gap-4">
+          <div className="grid gap-4 mb-4">
+            <Button variant="outline" className="w-full" onClick={() => handleSocialLogin('google')} disabled={isLoading}>
+              <Chrome className="mr-2 h-4 w-4" />
+              Continue with Google
+            </Button>
+             <Button variant="outline" className="w-full" onClick={() => handleSocialLogin('github')} disabled={isLoading}>
+              <Github className="mr-2 h-4 w-4" />
+              Continue with GitHub
+            </Button>
+          </div>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with email
+              </span>
+            </div>
+          </div>
+          <form onSubmit={handleEmailLogin} className="grid gap-4 mt-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -104,20 +125,10 @@ export default function LoginPage() {
               </Alert>
             )}
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? <Loader2 className="animate-spin" /> : 'Login'}
+              {isLoading ? <Loader2 className="animate-spin" /> : 'Login with Email'}
             </Button>
           </form>
-          <Separator className="my-4" />
-          <div className="grid gap-4">
-            <Button variant="outline" className="w-full" onClick={() => handleSocialLogin('google')} disabled={isLoading}>
-              <Chrome className="mr-2 h-4 w-4" />
-              Login with Google
-            </Button>
-             <Button variant="outline" className="w-full" onClick={() => handleSocialLogin('github')} disabled={isLoading}>
-              <Github className="mr-2 h-4 w-4" />
-              Login with GitHub
-            </Button>
-          </div>
+          
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}
             <Link href="/signup" className="underline">
