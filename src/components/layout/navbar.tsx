@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -100,9 +101,6 @@ export default function Navbar() {
               <Button variant="ghost" asChild>
                 <Link href="/login">Log in</Link>
               </Button>
-              <Button variant="default" asChild>
-                <Link href="/signup">Sign up</Link>
-              </Button>
             </>
           )}
           <ThemeToggle />
@@ -140,9 +138,6 @@ export default function Navbar() {
                   <>
                     <Button variant="ghost" asChild className="w-full justify-start text-base py-3 px-4" onClick={() => setMobileMenuOpen(false)}>
                       <Link href="/login">Log in</Link>
-                    </Button>
-                    <Button variant="default" asChild className="w-full justify-start text-base py-3 px-4" onClick={() => setMobileMenuOpen(false)}>
-                      <Link href="/signup">Sign up</Link>
                     </Button>
                   </>
                 )}
