@@ -21,10 +21,12 @@ run:
 #
 # You will need to set values for all of these in your Firebase App Hosting backend settings.
 env:
-  # Secret for encrypting session cookies. Must be a private string of at least 32 characters.
-  # This value is now managed in the Firebase console for deployed environments and in .env for local development.
-  - variable: SECRET_COOKIE_PASSWORD
-    secret: SECRET_COOKIE_PASSWORD
+  # This value MUST be set as a secret in your App Hosting backend.
+  - variable: FIREBASE_SERVICE_ACCOUNT_KEY
+    secret: FIREBASE_SERVICE_ACCOUNT_KEY
+    availability:
+      - BUILD
+      - RUNTIME
 
   # Public URL of your deployed application (e.g., https://your-project-id.web.app)
   - variable: NEXT_PUBLIC_BASE_URL
@@ -35,7 +37,7 @@ env:
 
   # Firebase project configuration details
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: 'AIzaSyAI_zg4k1jXSlY44KsI5RlwII76o5yPJIU'
+    value: 'AIzaSyAI_zg4k1jXSlY44KsI5RlWII76o5yPJIU'
     availability:
       - BUILD
       - RUNTIME
