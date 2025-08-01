@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -26,7 +27,19 @@ const handleUserCreation = async (user: User) => {
     // Check if this is a new user by looking at the creation time
     const isNewUser = user.metadata.creationTime === user.metadata.lastSignInTime;
     if (isNewUser) {
-      await createUserDocument(user);
+      try {
+        await createUserDocument(user);
+      } catch (error) {
+        // This catch block handles the "Missing or insufficient permissions" error gracefully.
+        // The user account is already created in Firebase Auth, so we don't want to show a failure message to the user.
+        // Instead, we log a warning for the developer.
+        console.warn(
+          "Warning: User account was created, but writing to Firestore failed.",
+          "This is likely due to restrictive Firestore security rules.",
+          "Error:",
+          error
+        );
+      }
     }
   }
   return user;

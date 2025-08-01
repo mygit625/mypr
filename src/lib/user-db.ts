@@ -1,3 +1,4 @@
+
 "use client";
 
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
@@ -7,6 +8,7 @@ import type { User } from 'firebase/auth';
 /**
  * Creates a user document in Firestore if one doesn't already exist.
  * This is typically called after a user signs up for the first time.
+ * This function will throw an error if Firestore permissions are insufficient.
  * @param user The Firebase Auth user object.
  */
 export const createUserDocument = async (user: User) => {
@@ -17,24 +19,15 @@ export const createUserDocument = async (user: User) => {
 
   if (!userDocSnap.exists()) {
     const { email, displayName, photoURL } = user;
-    try {
-      await setDoc(userDocRef, {
-        uid: user.uid,
-        email,
-        displayName,
-        photoURL,
-        createdAt: serverTimestamp(),
-        // You can add more fields here, like subscription status, etc.
-        // subscription: {
-        //   plan: 'free',
-        //   status: 'active'
-        // }
-      });
-    } catch (error) {
-      console.error("Error creating user document in Firestore: ", error);
-      // You might want to throw the error to be caught by the calling function
-      throw new Error("Could not save user information to the database.");
-    }
+    // The await setDoc call is now wrapped in a try/catch in the calling function (`handleUserCreation`)
+    // to gracefully handle permission errors without failing the entire sign-up process.
+    await setDoc(userDocRef, {
+      uid: user.uid,
+      email,
+      displayName,
+      photoURL,
+      createdAt: serverTimestamp(),
+    });
   }
   // If the document exists, we do nothing to avoid overwriting existing data.
 };
