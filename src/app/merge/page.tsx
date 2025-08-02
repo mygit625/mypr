@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import MergeClientPage from './MergeClientPage';
 
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://toolsinn.com';
+
 export const metadata: Metadata = {
   title: 'Merge PDF',
   description: 'Combine multiple PDF documents into one single PDF file quickly and easily. Drag and drop to reorder your files before merging.',
@@ -9,7 +11,7 @@ export const metadata: Metadata = {
     description: 'Combine multiple PDF documents into one single PDF file quickly and easily.',
     images: [
       {
-        url: '/merge/og-image', // Pointing to the new SVG image route
+        url: `${baseUrl}/merge/og-image`, // Pointing to the new SVG image route with an absolute URL
         width: 1200,
         height: 630,
         alt: 'Merge PDF Tool Banner',
@@ -20,7 +22,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Merge PDF | Toolsinn',
     description: 'Combine multiple PDF documents into one single PDF file quickly and easily.',
-    images: ['/merge/og-image'], // Pointing to the new SVG image route
+    images: [`${baseUrl}/merge/og-image`], // Pointing to the new SVG image route with an absolute URL
   },
 };
 
