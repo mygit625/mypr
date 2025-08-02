@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -20,25 +21,25 @@ export async function GET() {
     const svg = `
       <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
         <style>
-          .bg { fill: #F0F0F0; } /* Light gray background */
-          .title { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 72px; font-weight: bold; fill: #1A202C; text-anchor: middle; }
-          .url { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 40px; fill: #4A5568; text-anchor: middle; } /* Increased font size */
-          .logo-text { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 48px; font-weight: bold; fill: #008080; } /* Teal color for logo text */
-          .icon { stroke: #008080; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; } /* Teal color for icons */
+          .bg { fill: #FFFFFF; } /* White background for better contrast */
+          .title { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 82px; font-weight: bold; fill: #1A202C; text-anchor: middle; }
+          .url { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 44px; fill: #4A5568; text-anchor: middle; }
+          .logo-text { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 48px; font-weight: bold; fill: #e53935; } /* Red color for logo text */
+          .icon { stroke: #e53935; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; } /* Red color for icons */
         </style>
         
         <rect width="1200" height="630" class="bg" />
 
         <!-- Main Tool Icon (Combine) -->
-        <g transform="translate(540, 180) scale(5)">
-          <svg viewBox="0 0 24 24" class="icon">
+        <g transform="translate(550, 120) scale(5)">
+          <g class="icon">
             ${combineIconPath}
-          </svg>
+          </g>
         </g>
         
-        <text x="600" y="400" class="title">Merge PDF</text>
+        <text x="600" y="380" class="title">Merge PDF</text>
         
-        <text x="600" y="460" class="url">Toolsinn.com</text>
+        <text x="600" y="440" class="url">Toolsinn.com</text>
         
         <!-- Logo at the bottom center -->
         <g transform="translate(480, 550)">
