@@ -1,7 +1,7 @@
 
 'use server';
 
-import { admin, db as adminDb } from './firebase-admin';
+import { admin, adminDb } from './firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 export interface Links {
