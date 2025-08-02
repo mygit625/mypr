@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'DocuEase - Free Online PDF Tools & Document Utilities',
-    template: '%s | DocuEase',
+    default: 'Toolsinn - Free Online PDF Tools & Document Utilities',
+    template: '%s | Toolsinn',
   },
   description: 'Your one-stop destination for free online tools. Merge, split, compress, convert, and edit PDFs, plus QR code generation, unit converters, and more.',
   keywords: ['PDF tools', 'merge PDF', 'split PDF', 'compress PDF', 'convert PDF', 'QR code generator', 'unit converter', 'online tools'],
