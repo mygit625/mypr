@@ -35,39 +35,6 @@ env:
       - BUILD
       - RUNTIME
 
-  # Firebase project configuration details
-  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: 'AIzaSyAI_zg4k1jXSlY44KsI5RlWII76o5yPJIU'
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: 'docuease-y40m1.firebaseapp.com'
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: 'docuease-y40m1'
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: 'docuease-y40m1.appspot.com'
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: '834408677872'
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: '1:834408677872:web:8ce3834f619b9d5dbd1d35'
-    availability:
-      - BUILD
-      - RUNTIME
-
-
 # Automatic scaling settings for your backend.
 # These are the default values and can be adjusted as needed.
 automaticScaling:
