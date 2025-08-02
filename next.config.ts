@@ -25,6 +25,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    config.resolve.alias.canvas = false;
+    return config;
+  },
   // fontkit is a dependency of pdf-lib, which is used in server actions.
   // Marking it as external can help prevent bundling issues in serverless environments.
   serverExternalPackages: ['fontkit'],
