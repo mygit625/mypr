@@ -10,31 +10,6 @@ run:
   # The command to start your application.
   command: npm run start
 
-# Define the environment variables required by your application.
-# For security, do not hardcode secret values here.
-# Instead, use the Firebase CLI to set the values:
-# firebase apphosting:backends:update --backend=<your-backend-id> --update-env-vars=SECRET_COOKIE_PASSWORD="YOUR_SECRET_VALUE_HERE"
-#
-# NEXT_PUBLIC_* variables can often be set directly here if they are not sensitive.
-# However, it's best practice to manage all environment-specific configurations
-# in the Firebase console or via the CLI.
-#
-# You will need to set values for all of these in your Firebase App Hosting backend settings.
-env:
-  # This value MUST be set as a secret in your App Hosting backend.
-  - variable: FIREBASE_SERVICE_ACCOUNT_KEY
-    secret: FIREBASE_SERVICE_ACCOUNT_KEY
-    availability:
-      - BUILD
-      - RUNTIME
-
-  # Public URL of your deployed application (e.g., https://your-project-id.web.app)
-  - variable: NEXT_PUBLIC_BASE_URL
-    value: 'https://toolsinn.com'
-    availability:
-      - BUILD
-      - RUNTIME
-
 # Automatic scaling settings for your backend.
 # These are the default values and can be adjusted as needed.
 automaticScaling:
