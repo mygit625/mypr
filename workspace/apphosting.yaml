@@ -21,7 +21,8 @@ run:
 #
 # You will need to set values for all of these in your Firebase App Hosting backend settings.
 env:
-  # This value MUST be set as a secret in your App Hosting backend.
+  # This value MUST be set as a secret in your App Hosting backend if you use server-side admin features.
+  # For now, we will rely on the build-provided configs for client-side setup.
   - variable: FIREBASE_SERVICE_ACCOUNT_KEY
     secret: FIREBASE_SERVICE_ACCOUNT_KEY
     availability:
