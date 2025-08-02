@@ -1,4 +1,3 @@
-
 # Firebase App Hosting configuration file.
 # This file is used to configure the server-side rendering of your Next.js app.
 # See https://firebase.google.com/docs/hosting/frameworks/nextjs
@@ -10,57 +9,6 @@ specVersion: v1
 run:
   # The command to start your application.
   command: npm run start
-
-# Define the environment variables required by your application.
-# For security, do not hardcode secret values here.
-# Instead, use the Firebase CLI to set the values:
-# firebase apphosting:backends:update --backend=<your-backend-id> --update-env-vars=SECRET_COOKIE_PASSWORD="YOUR_SECRET_VALUE_HERE"
-#
-# NEXT_PUBLIC_* variables can often be set directly here if they are not sensitive.
-# However, it's best practice to manage all environment-specific configurations
-# in the Firebase console or via the CLI.
-#
-# You will need to set values for all of these in your Firebase App Hosting backend settings.
-env:
-  # Public URL of your deployed application (e.g., https://your-project-id.web.app)
-  - variable: NEXT_PUBLIC_BASE_URL
-    value: 'https://toolsinn.com'
-    availability:
-      - BUILD
-      - RUNTIME
-
-  # Firebase project configuration details
-  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: 'AIzaSyAI_zg4k1jXSlY44KsI5RlwII76o5yPJIU'
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: 'docuease-y40m1.firebaseapp.com'
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: 'docuease-y40m1'
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: 'docuease-y40m1.appspot.com'
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: '834408677872'
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: '1:834408677872:web:8ce3834f619b9d5dbd1d35'
-    availability:
-      - BUILD
-      - RUNTIME
-
 
 # Automatic scaling settings for your backend.
 # These are the default values and can be adjusted as needed.

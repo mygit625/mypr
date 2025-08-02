@@ -5,12 +5,10 @@ import { useState, useMemo, useEffect, useRef, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
-
 import { allTools } from '@/lib/all-tools';
 import { getToolIcon } from '@/components/icons/tool-icons';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 export function SearchComponent() {
   const [query, setQuery] = useState('');
@@ -19,92 +17,87 @@ export function SearchComponent() {
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const filteredTools = useMemo(() => {
-    if (!query || query.length < 2) return [];
+    if (!query) return [];
     const lowerCaseQuery = query.toLowerCase();
     return allTools
       .filter(tool =>
         tool.title.toLowerCase().includes(lowerCaseQuery) ||
         tool.description.toLowerCase().includes(lowerCaseQuery) ||
         tool.category.toLowerCase().includes(lowerCaseQuery)
-      )
-      .slice(0, 10);
+      );
   }, [query]);
 
-  const showSuggestions = isFocused && filteredTools.length > 0;
-
-  const handleSelect = (href: string) => {
-    router.push(href);
-    setQuery('');
-    setIsFocused(false);
-  };
-  
-  const handleSearchSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (query.trim()) {
-      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
-      setQuery('');
-      setIsFocused(false);
-    }
-  };
-
+  const showSuggestions = isFocused && query.length > 1 && filteredTools.length > 0;
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setIsFocused(false);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
+  const handleSuggestionClick = () => {
+    setQuery('');
+    setIsFocused(false);
+  };
+
+  const handleSearchSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      router.push(`/search?q=${encodeURIComponent(query)}`);
+    }
+  };
+
   return (
-    <div className="relative" ref={searchContainerRef}>
-      <form onSubmit={handleSearchSubmit} className="w-full">
-         <div className="relative flex items-center w-full bg-card border rounded-full shadow-lg p-1.5 has-[:focus]:ring-2 has-[:focus]:ring-ring transition-all">
-            <Search className="absolute left-4 h-5 w-5 text-muted-foreground pointer-events-none" />
-            <Input
-              type="search"
-              placeholder="Search"
-              className="w-full h-10 text-base border-none shadow-none focus-visible:ring-0 bg-transparent pl-12"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setIsFocused(true)}
-              autoComplete="off"
-            />
-            <Button type="submit" className="rounded-full px-6 py-2 text-base font-semibold" size="lg">
-                Search
-            </Button>
+    <div ref={searchContainerRef} className="relative max-w-2xl mx-auto">
+      <form onSubmit={handleSearchSubmit} className="relative">
+        <div className="relative flex items-center w-full">
+           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+          <Input
+            name="q"
+            type="search"
+            placeholder="Search for a tool (e.g., Merge PDF, Compress Image...)"
+            className="w-full pl-12 pr-28 h-14 text-base rounded-full shadow-lg"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            autoComplete="off"
+          />
+          <Button
+            type="submit"
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-10 rounded-full px-6"
+          >
+            Search
+          </Button>
         </div>
       </form>
 
       {showSuggestions && (
-        <div className="absolute top-full mt-2 w-full bg-card border rounded-md shadow-lg z-50">
-          <ul className="py-1">
-            {filteredTools.length > 0 ? (
-              filteredTools.map((tool) => {
-                const Icon = getToolIcon(tool.Icon);
-                return (
-                  <li key={tool.title}>
-                    <Link
-                      href={tool.href}
-                      className="flex items-center gap-3 px-3 py-2 text-sm text-card-foreground hover:bg-accent rounded-md transition-colors"
-                      onClick={() => handleSelect(tool.href)}
-                      onMouseDown={(e) => e.preventDefault()}
-                    >
-                      {Icon && <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
-                      <span>{tool.title}</span>
-                    </Link>
-                  </li>
-                );
-              })
-            ) : (
-              <li className="px-3 py-2 text-sm text-muted-foreground">
-                No results found.
-              </li>
-            )}
+        <div 
+          className="absolute z-10 top-full mt-2 w-full bg-card border rounded-lg shadow-lg"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <ul className="py-2 max-h-80 overflow-y-auto">
+            {filteredTools.slice(0, 7).map((tool) => {
+              const Icon = getToolIcon(tool.Icon as any);
+              return (
+                <li key={tool.title}>
+                  <Link
+                    href={tool.href}
+                    onClick={handleSuggestionClick}
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-card-foreground hover:bg-accent rounded-md transition-colors"
+                  >
+                    {Icon && <Icon className="h-4 w-4 text-muted-foreground"/>}
+                    <span>{tool.title}</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
