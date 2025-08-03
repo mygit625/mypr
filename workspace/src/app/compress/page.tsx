@@ -16,6 +16,7 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { compressPdfAction, type CompressionLevel } from './actions';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 interface CompressionResultStats {
   originalSize: number;
@@ -33,6 +34,7 @@ export default function CompressPage() {
   const [compressedPdfUri, setCompressedPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>("recommended");
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,6 +55,7 @@ export default function CompressPage() {
     setCompressionStats(null);
     setCompressedPdfUri(null);
     setError(null);
+    setShowConfetti(false);
     try {
       const dataUri = await readFileAsDataURL(selectedFile);
       setPdfDataUri(dataUri);
@@ -70,6 +73,7 @@ export default function CompressPage() {
     setCompressionStats(null);
     setCompressedPdfUri(null);
     setError(null);
+    setShowConfetti(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; 
     }
@@ -114,6 +118,7 @@ export default function CompressPage() {
             reductionPercentage: parseFloat(reduction.toFixed(2))
         });
         setCompressedPdfUri(result.compressedPdfDataUri);
+        setShowConfetti(true);
         toast({ title: "Compression Successful!", description: `Your PDF has been compressed. Click Download to save.` });
       }
     } catch (e: any) {
@@ -142,6 +147,7 @@ export default function CompressPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-0">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Minimize2 className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-4xl font-bold tracking-tight">Compress PDF File</h1>
@@ -209,7 +215,7 @@ export default function CompressPage() {
                   </div>
               </CardContent>
               <CardFooter className="flex-col gap-2">
-                 <Button onClick={handleDownload} className="w-full" size="lg">
+                 <Button onClick={handleDownload} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" size="lg">
                     <Download className="mr-2 h-4 w-4" /> Download Compressed PDF
                  </Button>
                  <Button onClick={handleRemoveFile} className="w-full" variant="outline">

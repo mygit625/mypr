@@ -21,6 +21,7 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { splitPdfAction, type CustomRange } from './actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 const PREVIEW_TARGET_HEIGHT_SPLIT = 200;
 
@@ -37,11 +38,13 @@ export default function SplitPage() {
   const [isSplitting, setIsSplitting] = useState(false);
   const [splitResultUri, setSplitResultUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   const [splitMode, setSplitMode] = useState<SplitMode>('range');
   const [rangeMode, setRangeMode] = useState<RangeMode>('custom');
   const [customRanges, setCustomRanges] = useState<CustomRange[]>([{ from: 1, to: 1 }]);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (totalPages > 0 && customRanges.length === 1 && customRanges[0].from === 1 && customRanges[0].to === 1) {
@@ -57,6 +60,7 @@ export default function SplitPage() {
     setCustomRanges([{ from: 1, to: 1 }]);
     setError(null);
     setSplitResultUri(null);
+    setShowConfetti(false);
   };
 
   const handleFileSelected = async (selectedFiles: File[]) => {
@@ -158,6 +162,7 @@ export default function SplitPage() {
         toast({ title: "Split Error", description: result.error, variant: "destructive" });
       } else if (result.zipDataUri) {
         setSplitResultUri(result.zipDataUri);
+        setShowConfetti(true);
         toast({ title: "Split Successful!", description: "Your PDF has been split. Click Download to save." });
       }
     } catch (e: any) {
@@ -177,6 +182,7 @@ export default function SplitPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Split className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Split PDF File</h1>
@@ -257,12 +263,12 @@ export default function SplitPage() {
                         variant={rangeMode === 'custom' ? 'default' : 'outline'}
                         onClick={() => setRangeMode('custom')}
                         className="w-full"
-                        disabled={!file || totalPages === 0}
+                        disabled={!file || totalPages === 0 || !!splitResultUri}
                       >
                         Define Custom Ranges
                       </Button>
                   </div>
-                  {rangeMode === 'custom' && (
+                  {rangeMode === 'custom' && !splitResultUri && (
                     <div className="space-y-3">
                       <Alert variant="default" className="text-sm">
                         <Info className="h-4 w-4" />
@@ -323,7 +329,7 @@ export default function SplitPage() {
             <CardFooter className="flex-col gap-2">
                  {splitResultUri ? (
                     <>
-                        <Button onClick={handleDownload} size="lg" className="w-full">
+                        <Button onClick={handleDownload} size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom">
                             <Download className="mr-2 h-5 w-5"/> Download ZIP
                         </Button>
                         <Button onClick={resetState} variant="outline" className="w-full">
@@ -351,6 +357,7 @@ export default function SplitPage() {
                                 if (result.error) throw new Error(result.error);
                                 if (result.zipDataUri) {
                                     setSplitResultUri(result.zipDataUri);
+                                    setShowConfetti(true);
                                     toast({ title: "Split Successful!", description: "All pages extracted." });
                                 }
                             } catch (e: any) {

@@ -35,7 +35,7 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { addPageNumbersAction, type PageNumberPosition } from './actions';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ConfettiButton } from '@/components/ui/confetti-button';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -55,6 +55,7 @@ export default function AddPageNumbersPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedUri, setProcessedUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   // Form state
@@ -71,6 +72,7 @@ export default function AddPageNumbersPage() {
     setPages([]);
     setError(null);
     setProcessedUri(null);
+    setShowConfetti(false);
   };
 
   const handleFileSelected = async (selectedFiles: File[]) => {
@@ -133,6 +135,7 @@ export default function AddPageNumbersPage() {
         toast({ title: "Processing Error", description: result.error, variant: "destructive" });
       } else if (result.numberedPdfDataUri) {
         setProcessedUri(result.numberedPdfDataUri);
+        setShowConfetti(true);
         toast({ title: "Success!", description: "Page numbers added. Click Download to save." });
       }
     } catch (e: any) {
@@ -160,6 +163,7 @@ export default function AddPageNumbersPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <ListOrdered className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-4xl font-bold tracking-tight">Add Page Numbers to PDF</h1>
@@ -309,12 +313,12 @@ export default function AddPageNumbersPage() {
               <CardFooter className="flex-col gap-2">
                  {processedUri ? (
                     <>
-                      <ConfettiButton onClick={handleDownload} className="w-full" size="lg">
+                    <Button onClick={handleDownload} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" size="lg">
                         <Download className="mr-2 h-5 w-5"/> Download PDF
-                      </ConfettiButton>
-                      <Button onClick={resetState} className="w-full" variant="outline">
+                    </Button>
+                     <Button onClick={resetState} className="w-full" variant="outline">
                         Process Another File
-                      </Button>
+                    </Button>
                     </>
                 ) : (
                     <Button
