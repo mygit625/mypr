@@ -21,7 +21,6 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { splitPdfAction, type CustomRange } from './actions';
 import { cn } from '@/lib/utils';
-import { ConfettiButton } from '@/components/ui/confetti-button';
 
 const PREVIEW_TARGET_HEIGHT_SPLIT = 200;
 
@@ -43,13 +42,6 @@ export default function SplitPage() {
   const [splitMode, setSplitMode] = useState<SplitMode>('range');
   const [rangeMode, setRangeMode] = useState<RangeMode>('custom');
   const [customRanges, setCustomRanges] = useState<CustomRange[]>([{ from: 1, to: 1 }]);
-  const resultRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (splitResultUri && resultRef.current) {
-      resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [splitResultUri]);
 
   useEffect(() => {
     if (totalPages > 0 && customRanges.length === 1 && customRanges[0].from === 1 && customRanges[0].to === 1) {
@@ -249,103 +241,91 @@ export default function SplitPage() {
         </div>
 
         <div className="lg:w-1/3 space-y-6 lg:sticky lg:top-20 self-start">
-          <Card className="shadow-lg" ref={resultRef}>
+          <Card className="shadow-lg">
             <CardHeader className="text-center pb-4">
               <CardTitle className="text-2xl font-semibold">Split Options</CardTitle>
             </CardHeader>
             <CardContent>
-               {splitResultUri ? (
-                <div className="space-y-4 text-center">
-                    <Alert variant="default" className="border-green-500 bg-green-50">
+               <Tabs defaultValue="range" value={splitMode} onValueChange={(val) => setSplitMode(val as SplitMode)} className="w-full">
+                <TabsList className="grid w-full grid-cols-1">
+                  <TabsTrigger value="range" className="text-xs sm:text-sm"><GalleryThumbnails className="mr-1 h-4 w-4" />By Range</TabsTrigger>
+                </TabsList>
+                <TabsContent value="range" className="pt-4">
+                  <div className="mb-4">
+                    <Label className="text-sm font-medium block mb-2">Mode:</Label>
+                      <Button
+                        variant={rangeMode === 'custom' ? 'default' : 'outline'}
+                        onClick={() => setRangeMode('custom')}
+                        className="w-full"
+                        disabled={!file || totalPages === 0}
+                      >
+                        Define Custom Ranges
+                      </Button>
+                  </div>
+                  {rangeMode === 'custom' && (
+                    <div className="space-y-3">
+                      <Alert variant="default" className="text-sm">
                         <Info className="h-4 w-4" />
-                        <AlertTitle className="text-green-700">Split Complete</AlertTitle>
-                        <AlertDescription className="text-green-600">
-                            Your PDF has been split successfully.
+                        <AlertDescription>
+                          Define one or more page ranges. Each range will be saved as a separate PDF.
                         </AlertDescription>
-                    </Alert>
-                </div>
-               ) : (
-                  <Tabs defaultValue="range" value={splitMode} onValueChange={(val) => setSplitMode(val as SplitMode)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-1">
-                      <TabsTrigger value="range" className="text-xs sm:text-sm"><GalleryThumbnails className="mr-1 h-4 w-4" />By Range</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="range" className="pt-4">
-                      <div className="mb-4">
-                        <Label className="text-sm font-medium block mb-2">Mode:</Label>
-                          <Button
-                            variant={rangeMode === 'custom' ? 'default' : 'outline'}
-                            onClick={() => setRangeMode('custom')}
-                            className="w-full"
-                            disabled={!file || totalPages === 0}
-                          >
-                            Define Custom Ranges
-                          </Button>
-                      </div>
-                      {rangeMode === 'custom' && (
-                        <div className="space-y-3">
-                          <Alert variant="default" className="text-sm">
-                            <Info className="h-4 w-4" />
-                            <AlertDescription>
-                              Define one or more page ranges. Each range will be saved as a separate PDF.
-                            </AlertDescription>
-                          </Alert>
-                          {customRanges.map((range, idx) => (
-                            <Card key={idx} className="p-3 bg-muted/25">
-                              <div className="flex justify-between items-center mb-2">
-                                <Label htmlFor={`from-${idx}`} className="text-sm font-medium">Range {idx + 1}</Label>
-                                {customRanges.length > 1 && (
-                                  <Button variant="ghost" size="icon" onClick={() => handleRemoveRange(idx)} className="h-7 w-7">
-                                    <XCircle className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-2 gap-3 items-end">
-                                <div>
-                                  <Label htmlFor={`from-${idx}`} className="text-xs">From page</Label>
-                                  <Input
-                                    id={`from-${idx}`}
-                                    type="number"
-                                    value={range.from}
-                                    onChange={(e) => handleRangeChange(idx, 'from', e.target.value)}
-                                    min={1}
-                                    max={totalPages}
-                                    className="h-9"
-                                    disabled={!file || totalPages === 0}
-                                    placeholder="e.g. 1"
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor={`to-${idx}`} className="text-xs">To page</Label>
-                                  <Input
-                                    id={`to-${idx}`}
-                                    type="number"
-                                    value={range.to}
-                                    onChange={(e) => handleRangeChange(idx, 'to', e.target.value)}
-                                    min={range.from}
-                                    max={totalPages}
-                                    className="h-9"
-                                    disabled={!file || totalPages === 0}
-                                    placeholder={`e.g. ${totalPages || 1}`}
-                                  />
-                                </div>
-                              </div>
-                            </Card>
-                          ))}
-                          <Button variant="outline" onClick={handleAddRange} disabled={!file || totalPages === 0} className="w-full">
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Another Range
-                          </Button>
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-               )}
+                      </Alert>
+                      {customRanges.map((range, idx) => (
+                        <Card key={idx} className="p-3 bg-muted/25">
+                          <div className="flex justify-between items-center mb-2">
+                            <Label htmlFor={`from-${idx}`} className="text-sm font-medium">Range {idx + 1}</Label>
+                            {customRanges.length > 1 && (
+                              <Button variant="ghost" size="icon" onClick={() => handleRemoveRange(idx)} className="h-7 w-7">
+                                <XCircle className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 items-end">
+                            <div>
+                              <Label htmlFor={`from-${idx}`} className="text-xs">From page</Label>
+                              <Input
+                                id={`from-${idx}`}
+                                type="number"
+                                value={range.from}
+                                onChange={(e) => handleRangeChange(idx, 'from', e.target.value)}
+                                min={1}
+                                max={totalPages}
+                                className="h-9"
+                                disabled={!file || totalPages === 0}
+                                placeholder="e.g. 1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`to-${idx}`} className="text-xs">To page</Label>
+                              <Input
+                                id={`to-${idx}`}
+                                type="number"
+                                value={range.to}
+                                onChange={(e) => handleRangeChange(idx, 'to', e.target.value)}
+                                min={range.from}
+                                max={totalPages}
+                                className="h-9"
+                                disabled={!file || totalPages === 0}
+                                placeholder={`e.g. ${totalPages || 1}`}
+                              />
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                      <Button variant="outline" onClick={handleAddRange} disabled={!file || totalPages === 0} className="w-full">
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Another Range
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
             <CardFooter className="flex-col gap-2">
                  {splitResultUri ? (
                     <>
-                        <ConfettiButton onClick={handleDownload} size="lg" className="w-full">
+                        <Button onClick={handleDownload} size="lg" className="w-full">
                             <Download className="mr-2 h-5 w-5"/> Download ZIP
-                        </ConfettiButton>
+                        </Button>
                         <Button onClick={resetState} variant="outline" className="w-full">
                             Split Another PDF
                         </Button>

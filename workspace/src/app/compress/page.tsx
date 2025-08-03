@@ -16,7 +16,6 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { compressPdfAction, type CompressionLevel } from './actions';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { ConfettiButton } from '@/components/ui/confetti-button';
 
 interface CompressionResultStats {
   originalSize: number;
@@ -163,7 +162,7 @@ export default function CompressPage() {
               />
             </div>
           )}
-          {pdfDataUri && file && !compressionStats && (
+          {pdfDataUri && file && !compressedPdfUri && (
             <>
               <div className="w-full h-full flex items-center justify-center">
                  <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={0} targetHeight={PREVIEW_TARGET_HEIGHT_COMPRESS} />
@@ -210,9 +209,9 @@ export default function CompressPage() {
                   </div>
               </CardContent>
               <CardFooter className="flex-col gap-2">
-                 <ConfettiButton onClick={handleDownload} className="w-full" size="lg">
+                 <Button onClick={handleDownload} className="w-full" size="lg">
                     <Download className="mr-2 h-4 w-4" /> Download Compressed PDF
-                 </ConfettiButton>
+                 </Button>
                  <Button onClick={handleRemoveFile} className="w-full" variant="outline">
                     Compress Another File
                   </Button>
@@ -267,7 +266,7 @@ export default function CompressPage() {
             <CardFooter>
                 <Button
                 onClick={handleCompress}
-                disabled={!file || isCompressing || !!compressionStats}
+                disabled={!file || isCompressing || !!compressedPdfUri}
                 className="w-full text-lg py-6"
                 size="lg"
                 >
