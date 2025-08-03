@@ -15,12 +15,12 @@ export async function GET() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#f9fafb', // A light gray similar to the page background
+            backgroundColor: '#f9fafb',
             fontFamily: '"Geist"',
             padding: '40px',
           }}
         >
-          {/* Main Card Element */}
+          {/* Main Card Element - A recreation of the page UI */}
           <div
             style={{
               display: 'flex',
@@ -29,14 +29,14 @@ export async function GET() {
               borderRadius: '12px',
               border: '1px solid #e5e7eb',
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-              padding: '24px',
-              width: '1100px', // Wider card for screenshot look
+              padding: '24px 32px',
+              width: '1100px',
               height: '550px',
             }}
           >
             {/* Header Section */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '24px' }}>
-               {/* Icon */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '32px' }}>
+              {/* Icon */}
               <svg
                 width="64"
                 height="64"
@@ -54,11 +54,11 @@ export async function GET() {
               </svg>
 
               {/* Title */}
-              <h1 style={{ fontSize: '40px', fontWeight: 'bold', color: '#111827', margin: 0, marginBottom: '8px' }}>
+              <h1 style={{ fontSize: '48px', fontWeight: 'bold', color: '#111827', margin: 0, marginBottom: '8px' }}>
                 Merge PDF Files
               </h1>
               {/* Description */}
-              <p style={{ fontSize: '20px', color: '#6b7280', margin: 0, maxWidth: '80%' }}>
+              <p style={{ fontSize: '22px', color: '#6b7280', margin: 0, maxWidth: '80%' }}>
                 Combine multiple PDF documents into one. Drag and drop to reorder.
               </p>
             </div>
@@ -93,14 +93,13 @@ export async function GET() {
                     <polyline points="17 8 12 3 7 8" />
                     <line x1="12" x2="12" y1="3" y2="15" />
                 </svg>
-                <p style={{ fontSize: '18px', color: '#6b7280', margin: 0 }}>
+                <p style={{ fontSize: '20px', color: '#6b7280', margin: 0 }}>
                   <span style={{ color: '#e53935', fontWeight: '500' }}>Click to upload</span> or drag and drop
                 </p>
-                <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0, marginTop: '4px' }}>
-                  PDF files only. Up to 10 files.
+                <p style={{ fontSize: '16px', color: '#9ca3af', margin: 0, marginTop: '4px' }}>
+                  PDF files only. Up to 10 files initially.
                 </p>
-              </div>
-
+            </div>
           </div>
         </div>
       ),
