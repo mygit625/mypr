@@ -5,10 +5,6 @@ export const runtime = 'edge';
 
 export async function GET() {
   try {
-    const fontData = await fetch(
-      new URL('../../../../assets/Geist-SemiBold.otf', import.meta.url)
-    ).then((res) => res.arrayBuffer());
-
     return new ImageResponse(
       (
         <div
@@ -20,16 +16,16 @@ export async function GET() {
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: '#fff',
-            fontFamily: '"Geist"',
+            fontFamily: 'sans-serif', // Use a default font
           }}
         >
-          {/* Main Tool Icon */}
+          {/* Main Tool Icon: Combine */}
           <svg
             width="128"
             height="128"
             viewBox="0 0 24 24"
             style={{
-              stroke: '#e53935',
+              stroke: '#e53935', // Primary Red
               strokeWidth: '1.5',
               fill: 'none',
               strokeLinecap: 'round',
@@ -77,7 +73,7 @@ export async function GET() {
               height="60"
               viewBox="0 0 24 24"
               style={{
-                stroke: '#e53935',
+                stroke: '#e53935', // Primary Red
                 strokeWidth: '2',
                 fill: 'none',
                 strokeLinecap: 'round',
@@ -92,7 +88,7 @@ export async function GET() {
               style={{
                 fontSize: 48,
                 fontWeight: 'bold',
-                color: '#e53935',
+                color: '#e53935', // Primary Red
                 marginLeft: '12px',
               }}
             >
@@ -104,13 +100,6 @@ export async function GET() {
       {
         width: 1200,
         height: 630,
-        fonts: [
-          {
-            name: 'Geist',
-            data: fontData,
-            style: 'normal',
-          },
-        ],
       }
     );
   } catch (e: any) {
