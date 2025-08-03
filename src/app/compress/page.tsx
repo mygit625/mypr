@@ -38,14 +38,12 @@ export default function CompressPage() {
 
   const handleFileSelectedForUploadZone = (selectedFiles: File[]) => {
     if (selectedFiles.length > 0) {
-      // Compress tool handles one file at a time.
       handleNewFile(selectedFiles[0]);
     }
   };
   
   const handleFileChangeFromInput = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
-      // Compress tool handles one file at a time.
       handleNewFile(event.target.files[0]);
     }
   };
@@ -73,9 +71,8 @@ export default function CompressPage() {
     setCompressedPdfUri(null);
     setError(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Reset file input value
+      fileInputRef.current.value = ""; 
     }
-    toast({ description: "File removed." });
   };
 
   const formatBytes = (bytes: number, decimals = 2) => {
@@ -160,7 +157,7 @@ export default function CompressPage() {
             <div className="w-full max-w-md">
               <FileUploadZone 
                 onFilesSelected={handleFileSelectedForUploadZone} 
-                multiple={false} // Explicitly single file for compression tool
+                multiple={false}
                 accept="application/pdf" 
               />
             </div>
@@ -183,7 +180,7 @@ export default function CompressPage() {
             </>
           )}
           {pdfDataUri && file && compressionStats && compressedPdfUri && (
-             <Card className="mt-8 max-w-2xl mx-auto shadow-lg w-full">
+             <Card className="w-full max-w-2xl mx-auto shadow-lg bg-background">
               <CardHeader>
                   <CardTitle className="text-center text-xl">Compression Results</CardTitle>
               </CardHeader>
@@ -210,16 +207,11 @@ export default function CompressPage() {
                       </div>
                       <Progress value={compressionStats.reductionPercentage} className="h-3" aria-label={`${compressionStats.reductionPercentage}% reduction`} />
                   </div>
-                  <Button
-                      onClick={handleDownload}
-                      className="w-full mt-2"
-                      size="lg"
-                  >
-                      <Download className="mr-2 h-4 w-4" />
-                      Download Compressed PDF
-                  </Button>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex-col gap-2">
+                 <Button onClick={handleDownload} className="w-full" size="lg">
+                    <Download className="mr-2 h-4 w-4" /> Download Compressed PDF
+                 </Button>
                  <Button onClick={handleRemoveFile} className="w-full" variant="outline">
                     Compress Another File
                   </Button>
@@ -240,7 +232,7 @@ export default function CompressPage() {
             ref={fileInputRef}
             onChange={handleFileChangeFromInput}
             accept="application/pdf"
-            className="hidden" // Still single file selection here
+            className="hidden"
           />
         </div>
 
@@ -271,29 +263,31 @@ export default function CompressPage() {
                 ))}
               </RadioGroup>
             </CardContent>
+            <CardFooter>
+                <Button
+                onClick={handleCompress}
+                disabled={!file || isCompressing || !!compressionStats}
+                className="w-full text-lg py-6"
+                size="lg"
+                >
+                {isCompressing ? (
+                    <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Compressing...
+                    </>
+                ) : (
+                    <>
+                    <ArrowRightCircle className="mr-2 h-5 w-5" />
+                    Compress PDF
+                    </>
+                )}
+                </Button>
+            </CardFooter>
           </Card>
-          <Button
-            onClick={handleCompress}
-            disabled={!file || isCompressing || !!compressionStats}
-            className="w-full text-lg py-6"
-            size="lg"
-          >
-            {isCompressing ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Compressing...
-              </>
-            ) : (
-              <>
-                <ArrowRightCircle className="mr-2 h-5 w-5" />
-                Compress PDF
-              </>
-            )}
-          </Button>
         </div>
       </div>
       
-      {error && (
+      {error && !isCompressing && (
         <Alert variant="destructive" className="mt-6 max-w-2xl mx-auto">
           <Info className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>

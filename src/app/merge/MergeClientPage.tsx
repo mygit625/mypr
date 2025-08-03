@@ -8,11 +8,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { Combine, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical } from 'lucide-react';
+import { Combine, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { mergePdfsAction } from './actions'; // Changed from assemblePdfAction
+import { mergePdfsAction } from './actions';
 import { cn } from '@/lib/utils';
 
 interface SelectedPdfItem {
@@ -24,18 +24,19 @@ interface SelectedPdfItem {
 
 interface DisplayItem {
   type: 'pdf' | 'add_button';
-  id: string; // Unique key for React list
-  data?: SelectedPdfItem; // For 'pdf' type
-  originalPdfIndex?: number; // For 'pdf' type, index in selectedPdfItems
-  insertAtIndex?: number; // For 'add_button' type
+  id: string; 
+  data?: SelectedPdfItem; 
+  originalPdfIndex?: number;
+  insertAtIndex?: number; 
 }
 
-const PREVIEW_TARGET_HEIGHT_MERGE = 180; // Renamed constant
+const PREVIEW_TARGET_HEIGHT_MERGE = 180;
 
-export default function MergeClientPage() { // Renamed component
+export default function MergeClientPage() {
   const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfItem[]>([]);
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
-  const [isMerging, setIsMerging] = useState(false); // Renamed from isAssembling
+  const [isMerging, setIsMerging] = useState(false);
+  const [mergedPdfUri, setMergedPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   
@@ -43,6 +44,15 @@ export default function MergeClientPage() { // Renamed component
   const insertAtIndexRef = useRef<number | null>(null);
   const dragItemIndex = useRef<number | null>(null);
   const dragOverItemIndex = useRef<number | null>(null);
+
+  const resetState = () => {
+    setSelectedPdfItems([]);
+    setMergedPdfUri(null);
+    setError(null);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  }
 
   useEffect(() => {
     setError(null);
@@ -129,54 +139,51 @@ export default function MergeClientPage() { // Renamed component
     toast({ description: "Files sorted by name (A-Z)." });
   };
 
-  const handleMergeAndDownload = async () => { // Renamed from handleAssembleAndDownload
-    if (selectedPdfItems.length < 1) { // Merge usually needs 2, but UI should enforce that before enabling button
+  const handleMerge = async () => {
+    if (selectedPdfItems.length < 2) {
       toast({
         title: "Not enough files",
-        description: "Please select at least one PDF file to merge. Typically, you need two or more.",
+        description: "Please select at least two PDF files to merge.",
         variant: "destructive",
       });
       return;
     }
-    if (selectedPdfItems.length < 2) {
-         toast({
-            title: "Merge Recommendation",
-            description: "Merging typically requires at least two PDF files. You can proceed if you're preparing a single file for later merging operations.",
-            // variant: "default", // or remove variant for default
-        });
-        // Allow to proceed if user insists or if single file operations are intended by this tool
-    }
     
-    setIsMerging(true); // Renamed from setIsAssembling
+    setIsMerging(true);
     setError(null);
 
     try {
       const dataUris = selectedPdfItems.map(item => item.dataUri);
-      const result = await mergePdfsAction({ orderedPdfDataUris: dataUris }); // Changed to mergePdfsAction
+      const result = await mergePdfsAction({ orderedPdfDataUris: dataUris });
 
       if (result.error) {
         setError(result.error);
         toast({
-          title: "Merge Error", // Changed from Assembly Error
+          title: "Merge Error",
           description: result.error,
           variant: "destructive",
         });
-      } else if (result.mergedPdfDataUri) { // Changed from assembledPdfDataUri
-        downloadDataUri(result.mergedPdfDataUri, "merged_document.pdf"); // Changed filename
+      } else if (result.mergedPdfDataUri) {
+        setMergedPdfUri(result.mergedPdfDataUri);
         toast({
-          title: "Merge Successful!", // Changed from Assembly Successful!
-          description: "Your PDFs have been merged and download has started.", // Changed message
+          title: "Merge Successful!",
+          description: "Your PDFs have been merged. Click Download to save.",
         });
-        setSelectedPdfItems([]);
       }
     } catch (e: any) {
-      const errorMessage = e.message || "An unexpected error occurred during merge."; // Changed message
+      const errorMessage = e.message || "An unexpected error occurred during merge.";
       setError(errorMessage);
-      toast({ title: "Merge Failed", description: errorMessage, variant: "destructive" }); // Changed title
+      toast({ title: "Merge Failed", description: errorMessage, variant: "destructive" });
     } finally {
-      setIsMerging(false); // Renamed from setIsAssembling
+      setIsMerging(false);
     }
   };
+  
+  const handleDownload = () => {
+      if (mergedPdfUri) {
+          downloadDataUri(mergedPdfUri, "merged_document.pdf");
+      }
+  }
 
   const handleDragStart = (index: number) => {
     dragItemIndex.current = index;
@@ -215,8 +222,8 @@ export default function MergeClientPage() { // Renamed component
   return (
     <div className="max-w-full mx-auto space-y-8">
       <header className="text-center py-8">
-        <Combine className="mx-auto h-16 w-16 text-primary mb-4" /> {/* Changed Icon */}
-        <h1 className="text-3xl font-bold tracking-tight">Merge PDF Files</h1> {/* Changed Title */}
+        <Combine className="mx-auto h-16 w-16 text-primary mb-4" />
+        <h1 className="text-3xl font-bold tracking-tight">Merge PDF Files</h1>
         <p className="text-muted-foreground mt-2">
           Combine multiple PDF documents into one. Drag and drop to reorder.
         </p>
@@ -254,7 +261,7 @@ export default function MergeClientPage() { // Renamed component
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-grow lg:w-3/4">
             <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
-              <div className="flex flex-wrap items-center gap-px p-1"> {/* Layout from add-pages */}
+              <div className="flex flex-wrap items-center gap-px p-1">
                 {displayItems.map((item) => {
                   if (item.type === 'pdf' && item.data) {
                     const pdfItem = item.data;
@@ -266,7 +273,7 @@ export default function MergeClientPage() { // Renamed component
                         onDragEnter={() => handleDragEnter(item.originalPdfIndex!)}
                         onDragEnd={handleDragEnd}
                         onDragOver={handleDragOver}
-                        className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between w-44" // Style from add-pages
+                        className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between w-44"
                       >
                         <div className="relative w-full mb-2">
                           <Button
@@ -295,7 +302,7 @@ export default function MergeClientPage() { // Renamed component
                     );
                   } else if (item.type === 'add_button') {
                     return (
-                      <div key={item.id} className="flex items-center justify-center h-full w-12"> {/* Style from add-pages */}
+                      <div key={item.id} className="flex items-center justify-center h-full w-12">
                         <Button
                           variant="outline"
                           size="icon"
@@ -330,7 +337,7 @@ export default function MergeClientPage() { // Renamed component
           <div className="lg:w-1/4 space-y-4 lg:sticky lg:top-24 self-start">
             <Card className="shadow-lg">
               <CardHeader className="text-center">
-                <CardTitle>Merge Options</CardTitle> {/* Changed Title */}
+                <CardTitle>Merge Options</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Alert variant="default" className="text-sm p-3">
@@ -343,20 +350,31 @@ export default function MergeClientPage() { // Renamed component
                   <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort A-Z
                 </Button>
               </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={handleMergeAndDownload} // Renamed
-                  disabled={selectedPdfItems.length < 1 || isMerging || isLoadingPreviews} // Adjusted disabled condition
-                  className="w-full"
-                  size="lg"
-                >
-                  {isMerging ? ( // Renamed
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Combine className="mr-2 h-4 w-4" /> // Correct icon
-                  )}
-                  Merge PDFs ({selectedPdfItems.length}) {/* Changed Text */}
-                </Button>
+              <CardFooter className="flex-col gap-2">
+                {mergedPdfUri ? (
+                    <>
+                        <Button onClick={handleDownload} className="w-full" size="lg">
+                            <Download className="mr-2 h-5 w-5"/> Download Merged PDF
+                        </Button>
+                        <Button onClick={resetState} className="w-full" variant="outline">
+                            Merge More Files
+                        </Button>
+                    </>
+                ) : (
+                    <Button
+                        onClick={handleMerge}
+                        disabled={selectedPdfItems.length < 2 || isMerging || isLoadingPreviews}
+                        className="w-full"
+                        size="lg"
+                        >
+                        {isMerging ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Combine className="mr-2 h-4 w-4" />
+                        )}
+                        Merge PDFs ({selectedPdfItems.length})
+                    </Button>
+                )}
               </CardFooter>
             </Card>
           </div>

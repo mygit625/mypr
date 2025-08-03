@@ -11,7 +11,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { LayoutGrid, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine, RotateCcw, RotateCw } from 'lucide-react';
+import { LayoutGrid, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine, RotateCcw, RotateCw, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
@@ -30,7 +30,7 @@ interface SelectedPdfPageItem {
   pageIndexInOriginalFile: number;
   totalPagesInOriginalFile: number;
   displayName: string;
-  rotation: number; // Added rotation
+  rotation: number;
 }
 
 interface DisplayItem {
@@ -47,6 +47,7 @@ export default function OrganizePage() {
   const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfPageItem[]>([]);
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isOrganizing, setIsOrganizing] = useState(false);
+  const [organizedPdfUri, setOrganizedPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -54,6 +55,15 @@ export default function OrganizePage() {
   const insertAtIndexRef = useRef<number | null>(null);
   const dragItemIndex = useRef<number | null>(null);
   const dragOverItemIndex = useRef<number | null>(null);
+
+  const resetState = () => {
+      setSelectedPdfItems([]);
+      setOrganizedPdfUri(null);
+      setError(null);
+      if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+      }
+  }
 
   useEffect(() => {
     setError(null);
@@ -90,7 +100,7 @@ export default function OrganizePage() {
             pageIndexInOriginalFile: i,
             totalPagesInOriginalFile: numPages,
             displayName: `${file.name} (Page ${i + 1} of ${numPages})`,
-            rotation: 0, // Initialize rotation
+            rotation: 0,
           });
         }
       } catch (e: any) {
@@ -174,7 +184,7 @@ export default function OrganizePage() {
     );
   };
 
-  const handleOrganizeAndDownload = async () => {
+  const handleOrganize = async () => {
     if (selectedPdfItems.length < 1) {
       toast({
         title: "No pages selected",
@@ -191,7 +201,7 @@ export default function OrganizePage() {
       const pagesToAssemble = selectedPdfItems.map(item => ({
         sourcePdfDataUri: item.originalFileDataUri,
         pageIndexToCopy: item.pageIndexInOriginalFile,
-        rotation: item.rotation, // Include rotation
+        rotation: item.rotation,
       }));
 
       const result = await assembleIndividualPagesAction({ orderedPagesToAssemble: pagesToAssemble });
@@ -204,12 +214,11 @@ export default function OrganizePage() {
           variant: "destructive",
         });
       } else if (result.organizedPdfDataUri) {
-        downloadDataUri(result.organizedPdfDataUri, "organized_document.pdf");
+        setOrganizedPdfUri(result.organizedPdfDataUri);
         toast({
           title: "Organization Successful!",
-          description: "Your PDF pages have been organized and download has started.",
+          description: "Your PDF pages have been organized. Click Download to save.",
         });
-        setSelectedPdfItems([]);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during organization.";
@@ -219,6 +228,12 @@ export default function OrganizePage() {
       setIsOrganizing(false);
     }
   };
+  
+  const handleDownload = () => {
+      if (organizedPdfUri) {
+          downloadDataUri(organizedPdfUri, "organized_document.pdf");
+      }
+  }
 
   const handleDragStart = (index: number) => {
     dragItemIndex.current = index;
@@ -401,20 +416,31 @@ export default function OrganizePage() {
                   <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort Pages
                 </Button>
               </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={handleOrganizeAndDownload}
-                  disabled={selectedPdfItems.length < 1 || isOrganizing || isLoadingPreviews}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isOrganizing ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Combine className="mr-2 h-4 w-4" />
-                  )}
-                  Organize & Download Pages ({selectedPdfItems.length})
-                </Button>
+              <CardFooter className="flex-col gap-2">
+                {organizedPdfUri ? (
+                    <>
+                        <Button onClick={handleDownload} className="w-full" size="lg">
+                            <Download className="mr-2 h-5 w-5" /> Download Organized PDF
+                        </Button>
+                        <Button onClick={resetState} className="w-full" variant="outline">
+                            Organize Another PDF
+                        </Button>
+                    </>
+                ) : (
+                    <Button
+                        onClick={handleOrganize}
+                        disabled={selectedPdfItems.length < 1 || isOrganizing || isLoadingPreviews}
+                        className="w-full"
+                        size="lg"
+                        >
+                        {isOrganizing ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Combine className="mr-2 h-4 w-4" />
+                        )}
+                        Organize & Save ({selectedPdfItems.length})
+                    </Button>
+                )}
               </CardFooter>
             </Card>
           </div>
@@ -431,5 +457,3 @@ export default function OrganizePage() {
     </div>
   );
 }
-
-    

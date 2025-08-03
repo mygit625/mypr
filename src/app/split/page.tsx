@@ -13,8 +13,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { getInitialPageDataAction, type PageData } from '../organize/actions'; // Reusing from organize
 import {
-  SplitSquareHorizontal, Loader2, Info,
-  GalleryThumbnails, Files, Scaling, PlusCircle, XCircle, Download
+  Split, Loader2, Info,
+  GalleryThumbnails, Files, PlusCircle, XCircle, Download
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
@@ -22,9 +22,9 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { splitPdfAction, type CustomRange } from './actions';
 import { cn } from '@/lib/utils';
 
-const PREVIEW_TARGET_HEIGHT_SPLIT = 200; // Increased height for better visibility
+const PREVIEW_TARGET_HEIGHT_SPLIT = 200;
 
-type SplitMode = 'range' | 'pages' | 'size';
+type SplitMode = 'range' | 'pages';
 type RangeMode = 'custom' | 'fixed';
 
 export default function SplitPage() {
@@ -67,7 +67,7 @@ export default function SplitPage() {
       setIsLoadingPdf(true);
       try {
         const dataUri = await readFileAsDataURL(selectedFile);
-        setPdfDataUri(dataUri); // Set URI first
+        setPdfDataUri(dataUri);
         const result = await getInitialPageDataAction({ pdfDataUri: dataUri });
         if (result.error) {
           throw new Error(result.error);
@@ -175,15 +175,10 @@ export default function SplitPage() {
     }
   };
 
-  const currentSplitActionLabel = () => {
-    if (splitMode === 'range' && rangeMode === 'custom') return "Split by Custom Ranges";
-    return "Split PDF"; // Default or fallback label
-  }
-
   return (
     <div className="max-w-7xl mx-auto space-y-8">
-      <header className="text-center">
-        <SplitSquareHorizontal className="mx-auto h-16 w-16 text-primary mb-4" />
+      <header className="text-center py-8">
+        <Split className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Split PDF File</h1>
         <p className="text-muted-foreground mt-2">
           Divide your PDF into multiple documents by specifying page ranges or extracting all pages.
@@ -250,7 +245,7 @@ export default function SplitPage() {
             <CardHeader className="text-center pb-4">
               <CardTitle className="text-2xl font-semibold">Split Options</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
                {splitResultUri ? (
                 <div className="space-y-4 text-center">
                     <Alert variant="default" className="border-green-500 bg-green-50">
@@ -260,17 +255,10 @@ export default function SplitPage() {
                             Your PDF has been split successfully.
                         </AlertDescription>
                     </Alert>
-                    <Button onClick={handleDownload} size="lg" className="w-full">
-                        <Download className="mr-2 h-5 w-5"/> Download ZIP
-                    </Button>
-                    <Button onClick={resetState} variant="outline" className="w-full">
-                        Split Another PDF
-                    </Button>
                 </div>
                ) : (
-                <>
                   <Tabs defaultValue="range" value={splitMode} onValueChange={(val) => setSplitMode(val as SplitMode)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-1"> {/* Simplified to one active option for now */}
+                    <TabsList className="grid w-full grid-cols-1">
                       <TabsTrigger value="range" className="text-xs sm:text-sm"><GalleryThumbnails className="mr-1 h-4 w-4" />By Range</TabsTrigger>
                     </TabsList>
                     <TabsContent value="range" className="pt-4">
@@ -342,59 +330,59 @@ export default function SplitPage() {
                       )}
                     </TabsContent>
                   </Tabs>
-                   <Button
-                    variant="secondary"
-                    onClick={async () => {
-                        if (!file || !pdfDataUri) {
-                            toast({ title: "No file selected", variant: "destructive" });
-                            return;
-                        }
-                        setIsSplitting(true); setError(null); setSplitResultUri(null);
-                        try {
-                            const result = await splitPdfAction({ pdfDataUri, splitType: 'allPages' });
-                            if (result.error) {
-                                throw new Error(result.error);
-                            } else if (result.zipDataUri) {
-                                setSplitResultUri(result.zipDataUri);
-                                toast({ title: "Split Successful!", description: "All pages extracted." });
-                            }
-                        } catch (e: any) {
-                            setError(e.message || "Error splitting all pages.");
-                            toast({ title: "Split Failed", description: e.message, variant: "destructive" });
-                        } finally {
-                            setIsSplitting(false);
-                        }
-                    }}
-                    disabled={!file || isSplitting || isLoadingPdf || totalPages === 0}
-                    className="w-full mt-3"
-                    >
-                    <Files className="mr-2 h-4 w-4" /> Split All Pages Individually
-                  </Button>
-                </>
                )}
             </CardContent>
-            {!splitResultUri && (
-                <CardFooter className="mt-4 border-t pt-4">
-                  <Button
-                    onClick={handleSplit}
-                    disabled={!file || isSplitting || isLoadingPdf || (splitMode === 'range' && rangeMode === 'custom' && customRanges.length === 0)}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {isSplitting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <SplitSquareHorizontal className="mr-2 h-4 w-4" />
-                    )}
-                    {currentSplitActionLabel()}
-                  </Button>
-                </CardFooter>
-            )}
+            <CardFooter className="flex-col gap-2">
+                 {splitResultUri ? (
+                    <>
+                        <Button onClick={handleDownload} size="lg" className="w-full">
+                            <Download className="mr-2 h-5 w-5"/> Download ZIP
+                        </Button>
+                        <Button onClick={resetState} variant="outline" className="w-full">
+                            Split Another PDF
+                        </Button>
+                    </>
+                 ) : (
+                    <>
+                    <Button
+                        onClick={handleSplit}
+                        disabled={!file || isSplitting || isLoadingPdf || (splitMode === 'range' && rangeMode === 'custom' && customRanges.length === 0)}
+                        className="w-full"
+                        size="lg"
+                    >
+                        {isSplitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Split className="mr-2 h-4 w-4" />}
+                        Split by Custom Ranges
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        onClick={async () => {
+                            if (!file || !pdfDataUri) { toast({ title: "No file selected", variant: "destructive" }); return; }
+                            setIsSplitting(true); setError(null); setSplitResultUri(null);
+                            try {
+                                const result = await splitPdfAction({ pdfDataUri, splitType: 'allPages' });
+                                if (result.error) throw new Error(result.error);
+                                if (result.zipDataUri) {
+                                    setSplitResultUri(result.zipDataUri);
+                                    toast({ title: "Split Successful!", description: "All pages extracted." });
+                                }
+                            } catch (e: any) {
+                                setError(e.message || "Error splitting all pages.");
+                                toast({ title: "Split Failed", description: e.message, variant: "destructive" });
+                            } finally { setIsSplitting(false); }
+                        }}
+                        disabled={!file || isSplitting || isLoadingPdf || totalPages === 0}
+                        className="w-full"
+                    >
+                        <Files className="mr-2 h-4 w-4" /> Split All Pages
+                    </Button>
+                    </>
+                 )}
+            </CardFooter>
           </Card>
         </div>
       </div>
 
-      {error && (
+      {error && !isSplitting && (
         <Alert variant="destructive" className="mt-6">
           <Info className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
