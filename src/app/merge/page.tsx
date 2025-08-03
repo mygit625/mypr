@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import MergeClientPage from './MergeClientPage';
 
@@ -11,10 +12,11 @@ export const metadata: Metadata = {
     description: 'Combine multiple PDF documents into one single PDF file quickly and easily.',
     images: [
       {
-        url: `${baseUrl}/merge/og-image`, // Pointing to the new SVG image route with an absolute URL
+        url: `${baseUrl}/merge/og-image`, // This now points to the PNG generation route
         width: 1200,
         height: 630,
         alt: 'Merge PDF Tool Banner',
+        type: 'image/png', // Specify the image type
       },
     ],
   },
@@ -22,7 +24,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Merge PDF | Toolsinn',
     description: 'Combine multiple PDF documents into one single PDF file quickly and easily.',
-    images: [`${baseUrl}/merge/og-image`], // Pointing to the new SVG image route with an absolute URL
+    images: [`${baseUrl}/merge/og-image`],
   },
 };
 
