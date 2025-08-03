@@ -28,7 +28,7 @@ import { Slider } from '@/components/ui/slider';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ListOrdered, Loader2, Info, ArrowRightCircle, Check } from 'lucide-react';
+import { ListOrdered, Loader2, Info, ArrowRightCircle, Check, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
@@ -52,6 +52,7 @@ export default function AddPageNumbersPage() {
   const [pages, setPages] = useState<PageInfo[]>([]);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processedUri, setProcessedUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -63,12 +64,19 @@ export default function AddPageNumbersPage() {
   const [fontSize, setFontSize] = useState(12);
   const [startingNumber, setStartingNumber] = useState(1);
 
+  const resetState = () => {
+    setFile(null);
+    setPdfDataUri(null);
+    setPages([]);
+    setError(null);
+    setProcessedUri(null);
+  };
+
   const handleFileSelected = async (selectedFiles: File[]) => {
     if (selectedFiles.length > 0) {
       const selectedFile = selectedFiles[0];
+      resetState();
       setFile(selectedFile);
-      setError(null);
-      setPages([]);
       setIsLoadingPdf(true);
       try {
         const dataUri = await readFileAsDataURL(selectedFile);
@@ -95,15 +103,12 @@ export default function AddPageNumbersPage() {
       } catch (e: any) {
         setError(e.message || "Failed to read or process file.");
         toast({ title: "File Error", description: e.message, variant: "destructive" });
-        setFile(null);
-        setPdfDataUri(null);
+        resetState();
       } finally {
         setIsLoadingPdf(false);
       }
     } else {
-      setFile(null);
-      setPdfDataUri(null);
-      setPages([]);
+      resetState();
     }
   };
 
@@ -115,6 +120,7 @@ export default function AddPageNumbersPage() {
 
     setIsProcessing(true);
     setError(null);
+    setProcessedUri(null);
 
     try {
       const result = await addPageNumbersAction({
@@ -125,17 +131,20 @@ export default function AddPageNumbersPage() {
         setError(result.error);
         toast({ title: "Processing Error", description: result.error, variant: "destructive" });
       } else if (result.numberedPdfDataUri) {
-        downloadDataUri(result.numberedPdfDataUri, `numbered_${file.name}`);
-        toast({ title: "Success!", description: "Page numbers added. Download has started." });
-        setFile(null);
-        setPdfDataUri(null);
-        setPages([]);
+        setProcessedUri(result.numberedPdfDataUri);
+        toast({ title: "Success!", description: "Page numbers added. Click Download to save." });
       }
     } catch (e: any) {
       setError(e.message || "An unexpected error occurred.");
       toast({ title: "Processing Failed", description: e.message, variant: "destructive" });
     } finally {
       setIsProcessing(false);
+    }
+  };
+  
+  const handleDownload = () => {
+    if(processedUri && file) {
+      downloadDataUri(processedUri, `numbered_${file.name}`);
     }
   };
 
@@ -186,7 +195,7 @@ export default function AddPageNumbersPage() {
                 {pages.map(p => (
                    <div key={p.pageIndex} className="flex flex-col items-center">
                     <PdfPagePreview
-                      pdfDataUri={pdfDataUri}
+                      pdfDataUri={processedUri || pdfDataUri}
                       pageIndex={p.pageIndex}
                       targetHeight={PREVIEW_TARGET_HEIGHT_PAGENUM}
                       className="shadow-md"
@@ -232,7 +241,7 @@ export default function AddPageNumbersPage() {
                     value={pageRange}
                     onChange={(e) => setPageRange(e.target.value)}
                     placeholder="e.g., 1-5, 8, 10-12"
-                    disabled={!file}
+                    disabled={!file || !!processedUri}
                   />
                   <p className="text-xs text-muted-foreground mt-1">Leave blank to number all pages.</p>
                 </div>
@@ -247,7 +256,7 @@ export default function AddPageNumbersPage() {
                         setTextFormat(value);
                       }
                     }}
-                    disabled={!file}
+                    disabled={!file || !!processedUri}
                   >
                     <SelectTrigger id="text-format-select">
                       <SelectValue placeholder="Select a format..." />
@@ -266,7 +275,7 @@ export default function AddPageNumbersPage() {
                       value={textFormat}
                       onChange={(e) => setTextFormat(e.target.value)}
                       className="mt-2"
-                      disabled={!file}
+                      disabled={!file || !!processedUri}
                     />
                   )}
                   <p className="text-xs text-muted-foreground mt-1">Use {'{n}'} for page number and {'{N}'} for total pages.</p>
@@ -281,7 +290,7 @@ export default function AddPageNumbersPage() {
                         value={startingNumber}
                         onChange={(e) => setStartingNumber(Number(e.target.value))}
                         min={1}
-                        disabled={!file}
+                        disabled={!file || !!processedUri}
                       />
                   </div>
                   <div>
@@ -291,30 +300,41 @@ export default function AddPageNumbersPage() {
                         min={8} max={72} step={1}
                         value={[fontSize]}
                         onValueChange={(value) => setFontSize(value[0])}
-                        disabled={!file}
+                        disabled={!file || !!processedUri}
                       />
                   </div>
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={handleAddNumbers}
-                  disabled={!file || isProcessing}
-                  className="w-full text-lg py-6"
-                  size="lg"
-                >
-                  {isProcessing ? (
+              <CardFooter className="flex-col gap-2">
+                 {processedUri ? (
                     <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Adding Numbers...
+                    <Button onClick={handleDownload} className="w-full" size="lg">
+                        <Download className="mr-2 h-5 w-5"/> Download PDF
+                    </Button>
+                     <Button onClick={resetState} className="w-full" variant="outline">
+                        Process Another File
+                    </Button>
                     </>
-                  ) : (
-                    <>
-                      <ArrowRightCircle className="mr-2 h-5 w-5" />
-                      Add page numbers
-                    </>
-                  )}
-                </Button>
+                ) : (
+                    <Button
+                    onClick={handleAddNumbers}
+                    disabled={!file || isProcessing}
+                    className="w-full text-lg py-6"
+                    size="lg"
+                    >
+                    {isProcessing ? (
+                        <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Adding Numbers...
+                        </>
+                    ) : (
+                        <>
+                        <ArrowRightCircle className="mr-2 h-5 w-5" />
+                        Add page numbers
+                        </>
+                    )}
+                    </Button>
+                )}
               </CardFooter>
             </Card>
           </div>

@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { CheckCircle, Loader2, Info, ArrowDownToLine, Plus, ArrowRightCircle, Minimize2, X } from 'lucide-react';
+import { CheckCircle, Loader2, Info, ArrowDownToLine, Plus, ArrowRightCircle, Minimize2, X, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
@@ -117,8 +117,7 @@ export default function CompressPage() {
             reductionPercentage: parseFloat(reduction.toFixed(2))
         });
         setCompressedPdfUri(result.compressedPdfDataUri);
-        downloadDataUri(result.compressedPdfDataUri, `compressed_${file.name}`);
-        toast({ title: "Compression Successful!", description: `Your PDF has been compressed. Download has started.` });
+        toast({ title: "Compression Successful!", description: `Your PDF has been compressed. Click Download to save.` });
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during compression.";
@@ -129,10 +128,10 @@ export default function CompressPage() {
     }
   };
 
-  const handleRedownload = () => {
+  const handleDownload = () => {
     if (compressedPdfUri && file) {
         downloadDataUri(compressedPdfUri, `compressed_${file.name}`);
-        toast({ description: "Download started again." });
+        toast({ description: "Download started." });
     } else {
         toast({ description: "No compressed file available to download. Please process a file first.", variant: "destructive" });
     }
@@ -166,7 +165,7 @@ export default function CompressPage() {
               />
             </div>
           )}
-          {pdfDataUri && file && (
+          {pdfDataUri && file && !compressionStats && (
             <>
               <div className="w-full h-full flex items-center justify-center">
                  <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={0} targetHeight={PREVIEW_TARGET_HEIGHT_COMPRESS} />
@@ -182,6 +181,50 @@ export default function CompressPage() {
                 <X className="h-5 w-5" />
               </Button>
             </>
+          )}
+          {pdfDataUri && file && compressionStats && compressedPdfUri && (
+             <Card className="mt-8 max-w-2xl mx-auto shadow-lg w-full">
+              <CardHeader>
+                  <CardTitle className="text-center text-xl">Compression Results</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <Alert variant="default" className="bg-green-50 border-green-200 text-green-700">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <AlertTitle>Compression Complete!</AlertTitle>
+                      <AlertDescription className="text-green-600">
+                          Your PDF has been successfully compressed.
+                      </AlertDescription>
+                  </Alert>
+                  <div>
+                      <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium">Original Size:</span>
+                          <span>{formatBytes(compressionStats.originalSize)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium">Compressed Size:</span>
+                          <span>{formatBytes(compressionStats.compressedSize)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-semibold text-primary mb-2">
+                          <span>Reduction:</span>
+                          <span>{compressionStats.reductionPercentage}%</span>
+                      </div>
+                      <Progress value={compressionStats.reductionPercentage} className="h-3" aria-label={`${compressionStats.reductionPercentage}% reduction`} />
+                  </div>
+                  <Button
+                      onClick={handleDownload}
+                      className="w-full mt-2"
+                      size="lg"
+                  >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Compressed PDF
+                  </Button>
+              </CardContent>
+              <CardFooter>
+                 <Button onClick={handleRemoveFile} className="w-full" variant="outline">
+                    Compress Another File
+                  </Button>
+              </CardFooter>
+            </Card>
           )}
            <Button
             variant="default"
@@ -231,7 +274,7 @@ export default function CompressPage() {
           </Card>
           <Button
             onClick={handleCompress}
-            disabled={!file || isCompressing}
+            disabled={!file || isCompressing || !!compressionStats}
             className="w-full text-lg py-6"
             size="lg"
           >
@@ -258,51 +301,6 @@ export default function CompressPage() {
         </Alert>
       )}
       
-      {compressionStats && compressedPdfUri && !error && (
-        <Card className="mt-8 max-w-2xl mx-auto shadow-lg">
-            <CardHeader>
-                <CardTitle className="text-center text-xl">Compression Results</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <Alert variant="default" className="bg-green-50 border-green-200 text-green-700">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <AlertTitle>Compression Complete!</AlertTitle>
-                    <AlertDescription className="text-green-600">
-                        Your PDF has been successfully compressed. Download started automatically.
-                    </AlertDescription>
-                </Alert>
-                <div>
-                    <div className="flex justify-between text-sm mb-1">
-                        <span className="font-medium">Original Size:</span>
-                        <span>{formatBytes(compressionStats.originalSize)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm mb-1">
-                        <span className="font-medium">Compressed Size:</span>
-                        <span>{formatBytes(compressionStats.compressedSize)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm font-semibold text-primary mb-2">
-                        <span>Reduction:</span>
-                        <span>{compressionStats.reductionPercentage}%</span>
-                    </div>
-                    <Progress value={compressionStats.reductionPercentage} className="h-3" aria-label={`${compressionStats.reductionPercentage}% reduction`} />
-                </div>
-                <Button
-                    onClick={handleRedownload}
-                    variant="outline"
-                    className="w-full mt-2"
-                    disabled={!compressedPdfUri || !file || isCompressing}
-                >
-                    <ArrowDownToLine className="mr-2 h-4 w-4" />
-                    Download Compressed PDF Again
-                </Button>
-            </CardContent>
-            <CardFooter>
-                <p className="text-xs text-muted-foreground text-center w-full">
-                    Note: Compression effectiveness varies. For already optimized or primarily text-based PDFs, reduction may be minimal.
-                </p>
-            </CardFooter>
-        </Card>
-      )}
     </div>
   );
 }

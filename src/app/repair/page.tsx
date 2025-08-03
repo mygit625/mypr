@@ -23,7 +23,6 @@ export default function RepairPage() {
   const [error, setError] = useState<string | null>(null);
   const [repairAttempted, setRepairAttempted] = useState(false);
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelectedForUploadZone = async (selectedFiles: File[]) => {
     if (selectedFiles.length > 0) {
@@ -74,10 +73,9 @@ export default function RepairPage() {
         toast({ title: "Repair Process Note", description: result.error, variant: "destructive", duration: 7000 });
       } else if (result.repairedPdfDataUri) {
         setRepairedPdfUri(result.repairedPdfDataUri);
-        downloadDataUri(result.repairedPdfDataUri, `repaired_${file.name}`);
         toast({
           title: "Repair Attempted Successfully!",
-          description: "The PDF has been processed. Download has started. Please check the downloaded file.",
+          description: "The PDF has been processed. Click Download to save.",
           duration: 7000,
         });
       }
@@ -91,10 +89,10 @@ export default function RepairPage() {
     }
   };
 
-  const handleRedownload = () => {
+  const handleDownload = () => {
     if (repairedPdfUri && file) {
         downloadDataUri(repairedPdfUri, `repaired_${file.name}`);
-        toast({ description: "Download started again." });
+        toast({ description: "Download started." });
     } else {
         toast({ description: "No repaired file available to download.", variant: "destructive" });
     }
@@ -121,7 +119,7 @@ export default function RepairPage() {
             multiple={false}
             accept="application/pdf"
           />
-          {pdfDataUri && file && (
+          {pdfDataUri && file && !repairAttempted && (
             <div className="mt-4 border rounded-lg p-4">
               <h3 className="text-sm font-medium mb-2 text-center">Preview of Uploaded PDF (First Page)</h3>
               <div className="flex justify-center items-center" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_REPAIR}px` }}>
@@ -141,7 +139,7 @@ export default function RepairPage() {
         <CardFooter>
           <Button
             onClick={handleRepair}
-            disabled={!file || isRepairing}
+            disabled={!file || isRepairing || repairAttempted}
             className="w-full"
             size="lg"
           >
@@ -168,7 +166,7 @@ export default function RepairPage() {
               Repair Process Completed
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-center">
+          <CardContent className="text-center space-y-4">
             {error ? (
               <Alert variant="destructive">
                 <Info className="h-4 w-4" />
@@ -187,14 +185,17 @@ export default function RepairPage() {
             )}
             {repairedPdfUri && !error && (
               <Button
-                onClick={handleRedownload}
-                variant="outline"
+                onClick={handleDownload}
                 className="w-full mt-4"
+                size="lg"
               >
                 <Download className="mr-2 h-4 w-4" />
-                Download Repaired PDF Again
+                Download Repaired PDF
               </Button>
             )}
+            <Button onClick={() => handleFileSelectedForUploadZone([])} variant="outline" className="w-full">
+              Start Over
+            </Button>
           </CardContent>
            <CardFooter>
                 <p className="text-xs text-muted-foreground text-center w-full">

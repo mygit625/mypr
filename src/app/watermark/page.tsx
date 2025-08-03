@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -10,7 +11,7 @@ import { Slider } from '@/components/ui/slider';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Droplets, Loader2, Info, ArrowRightCircle, Check } from 'lucide-react';
+import { Droplets, Loader2, Info, ArrowRightCircle, Check, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
@@ -26,6 +27,7 @@ export default function WatermarkPage() {
   const [pages, setPages] = useState<PageData[]>([]);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processedUri, setProcessedUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -37,12 +39,19 @@ export default function WatermarkPage() {
   const [opacity, setOpacity] = useState(0.5);
   const [fontColor, setFontColor] = useState('#ff0000'); // Red
 
+  const resetState = () => {
+    setFile(null);
+    setPdfDataUri(null);
+    setPages([]);
+    setError(null);
+    setProcessedUri(null);
+  };
+
   const handleFileSelected = async (selectedFiles: File[]) => {
     if (selectedFiles.length > 0) {
       const selectedFile = selectedFiles[0];
+      resetState();
       setFile(selectedFile);
-      setError(null);
-      setPages([]);
       setIsLoadingPdf(true);
       try {
         const dataUri = await readFileAsDataURL(selectedFile);
@@ -55,15 +64,12 @@ export default function WatermarkPage() {
       } catch (e: any) {
         setError(e.message || "Failed to read or process file.");
         toast({ title: "File Error", description: e.message, variant: "destructive" });
-        setFile(null);
-        setPdfDataUri(null);
+        resetState();
       } finally {
         setIsLoadingPdf(false);
       }
     } else {
-      setFile(null);
-      setPdfDataUri(null);
-      setPages([]);
+      resetState();
     }
   };
 
@@ -75,6 +81,7 @@ export default function WatermarkPage() {
 
     setIsProcessing(true);
     setError(null);
+    setProcessedUri(null);
 
     try {
       const result = await watermarkPdfAction({
@@ -91,18 +98,20 @@ export default function WatermarkPage() {
         setError(result.error);
         toast({ title: "Processing Error", description: result.error, variant: "destructive" });
       } else if (result.watermarkedPdfDataUri) {
-        downloadDataUri(result.watermarkedPdfDataUri, `watermarked_${file.name}`);
-        toast({ title: "Success!", description: "Watermark added. Download has started." });
-        // Reset state after success
-        setFile(null);
-        setPdfDataUri(null);
-        setPages([]);
+        setProcessedUri(result.watermarkedPdfDataUri);
+        toast({ title: "Success!", description: "Watermark added. Click Download to save." });
       }
     } catch (e: any) {
       setError(e.message || "An unexpected error occurred.");
       toast({ title: "Processing Failed", description: e.message, variant: "destructive" });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (processedUri && file) {
+      downloadDataUri(processedUri, `watermarked_${file.name}`);
     }
   };
 
@@ -155,7 +164,7 @@ export default function WatermarkPage() {
                 {pages.map(p => (
                    <div key={p.id} className="flex flex-col items-center">
                     <PdfPagePreview
-                      pdfDataUri={pdfDataUri}
+                      pdfDataUri={processedUri || pdfDataUri}
                       pageIndex={p.originalIndex}
                       targetHeight={PREVIEW_TARGET_HEIGHT_WATERMARK}
                       className="shadow-md"
@@ -238,18 +247,29 @@ export default function WatermarkPage() {
                   />
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={handleAddWatermark}
-                  disabled={isProcessing}
-                  className="w-full text-lg py-6" size="lg"
-                >
-                  {isProcessing ? (
-                    <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Adding Watermark...</>
-                  ) : (
-                    <><ArrowRightCircle className="mr-2 h-5 w-5" />Apply Watermark</>
-                  )}
-                </Button>
+              <CardFooter className="flex-col gap-2">
+                 {processedUri ? (
+                    <>
+                    <Button onClick={handleDownload} className="w-full" size="lg">
+                        <Download className="mr-2 h-5 w-5"/> Download PDF
+                    </Button>
+                     <Button onClick={resetState} className="w-full" variant="outline">
+                        Add Another Watermark
+                    </Button>
+                    </>
+                ) : (
+                    <Button
+                    onClick={handleAddWatermark}
+                    disabled={isProcessing}
+                    className="w-full text-lg py-6" size="lg"
+                    >
+                    {isProcessing ? (
+                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Adding Watermark...</>
+                    ) : (
+                        <><ArrowRightCircle className="mr-2 h-5 w-5" />Apply Watermark</>
+                    )}
+                    </Button>
+                )}
               </CardFooter>
             </Card>
           </div>

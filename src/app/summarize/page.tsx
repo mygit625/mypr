@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Loader2, Info } from 'lucide-react';
+import { FileText, Loader2, Info, Copy, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { summarizePdfAction } from './actions';
+import { downloadDataUri } from '@/lib/download-utils';
 
 
 export default function SummarizePage() {
@@ -75,6 +76,21 @@ export default function SummarizePage() {
     }
   };
 
+  const copyToClipboard = () => {
+    if (!summary) return;
+    navigator.clipboard.writeText(summary);
+    toast({ description: "Summary copied to clipboard!" });
+  };
+
+  const downloadAsTxt = () => {
+    if (!summary || !file) return;
+    const blob = new Blob([summary], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    downloadDataUri(url, `summary_${file.name.replace(/\.pdf$/i, '')}.txt`);
+    URL.revokeObjectURL(url);
+  };
+
+
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <header className="text-center">
@@ -85,35 +101,37 @@ export default function SummarizePage() {
         </p>
       </header>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>Upload PDF</CardTitle>
-          <CardDescription>Select or drag and drop the PDF file you want to summarize.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FileUploadZone onFilesSelected={handleFileSelected} multiple={false} accept="application/pdf" />
-        </CardContent>
-        <CardFooter>
-          <Button
-            onClick={handleSummarize}
-            disabled={!file || isSummarizing}
-            className="w-full"
-            size="lg"
-          >
-            {isSummarizing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Summarizing...
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                Summarize PDF
-              </>
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
+      {!summary && (
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle>Upload PDF</CardTitle>
+            <CardDescription>Select or drag and drop the PDF file you want to summarize.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FileUploadZone onFilesSelected={handleFileSelected} multiple={false} accept="application/pdf" />
+          </CardContent>
+          <CardFooter>
+            <Button
+              onClick={handleSummarize}
+              disabled={!file || isSummarizing}
+              className="w-full"
+              size="lg"
+            >
+              {isSummarizing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Summarizing...
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Summarize PDF
+                </>
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
 
       {error && (
         <Alert variant="destructive">
@@ -134,6 +152,14 @@ export default function SummarizePage() {
               <p className="text-sm whitespace-pre-wrap">{summary}</p>
             </ScrollArea>
           </CardContent>
+           <CardFooter className="flex-col sm:flex-row gap-2">
+            <Button onClick={copyToClipboard} variant="outline" className="w-full">
+              <Copy className="mr-2 h-4 w-4" /> Copy Summary
+            </Button>
+            <Button onClick={downloadAsTxt} className="w-full">
+              <Download className="mr-2 h-4 w-4" /> Download .txt
+            </Button>
+          </CardFooter>
         </Card>
       )}
     </div>
