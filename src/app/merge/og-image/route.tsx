@@ -3,14 +3,14 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // Correct SVG paths for lucide-react icons:
-    // Combine Icon Path
-    const combineIconPath = `
-      <path d="M12 22v-8" />
-      <path d="M4 14H2a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2" />
-      <path d="M22 14h-2a2 2 0 0 0-2-2V4a2 2 0 0 0-2-2H8" />
-      <path d="M15 18H8" />
+    // Correct SVG path for the specific Merge PDF icon used on the site
+    const mergeIconPath = `
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
+      <path d="M14 2v6h6" />
+      <path d="M12 18v-6" />
+      <path d="M9 15h6" />
     `;
+
     // Box Icon Path (for logo)
     const boxIconPath = `
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -30,10 +30,10 @@ export async function GET() {
         
         <rect width="1200" height="630" class="bg" />
 
-        <!-- Main Tool Icon (Combine) -->
+        <!-- Main Tool Icon (Corrected Merge Icon) -->
         <g transform="translate(550, 120) scale(5)">
           <g class="icon">
-            ${combineIconPath}
+            ${mergeIconPath}
           </g>
         </g>
         
