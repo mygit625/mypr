@@ -75,7 +75,7 @@ export const PageConfetti: React.FC<PageConfettiProps> = ({ active, pieceCount =
   }
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
+    <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden">
       {pieces.map((piece) => (
         <div key={piece.id} style={piece.style} />
       ))}

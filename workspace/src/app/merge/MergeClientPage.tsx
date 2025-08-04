@@ -12,7 +12,7 @@ import { Combine, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download } 
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { mergePdfsAction } from '@/app/merge/actions';
+import { mergePdfsAction } from './actions';
 import { cn } from '@/lib/utils';
 import { PageConfetti } from '@/components/ui/page-confetti';
 
