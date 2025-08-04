@@ -15,7 +15,7 @@ import { FilePlus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine, 
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { assemblePdfAction } from '@/app/add-pages/actions';
+import { assemblePdfAction } from './actions';
 import { cn } from '@/lib/utils';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
@@ -198,7 +198,7 @@ export default function AddPagesPage() {
         setAssembledPdfUri(result.assembledPdfDataUri);
         toast({
           title: "Assembly Successful!",
-          description: "Your PDF pages have been assembled and are ready to download.",
+          description: "Your PDF pages have been assembled and are ready for download.",
         });
       }
     } catch (e: any) {
@@ -402,7 +402,7 @@ export default function AddPagesPage() {
                     ) : (
                         <Combine className="mr-2 h-4 w-4" />
                     )}
-                    Assemble & Download Pages ({selectedPdfItems.length})
+                    Assemble Pages ({selectedPdfItems.length})
                     </Button>
                 )}
               </CardFooter>

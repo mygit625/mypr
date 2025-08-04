@@ -32,7 +32,7 @@ import { ListOrdered, Loader2, Info, ArrowRightCircle, Check, Download } from 'l
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { addPageNumbersAction, type PageNumberPosition } from '@/app/add-page-numbers/actions';
+import { addPageNumbersAction, type PageNumberPosition } from './actions';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
