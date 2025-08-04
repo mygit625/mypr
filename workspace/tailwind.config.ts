@@ -93,16 +93,11 @@ export default {
   				to: {
   					height: '0'
   				}
-  			},
-        'pulse-zoom': {
-          '0%, 100%': { transform: 'scale(1)', backgroundColor: 'hsl(var(--primary))' },
-          '50%': { transform: 'scale(1.05)', backgroundColor: 'hsl(var(--accent))' },
-        }
+  			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out',
-        'pulse-zoom': 'pulse-zoom 2s infinite ease-in-out',
+  			'accordion-up': 'accordion-up 0.2s ease-out'
   		}
   	}
   },
