@@ -14,6 +14,7 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { mergePdfsAction } from '@/app/merge/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 interface SelectedPdfItem {
   id: string;
@@ -38,6 +39,7 @@ export default function MergeClientPage() {
   const [isMerging, setIsMerging] = useState(false);
   const [mergedPdfUri, setMergedPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +51,7 @@ export default function MergeClientPage() {
     setSelectedPdfItems([]);
     setMergedPdfUri(null);
     setError(null);
+    setShowConfetti(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -165,6 +168,7 @@ export default function MergeClientPage() {
         });
       } else if (result.mergedPdfDataUri) {
         setMergedPdfUri(result.mergedPdfDataUri);
+        setShowConfetti(true);
         toast({
           title: "Merge Successful!",
           description: "Your PDFs have been merged. Click Download to save.",
@@ -221,6 +225,7 @@ export default function MergeClientPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Combine className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Merge PDF Files</h1>

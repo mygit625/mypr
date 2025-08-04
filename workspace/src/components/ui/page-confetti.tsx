@@ -63,7 +63,7 @@ export const PageConfetti: React.FC<PageConfettiProps> = ({ active, pieceCount =
       // Clean up after animation
       const cleanupTimer = setTimeout(() => {
         setPieces([]);
-      }, (randomDuration + randomDelay + 1) * 1000);
+      }, (2 + 2 + 1) * 1000); // Max duration + max delay + buffer
       
       return () => clearTimeout(cleanupTimer);
 
