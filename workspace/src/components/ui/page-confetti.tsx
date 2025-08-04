@@ -1,84 +1,99 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 interface ConfettiPiece {
   id: number;
   style: React.CSSProperties;
+  shape: 'rect' | 'triangle';
 }
 
 interface PageConfettiProps {
   active: boolean;
   pieceCount?: number;
+  duration?: number; // duration of the fall in seconds
 }
 
-export const PageConfetti: React.FC<PageConfettiProps> = ({ active, pieceCount = 50 }) => {
+export const PageConfetti: React.FC<PageConfettiProps> = ({ active, pieceCount = 150, duration = 5 }) => {
   const [pieces, setPieces] = useState<ConfettiPiece[]>([]);
+  const [isRendering, setIsRendering] = useState(false);
+
+  // Memoize colors to prevent re-calculation on every render
+  const colors = useMemo(() => ['#e53935', '#fdd835', '#43a047', '#1e88e5', '#8e24aa', '#ff7043'], []);
 
   useEffect(() => {
-    if (active) {
+    let cleanupTimer: NodeJS.Timeout;
+
+    if (active && !isRendering) {
+      setIsRendering(true);
       const newPieces = Array.from({ length: pieceCount }).map((_, index) => {
-        const randomXStart = Math.random() * window.innerWidth;
-        const randomYEnd = window.innerHeight + 100;
-        const randomDuration = 2 + Math.random() * 3;
-        const randomDelay = Math.random() * 2;
-        const randomRotation = Math.random() * 360;
-        const colors = ['#e53935', '#fdd835', '#43a047', '#1e88e5', '#8e24aa'];
-        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        const fallDuration = (duration * 0.8 + Math.random() * duration * 0.4); // 4s to 6s for a 5s duration
+        const fallDelay = Math.random() * duration * 0.5; // Stagger the start
+        const randomXStart = Math.random() * 100; // vw
+        const randomXEnd = Math.random() * 100; // vw
+        const sway = Math.random() * 200 - 100; // vw sway
+        const rotationSpeed = 0.5 + Math.random(); // rotations per second
 
         return {
           id: index,
+          shape: Math.random() > 0.3 ? 'rect' : 'triangle',
           style: {
-            position: 'fixed',
-            left: `${randomXStart}px`,
-            top: '-20px',
-            width: `${8 + Math.random() * 8}px`,
-            height: `${12 + Math.random() * 12}px`,
-            backgroundColor: randomColor,
-            opacity: 1,
-            transform: `rotate(${randomRotation}deg)`,
-            transition: `transform ${randomDuration}s ease-out ${randomDelay}s, opacity ${randomDuration}s ease-in ${randomDelay}s`,
-            zIndex: 9999,
+            '--start-x': `${randomXStart}vw`,
+            '--end-x': `${randomXEnd}vw`,
+            '--sway': `${sway}vw`,
+            '--rotation-speed': `${rotationSpeed}s`,
+            animation: `confetti-fall ${fallDuration}s linear ${fallDelay}s forwards`,
+            backgroundColor: colors[Math.floor(Math.random() * colors.length)],
           } as React.CSSProperties,
         };
       });
 
       setPieces(newPieces);
 
-      // Start the animation by changing properties
-      setTimeout(() => {
-        setPieces(currentPieces =>
-          currentPieces.map(p => ({
-            ...p,
-            style: {
-              ...p.style,
-              transform: `translateY(${randomYEnd}px) rotate(${p.style.transform.match(/(\d+)/)?.[0]}deg) rotateZ(${Math.random() * 720}deg)`,
-              opacity: 0,
-            },
-          }))
-        );
-      }, 50); // Small delay to ensure styles are applied before transition starts
-
-      // Clean up after animation
-      const cleanupTimer = setTimeout(() => {
+      cleanupTimer = setTimeout(() => {
         setPieces([]);
-      }, (2 + 2 + 1) * 1000); // Max duration + max delay + buffer
-      
-      return () => clearTimeout(cleanupTimer);
-
+        setIsRendering(false);
+      }, (duration + 1) * 1000); // Wait for the longest animation to finish + buffer
     }
-  }, [active, pieceCount]);
 
-  if (!active && pieces.length === 0) {
+    return () => {
+      clearTimeout(cleanupTimer);
+    };
+  }, [active, pieceCount, duration, colors, isRendering]);
+
+  if (!isRendering) {
     return null;
   }
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden">
-      {pieces.map((piece) => (
-        <div key={piece.id} style={piece.style} />
-      ))}
+      {pieces.map((piece) => {
+        if (piece.shape === 'triangle') {
+          return (
+             <div
+              key={piece.id}
+              className="absolute top-[-20px]"
+              style={{
+                left: `var(--start-x)`,
+                width: 0,
+                height: 0,
+                borderLeft: '7px solid transparent',
+                borderRight: '7px solid transparent',
+                borderBottom: `14px solid ${piece.style.backgroundColor}`,
+                animation: piece.style.animation,
+              }}
+            />
+          )
+        }
+        return (
+          <div
+            key={piece.id}
+            className="absolute top-[-20px] h-4 w-2"
+            style={piece.style}
+          />
+        );
+      })}
     </div>
   );
 };
