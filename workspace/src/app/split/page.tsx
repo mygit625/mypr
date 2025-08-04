@@ -21,7 +21,6 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { splitPdfAction, type CustomRange } from './actions';
 import { cn } from '@/lib/utils';
-import { PageConfetti } from '@/components/ui/page-confetti';
 
 const PREVIEW_TARGET_HEIGHT_SPLIT = 200;
 
@@ -182,7 +181,6 @@ export default function SplitPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
-      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Split className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Split PDF File</h1>

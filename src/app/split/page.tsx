@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { getInitialPageDataAction, type PageData } from './actions'; // Reusing from organize
+import { getInitialPageDataAction, type PageData } from '@/app/organize/actions';
 import {
   Split, Loader2, Info,
   GalleryThumbnails, Files, PlusCircle, XCircle, Download
@@ -163,6 +163,9 @@ export default function SplitPage() {
         setSplitResultUri(result.zipDataUri);
         setShowConfetti(true);
         toast({ title: "Split Successful!", description: "Your PDF has been split. Click Download to save." });
+        if (resultRef.current) {
+          resultRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during split.";
@@ -326,14 +329,14 @@ export default function SplitPage() {
             </CardContent>
             <CardFooter className="flex-col gap-2">
                  {splitResultUri ? (
-                    <>
+                    <div ref={resultRef} className="w-full space-y-2">
                         <Button onClick={handleDownload} size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom">
                             <Download className="mr-2 h-5 w-5"/> Download ZIP
                         </Button>
                         <Button onClick={resetState} variant="outline" className="w-full">
                             Split Another PDF
                         </Button>
-                    </>
+                    </div>
                  ) : (
                     <>
                     <Button
@@ -357,6 +360,9 @@ export default function SplitPage() {
                                     setSplitResultUri(result.zipDataUri);
                                     setShowConfetti(true);
                                     toast({ title: "Split Successful!", description: "All pages extracted." });
+                                     if (resultRef.current) {
+                                        resultRef.current.scrollIntoView({ behavior: 'smooth' });
+                                    }
                                 }
                             } catch (e: any) {
                                 setError(e.message || "Error splitting all pages.");
