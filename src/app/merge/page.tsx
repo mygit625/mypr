@@ -1,6 +1,4 @@
 
-"use client";
-
 import type { Metadata } from 'next';
 import MergeClientPage from './MergeClientPage';
 
