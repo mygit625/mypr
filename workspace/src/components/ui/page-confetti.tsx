@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 
 interface ConfettiPiece {
   id: number;
@@ -21,40 +22,41 @@ export const PageConfetti: React.FC<PageConfettiProps> = ({ active, pieceCount =
   const colors = useMemo(() => ['#e53935', '#fdd835', '#43a047', '#1e88e5', '#8e24aa', '#ff7043'], []);
 
   useEffect(() => {
+    let renderTimer: NodeJS.Timeout;
     let cleanupTimer: NodeJS.Timeout;
 
     if (active && !isRendering) {
       setIsRendering(true);
+
       const newPieces = Array.from({ length: pieceCount }).map((_, index) => {
-        const animationDuration = (Math.random() * 0.5 + 0.75) * (duration / 1000);
-        const animationDelay = Math.random() * (duration / 1000);
+        const animationDuration = (Math.random() * 1 + 2) * (duration / 3000);
         
         return {
           id: index,
           style: {
             left: `${Math.random() * 100}vw`,
             backgroundColor: colors[Math.floor(Math.random() * colors.length)],
-            transition: `transform ${animationDuration}s linear`,
             animation: `confetti-spin ${Math.random() * 2 + 1}s linear infinite`,
-            animationDelay: `${animationDelay}s`,
+            transition: `transform ${animationDuration}s cubic-bezier(0.1, 0.5, 0.5, 1)`,
+            transform: 'translateY(-20px)', // Start off-screen
           } as React.CSSProperties,
         };
       });
 
       setPieces(newPieces);
-      
-      // Use requestAnimationFrame to apply the 'fall' class after the initial render
-      requestAnimationFrame(() => {
+
+      // Allow initial render before starting the fall animation
+      renderTimer = setTimeout(() => {
         setPieces(currentPieces =>
           currentPieces.map(p => ({
             ...p,
             style: {
               ...p.style,
-              transform: `translateY(110vh) rotate(${Math.random() * 360}deg)`,
+              transform: `translateY(110vh) rotateZ(${Math.random() * 360}deg)`,
             }
           }))
         );
-      });
+      }, 100);
 
       cleanupTimer = setTimeout(() => {
         setPieces([]);
@@ -63,6 +65,7 @@ export const PageConfetti: React.FC<PageConfettiProps> = ({ active, pieceCount =
     }
 
     return () => {
+      clearTimeout(renderTimer);
       clearTimeout(cleanupTimer);
     };
   }, [active, pieceCount, duration, colors, isRendering]);
@@ -72,11 +75,11 @@ export const PageConfetti: React.FC<PageConfettiProps> = ({ active, pieceCount =
   }
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 h-full z-[100] overflow-hidden">
+    <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden">
       {pieces.map((piece) => (
         <div
           key={piece.id}
-          className="absolute top-[-20px] h-4 w-2 rounded-sm"
+          className="absolute top-0 h-4 w-2 rounded-sm"
           style={piece.style}
         />
       ))}
