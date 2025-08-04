@@ -106,18 +106,12 @@ body {
 }
 
 @layer utilities {
-  @keyframes confetti-fall {
+  @keyframes confetti-spin {
     0% {
-      transform: translateY(-10vh) rotateZ(0deg);
-      opacity: 1;
+      transform: rotate(0deg);
     }
     100% {
-      transform: translateY(110vh) rotateZ(720deg);
-      opacity: 0;
+      transform: rotate(360deg);
     }
-  }
-
-  .animate-confetti-fall {
-    animation: confetti-fall forwards;
   }
 }
