@@ -107,6 +107,10 @@ body {
 }
 
 @layer utilities {
+  .animate-pulse-zoom {
+    animation: pulse-zoom 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
   @keyframes pulse-zoom {
     0%, 100% {
       transform: scale(1);
@@ -114,9 +118,5 @@ body {
     50% {
       transform: scale(1.05);
     }
-  }
-
-  .animate-pulse-zoom {
-    animation: pulse-zoom 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 }
