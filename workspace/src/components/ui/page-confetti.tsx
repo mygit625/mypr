@@ -1,106 +1,84 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+"use client";
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { cn } from '@/lib/utils';
+
+interface ConfettiPiece {
+  id: number;
+  style: React.CSSProperties;
 }
 
-@layer base {
-  :root {
-    --background: 0 0% 100%; /* White */
-    --foreground: 240 10% 3.9%; /* Dark Gray/Black */
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 240 10% 3.9%; /* Dark Gray/Black */
-    --popover: 0 0% 100%; /* White */
-    --popover-foreground: 240 10% 3.9%; /* Dark Gray/Black */
-    
-    --primary: 0 72% 51%; /* Red (e.g., #e53935) */
-    --primary-foreground: 0 0% 98%; /* Almost White */
-    
-    --secondary: 240 4.8% 95.9%; /* Light Gray */
-    --secondary-foreground: 240 5.9% 10%; /* Dark Gray */
-    
-    --muted: 240 4.8% 95.9%; /* Light Gray */
-    --muted-foreground: 240 3.8% 46.1%; /* Medium Gray */
-    
-    --accent: 0 65% 55%; /* Slightly darker/muted red for hover */
-    --accent-foreground: 0 0% 98%; /* Almost White */
-    
-    --destructive: 0 84.2% 60.2%; /* Default destructive red */
-    --destructive-foreground: 0 0% 98%; /* Almost White */
-    
-    --border: 240 5.9% 90%; /* Light Gray Border */
-    --input: 240 5.9% 90%; /* Light Gray Input Border */
-    --ring: 0 72% 51%; /* Red for focus rings */
-    
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-
-    /* Sidebar variables adjusted to potentially match new theme or remain distinct */
-    --sidebar-background: 240 6% 10%; /* Darker background for sidebar for contrast if needed */
-    --sidebar-foreground: 0 0% 96%; /* Light text for dark sidebar */
-    --sidebar-primary: 0 72% 51%; /* Red to match main theme */
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 5% 15%; /* Darker accent for sidebar */
-    --sidebar-accent-foreground: 0 0% 96%;
-    --sidebar-border: 240 5% 20%;
-    --sidebar-ring: 0 72% 51%;
-  }
-
-  .dark {
-    --background: 240 10% 3.9%; /* Dark Gray/Black */
-    --foreground: 0 0% 98%; /* Almost White */
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 0 62.8% 30.6%; /* Darker Red for dark mode */
-    --primary-foreground: 0 0% 98%;
-
-    --secondary: 240 3.7% 15.9%; /* Darker Gray */
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-
-    --accent: 0 70% 40%; /* Slightly brighter red for dark mode accent */
-    --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 0 62.8% 30.6%;
-    
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-
-    --sidebar-background: 220 10% 10%; /* Dark blueish gray */
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 0 62.8% 30.6%; /* Darker Red for dark sidebar */
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 220 8% 18%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 220 8% 15%;
-    --sidebar-ring: 0 62.8% 30.6%;
-  }
+interface PageConfettiProps {
+  active: boolean;
+  duration?: number;
+  particleCount?: number;
 }
 
-@layer base {
-  * {
-    @apply border-border;
+const colors = ["#e53935", "#1e88e5", "#43a047", "#fdd835", "#fb8c00", "#8e24aa"];
+
+export const PageConfetti: React.FC<PageConfettiProps> = ({
+  active,
+  duration = 4000,
+  particleCount = 50,
+}) => {
+  const [pieces, setPieces] = useState<ConfettiPiece[]>([]);
+
+  useEffect(() => {
+    if (active) {
+      const newPieces = Array.from({ length: particleCount }).map((_, index) => {
+        const randomXStart = Math.random() * 100;
+        const randomYEnd = 110; // Fall past the bottom of the screen
+        const randomDelay = Math.random() * duration;
+        const randomDuration = (duration - randomDelay) * (0.8 + Math.random() * 0.4);
+        const randomSize = 8 + Math.random() * 8;
+        const randomRotationStart = Math.random() * 360;
+        const randomRotationEnd = randomRotationStart + (Math.random() > 0.5 ? 1 : -1) * (360 + Math.random() * 720);
+        
+        return {
+          id: index,
+          style: {
+            '--x-start': `${randomXStart}vw`,
+            '--y-end': `${randomYEnd}vh`,
+            '--delay': `${randomDelay}ms`,
+            '--duration': `${randomDuration}ms`,
+            '--size': `${randomSize}px`,
+            '--rotation-start': `${randomRotationStart}deg`,
+            '--rotation-end': `${randomRotationEnd}deg`,
+            background: colors[Math.floor(Math.random() * colors.length)],
+            animation: `confetti-fall var(--duration) cubic-bezier(0.25, 0.46, 0.45, 0.94) var(--delay) forwards`,
+            willChange: 'transform, opacity',
+          } as React.CSSProperties,
+        };
+      });
+      setPieces(newPieces);
+
+      const timer = setTimeout(() => {
+        setPieces([]);
+      }, duration + 500); // Clear pieces after animation completes
+
+      return () => clearTimeout(timer);
+    }
+  }, [active, duration, particleCount]);
+
+  if (pieces.length === 0) {
+    return null;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none fixed inset-0 z-[100] overflow-hidden"
+    >
+      {pieces.map((piece) => (
+        <div
+          key={piece.id}
+          className="absolute top-[-20px] left-0"
+          style={piece.style}
+        />
+      ))}
+    </div>
+  );
+};
+
+    
