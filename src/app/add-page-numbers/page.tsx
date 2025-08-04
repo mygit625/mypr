@@ -32,10 +32,9 @@ import { ListOrdered, Loader2, Info, ArrowRightCircle, Check, Download } from 'l
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { addPageNumbersAction, type PageNumberPosition } from '@/app/add-page-numbers/actions';
+import { addPageNumbersAction, type PageNumberPosition } from './actions';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -163,7 +162,6 @@ export default function AddPageNumbersPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
-      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <ListOrdered className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-4xl font-bold tracking-tight">Add Page Numbers to PDF</h1>

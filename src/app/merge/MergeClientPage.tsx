@@ -12,9 +12,8 @@ import { Combine, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download } 
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { mergePdfsAction } from '@/app/merge/actions';
+import { mergePdfsAction } from './actions';
 import { cn } from '@/lib/utils';
-import { PageConfetti } from '@/components/ui/page-confetti';
 
 interface SelectedPdfItem {
   id: string;
@@ -225,7 +224,6 @@ export default function MergeClientPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
-      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Combine className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Merge PDF Files</h1>

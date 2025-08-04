@@ -13,10 +13,9 @@ import { CheckCircle, Loader2, Info, ArrowDownToLine, Plus, ArrowRightCircle, Mi
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { compressPdfAction, type CompressionLevel } from '@/app/compress/actions';
+import { compressPdfAction, type CompressionLevel } from './actions';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { PageConfetti } from '@/components/ui/page-confetti';
 
 interface CompressionResultStats {
   originalSize: number;
@@ -147,7 +146,6 @@ export default function CompressPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-0">
-      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Minimize2 className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-4xl font-bold tracking-tight">Compress PDF File</h1>

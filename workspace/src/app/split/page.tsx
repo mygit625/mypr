@@ -19,7 +19,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { splitPdfAction, type CustomRange } from './actions';
+import { splitPdfAction, type CustomRange } from '@/app/split/actions';
 import { cn } from '@/lib/utils';
 
 const PREVIEW_TARGET_HEIGHT_SPLIT = 200;

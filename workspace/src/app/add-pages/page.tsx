@@ -15,7 +15,7 @@ import { FilePlus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine, 
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { assemblePdfAction } from './actions';
+import { assemblePdfAction } from '@/app/add-pages/actions';
 import { cn } from '@/lib/utils';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
