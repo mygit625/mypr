@@ -136,7 +136,6 @@ export default function AddPageNumbersPage() {
       } else if (result.numberedPdfDataUri) {
         setProcessedUri(result.numberedPdfDataUri);
         setShowConfetti(true);
-        toast({ title: "Success!", description: "Page numbers added. Click Download to save." });
       }
     } catch (e: any) {
       setError(e.message || "An unexpected error occurred.");
@@ -356,5 +355,3 @@ export default function AddPageNumbersPage() {
     </div>
   );
 }
-
-    

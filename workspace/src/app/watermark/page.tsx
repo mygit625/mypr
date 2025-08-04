@@ -103,7 +103,6 @@ export default function WatermarkPage() {
       } else if (result.watermarkedPdfDataUri) {
         setProcessedUri(result.watermarkedPdfDataUri);
         setShowConfetti(true);
-        toast({ title: "Success!", description: "Watermark added. Click Download to save." });
       }
     } catch (e: any) {
       setError(e.message || "An unexpected error occurred.");
@@ -291,5 +290,3 @@ export default function WatermarkPage() {
     </div>
   );
 }
-
-    

@@ -17,6 +17,7 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { assemblePdfAction } from '@/app/add-pages/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -48,6 +49,7 @@ export default function AddPagesPage() {
   const [isAssembling, setIsAssembling] = useState(false);
   const [assembledPdfUri, setAssembledPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,6 +61,7 @@ export default function AddPagesPage() {
     setSelectedPdfItems([]);
     setAssembledPdfUri(null);
     setError(null);
+    setShowConfetti(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -196,10 +199,7 @@ export default function AddPagesPage() {
         });
       } else if (result.assembledPdfDataUri) {
         setAssembledPdfUri(result.assembledPdfDataUri);
-        toast({
-          title: "Assembly Successful!",
-          description: "Your PDF pages have been assembled and are ready for download.",
-        });
+        setShowConfetti(true);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during assembly.";
@@ -251,6 +251,7 @@ export default function AddPagesPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <FilePlus2 className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Add Pages to PDF</h1>
@@ -364,7 +365,7 @@ export default function AddPagesPage() {
             </ScrollArea>
           </div>
 
-          <div className="lg:w-1/3 space-y-4 lg:sticky lg:top-24 self-start">
+          <div className="lg:w-1/4 space-y-4 lg:sticky lg:top-24 self-start">
             <Card className="shadow-lg">
               <CardHeader className="text-center">
                 <CardTitle>Assembly Options</CardTitle>

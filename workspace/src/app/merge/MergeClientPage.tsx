@@ -169,10 +169,6 @@ export default function MergeClientPage() {
       } else if (result.mergedPdfDataUri) {
         setMergedPdfUri(result.mergedPdfDataUri);
         setShowConfetti(true);
-        toast({
-          title: "Merge Successful!",
-          description: "Your PDFs have been merged. Click Download to save.",
-        });
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during merge.";
