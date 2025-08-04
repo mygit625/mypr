@@ -1,88 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-"use client";
-
-import React, { useState, useEffect, useMemo } from 'react';
-import { cn } from '@/lib/utils';
-
-interface ConfettiPiece {
-  id: number;
-  style: React.CSSProperties;
+body {
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
-interface PageConfettiProps {
-  active: boolean;
-  pieceCount?: number;
-  duration?: number;
-}
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* White */
+    --foreground: 240 10% 3.9%; /* Dark Gray/Black */
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 240 10% 3.9%; /* Dark Gray/Black */
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 240 10% 3.9%; /* Dark Gray/Black */
+    
+    --primary: 0 72% 51%; /* Red (e.g., #e53935) */
+    --primary-foreground: 0 0% 98%; /* Almost White */
+    
+    --secondary: 240 4.8% 95.9%; /* Light Gray */
+    --secondary-foreground: 240 5.9% 10%; /* Dark Gray */
+    
+    --muted: 240 4.8% 95.9%; /* Light Gray */
+    --muted-foreground: 240 3.8% 46.1%; /* Medium Gray */
+    
+    --accent: 0 65% 55%; /* Slightly darker/muted red for hover */
+    --accent-foreground: 0 0% 98%; /* Almost White */
+    
+    --destructive: 0 84.2% 60.2%; /* Default destructive red */
+    --destructive-foreground: 0 0% 98%; /* Almost White */
+    
+    --border: 240 5.9% 90%; /* Light Gray Border */
+    --input: 240 5.9% 90%; /* Light Gray Input Border */
+    --ring: 0 72% 51%; /* Red for focus rings */
+    
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
 
-export const PageConfetti: React.FC<PageConfettiProps> = ({ active, pieceCount = 150, duration = 5000 }) => {
-  const [pieces, setPieces] = useState<ConfettiPiece[]>([]);
-  const [isRendering, setIsRendering] = useState(false);
-
-  const colors = useMemo(() => ['#e53935', '#fdd835', '#43a047', '#1e88e5', '#8e24aa', '#ff7043'], []);
-
-  useEffect(() => {
-    let renderTimer: NodeJS.Timeout;
-    let cleanupTimer: NodeJS.Timeout;
-
-    if (active && !isRendering) {
-      setIsRendering(true);
-
-      const newPieces = Array.from({ length: pieceCount }).map((_, index) => {
-        const animationDuration = (Math.random() * 1 + 2) * (duration / 3000);
-        
-        return {
-          id: index,
-          style: {
-            left: `${Math.random() * 100}vw`,
-            backgroundColor: colors[Math.floor(Math.random() * colors.length)],
-            animation: `confetti-spin ${Math.random() * 2 + 1}s linear infinite`,
-            transition: `transform ${animationDuration}s cubic-bezier(0.1, 0.5, 0.5, 1)`,
-            transform: 'translateY(-20px)', // Start off-screen
-          } as React.CSSProperties,
-        };
-      });
-
-      setPieces(newPieces);
-
-      // Allow initial render before starting the fall animation
-      renderTimer = setTimeout(() => {
-        setPieces(currentPieces =>
-          currentPieces.map(p => ({
-            ...p,
-            style: {
-              ...p.style,
-              transform: `translateY(110vh) rotateZ(${Math.random() * 360}deg)`,
-            }
-          }))
-        );
-      }, 100);
-
-      cleanupTimer = setTimeout(() => {
-        setPieces([]);
-        setIsRendering(false);
-      }, duration + 1000);
-    }
-
-    return () => {
-      clearTimeout(renderTimer);
-      clearTimeout(cleanupTimer);
-    };
-  }, [active, pieceCount, duration, colors, isRendering]);
-
-  if (!isRendering) {
-    return null;
+    /* Sidebar variables adjusted to potentially match new theme or remain distinct */
+    --sidebar-background: 240 6% 10%; /* Darker background for sidebar for contrast if needed */
+    --sidebar-foreground: 0 0% 96%; /* Light text for dark sidebar */
+    --sidebar-primary: 0 72% 51%; /* Red to match main theme */
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 5% 15%; /* Darker accent for sidebar */
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 240 5% 20%;
+    --sidebar-ring: 0 72% 51%;
   }
 
-  return (
-    <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden">
-      {pieces.map((piece) => (
-        <div
-          key={piece.id}
-          className="absolute top-0 h-4 w-2 rounded-sm"
-          style={piece.style}
-        />
-      ))}
-    </div>
-  );
-};
+  .dark {
+    --background: 240 10% 3.9%; /* Dark Gray/Black */
+    --foreground: 0 0% 98%; /* Almost White */
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 62.8% 30.6%; /* Darker Red for dark mode */
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 240 3.7% 15.9%; /* Darker Gray */
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 0 70% 40%; /* Slightly brighter red for dark mode accent */
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 0 62.8% 30.6%;
+    
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+
+    --sidebar-background: 220 10% 10%; /* Dark blueish gray */
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 0 62.8% 30.6%; /* Darker Red for dark sidebar */
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 220 8% 18%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 220 8% 15%;
+    --sidebar-ring: 0 62.8% 30.6%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

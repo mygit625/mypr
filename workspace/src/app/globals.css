@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -102,16 +103,5 @@ body {
   }
   body {
     @apply bg-background text-foreground;
-  }
-}
-
-@layer utilities {
-  @keyframes confetti-spin {
-    from {
-      transform: rotate(0deg) rotateY(0deg);
-    }
-    to {
-      transform: rotate(360deg) rotateY(360deg);
-    }
   }
 }
