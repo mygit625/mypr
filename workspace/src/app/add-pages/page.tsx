@@ -15,7 +15,7 @@ import { FilePlus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine, 
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { assemblePdfAction } from './actions';
+import { assemblePdfAction } from '@/app/add-pages/actions';
 import { cn } from '@/lib/utils';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
@@ -364,7 +364,7 @@ export default function AddPagesPage() {
             </ScrollArea>
           </div>
 
-          <div className="lg:w-1/4 space-y-4 lg:sticky lg:top-24 self-start">
+          <div className="lg:w-1/3 space-y-4 lg:sticky lg:top-24 self-start">
             <Card className="shadow-lg">
               <CardHeader className="text-center">
                 <CardTitle>Assembly Options</CardTitle>

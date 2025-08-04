@@ -9,11 +9,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { CheckCircle, Loader2, Info, ArrowDownToLine, Plus, ArrowRightCircle, Minimize2, X, Download } from 'lucide-react';
+import { CheckCircle, Loader2, Info, Plus, ArrowRightCircle, Minimize2, X, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { compressPdfAction, type CompressionLevel } from './actions';
+import { compressPdfAction, type CompressionLevel } from '@/app/compress/actions';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
