@@ -353,7 +353,7 @@ export default function MergeClientPage() {
               <CardFooter className="flex-col gap-2">
                 {mergedPdfUri ? (
                     <>
-                        <Button onClick={handleDownload} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse" size="lg">
+                        <Button onClick={handleDownload} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" size="lg">
                             <Download className="mr-2 h-5 w-5"/> Download Merged PDF
                         </Button>
                         <Button onClick={resetState} className="w-full" variant="outline">
