@@ -21,7 +21,6 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { splitPdfAction, type CustomRange } from '@/app/split/actions';
 import { cn } from '@/lib/utils';
-import { PageConfetti } from '@/components/ui/page-confetti';
 
 const PREVIEW_TARGET_HEIGHT_SPLIT = 200;
 
@@ -38,7 +37,6 @@ export default function SplitPage() {
   const [isSplitting, setIsSplitting] = useState(false);
   const [splitResultUri, setSplitResultUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   const [splitMode, setSplitMode] = useState<SplitMode>('range');
@@ -60,7 +58,6 @@ export default function SplitPage() {
     setCustomRanges([{ from: 1, to: 1 }]);
     setError(null);
     setSplitResultUri(null);
-    setShowConfetti(false);
   };
 
   const handleFileSelected = async (selectedFiles: File[]) => {
@@ -157,7 +154,6 @@ export default function SplitPage() {
         toast({ title: "Split Error", description: result.error, variant: "destructive" });
       } else if (result.zipDataUri) {
         setSplitResultUri(result.zipDataUri);
-        setShowConfetti(true);
         if (resultRef.current) {
           resultRef.current.scrollIntoView({ behavior: 'smooth' });
         }
@@ -179,7 +175,6 @@ export default function SplitPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
-      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Split className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Split PDF File</h1>
@@ -354,7 +349,6 @@ export default function SplitPage() {
                                 if (result.error) throw new Error(result.error);
                                 if (result.zipDataUri) {
                                     setSplitResultUri(result.zipDataUri);
-                                    setShowConfetti(true);
                                      if (resultRef.current) {
                                         resultRef.current.scrollIntoView({ behavior: 'smooth' });
                                     }
