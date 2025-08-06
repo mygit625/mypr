@@ -1,30 +1,26 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { getInitialPageDataAction, type PageData } from '@/app/organize/actions';
-import {
-  Split, Loader2, Info,
-  GalleryThumbnails, Files, PlusCircle, XCircle, Download
-} from 'lucide-react';
+import { Split, Loader2, Info, PlusCircle, XCircle, Download, ArrowRight, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { splitPdfAction, type CustomRange } from '@/app/split/actions';
 import { cn } from '@/lib/utils';
+import { RangeIcon, PagesIcon, SizeIcon } from '@/components/icons/split-tool-icons';
 
-const PREVIEW_TARGET_HEIGHT_SPLIT = 200;
+const PREVIEW_TARGET_HEIGHT_SPLIT = 180;
 
-type SplitMode = 'range' | 'pages';
 type RangeMode = 'custom' | 'fixed';
 
 export default function SplitPage() {
@@ -39,14 +35,16 @@ export default function SplitPage() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const [splitMode, setSplitMode] = useState<SplitMode>('range');
   const [rangeMode, setRangeMode] = useState<RangeMode>('custom');
   const [customRanges, setCustomRanges] = useState<CustomRange[]>([{ from: 1, to: 1 }]);
+  const [fixedRangeSize, setFixedRangeSize] = useState(1);
+  const [mergeRanges, setMergeRanges] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (totalPages > 0) {
       setCustomRanges([{ from: 1, to: totalPages }]);
+      setFixedRangeSize(totalPages > 1 ? 2 : 1);
     }
   }, [totalPages]);
 
@@ -99,36 +97,42 @@ export default function SplitPage() {
   const handleRangeChange = (index: number, field: 'from' | 'to', value: string) => {
     const numValue = parseInt(value, 10);
     const newRanges = [...customRanges];
-    if (!isNaN(numValue) && numValue >=1 && numValue <= totalPages) {
-        newRanges[index] = { ...newRanges[index], [field]: numValue };
-        if (field === 'from' && numValue > newRanges[index].to) {
-            newRanges[index].to = numValue;
-        }
-        if (field === 'to' && numValue < newRanges[index].from) {
-            newRanges[index].from = numValue;
-        }
-        setCustomRanges(newRanges);
-    } else if (value === '') { 
-        newRanges[index] = { ...newRanges[index], [field]: 1 }; 
-        setCustomRanges(newRanges);
+    if (!isNaN(numValue) && numValue >= 1 && numValue <= totalPages) {
+      newRanges[index] = { ...newRanges[index], [field]: numValue };
+      if (field === 'from' && numValue > newRanges[index].to) {
+        newRanges[index].to = numValue;
+      }
+      setCustomRanges(newRanges);
+    } else if (value === '') {
+      newRanges[index] = { ...newRanges[index], [field]: 1 };
+      setCustomRanges(newRanges);
     }
   };
+  
+  const getFinalRanges = (): CustomRange[] => {
+    if (rangeMode === 'fixed') {
+      if (fixedRangeSize <= 0) return [];
+      const ranges: CustomRange[] = [];
+      for (let i = 1; i <= totalPages; i += fixedRangeSize) {
+        const to = Math.min(i + fixedRangeSize - 1, totalPages);
+        ranges.push({ from: i, to: to });
+      }
+      return ranges;
+    }
+    // For custom ranges
+    return customRanges.filter(r => r.from >= 1 && r.to >= r.from && r.to <= totalPages);
+  }
 
   const handleSplit = async () => {
     if (!file || !pdfDataUri) {
-      toast({ title: "No file selected", description: "Please select a PDF file to split.", variant: "destructive" });
+      toast({ title: "No file selected", variant: "destructive" });
       return;
     }
-    if (splitMode === 'range' && rangeMode === 'custom') {
-      const validRanges = customRanges.filter(r => r.from >= 1 && r.to >= r.from && r.to <= totalPages);
-      if (validRanges.length === 0 || validRanges.length !== customRanges.length) {
-        toast({ title: "Invalid Range", description: "One or more ranges are invalid or out of bounds. Please check page numbers.", variant: "destructive"});
+
+    const finalRanges = getFinalRanges();
+    if (finalRanges.length === 0) {
+        toast({ title: "Invalid Ranges", description: "Please define at least one valid range to split.", variant: "destructive" });
         return;
-      }
-       if (customRanges.some(r => r.from > r.to || r.from < 1 || r.to > totalPages)) {
-        toast({ title: "Invalid Range", description: "One or more ranges are invalid. Please check page numbers.", variant: "destructive"});
-        return;
-      }
     }
 
     setIsSplitting(true);
@@ -136,18 +140,12 @@ export default function SplitPage() {
     setSplitResultUri(null);
 
     try {
-      let result;
-      if (splitMode === 'range' && rangeMode === 'custom') {
-        const validRangesForAction = customRanges.filter(r => r.from >=1 && r.to >= r.from && r.to <= totalPages);
-        if (validRangesForAction.length === 0) {
-             toast({ title: "No Valid Ranges", description: "Please define at least one valid range.", variant: "destructive"});
-             setIsSplitting(false);
-             return;
-        }
-        result = await splitPdfAction({ pdfDataUri, splitType: 'ranges', ranges: validRangesForAction });
-      } else {
-        result = await splitPdfAction({ pdfDataUri, splitType: 'allPages' });
-      }
+      const result = await splitPdfAction({
+        pdfDataUri,
+        splitType: 'ranges',
+        ranges: finalRanges,
+        merge: mergeRanges,
+      });
 
       if (result.error) {
         setError(result.error);
@@ -169,214 +167,171 @@ export default function SplitPage() {
 
   const handleDownload = () => {
     if (splitResultUri && file) {
-      downloadDataUri(splitResultUri, `${file.name.replace(/\.pdf$/i, '')}_split.zip`);
+      const outputFilename = mergeRanges 
+        ? `${file.name.replace(/\.pdf$/i, '')}_merged_split.pdf` 
+        : `${file.name.replace(/\.pdf$/i, '')}_split.zip`;
+      downloadDataUri(splitResultUri, outputFilename);
     }
   };
 
-  return (
-    <div className="max-w-7xl mx-auto space-y-8">
-      <header className="text-center py-8">
-        <Split className="mx-auto h-16 w-16 text-primary mb-4" />
-        <h1 className="text-3xl font-bold tracking-tight">Split PDF File</h1>
-        <p className="text-muted-foreground mt-2">
-          Divide your PDF into multiple documents by specifying page ranges or extracting all pages.
-        </p>
-      </header>
+  const finalRangesForPreview = getFinalRanges();
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-grow lg:w-2/3 space-y-6">
-          {!file && (
-            <Card>
-              <CardHeader>
+  return (
+    <div className="max-w-full mx-auto space-y-8">
+      {!file && (
+        <>
+        <header className="text-center py-8">
+            <Split className="mx-auto h-16 w-16 text-primary mb-4" />
+            <h1 className="text-3xl font-bold tracking-tight">Split PDF File</h1>
+            <p className="text-muted-foreground mt-2">
+            Divide your PDF into multiple documents by specifying page ranges or extracting all pages.
+            </p>
+        </header>
+        <Card className="max-w-2xl mx-auto">
+            <CardHeader>
                 <CardTitle>Upload PDF</CardTitle>
                 <CardDescription>Select or drag and drop the PDF file you want to split.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <FileUploadZone onFilesSelected={handleFileSelected} multiple={false} accept="application/pdf" />
-              </CardContent>
-            </Card>
-          )}
-
-          {isLoadingPdf && (
-            <div className="flex justify-center items-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="ml-2 text-muted-foreground">Loading PDF pages...</p>
-            </div>
-          )}
-
-          {pdfDataUri && pages.length > 0 && !isLoadingPdf && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Page Previews ({totalPages} Pages)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[600px] border rounded-md p-2 bg-muted/20">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 p-3">
-                    {pages.map((page) => (
-                      <div key={`preview-${page.originalIndex}-${page.id}`} className="flex flex-col items-center p-2 border rounded-md bg-card shadow-sm">
-                        <PdfPagePreview
-                            pdfDataUri={pdfDataUri}
-                            pageIndex={page.originalIndex}
-                            rotation={0} 
-                            targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT}
-                            className="my-1"
-                        />
-                        <span className="text-xs mt-2 text-muted-foreground">Page {page.originalIndex + 1}</span>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          )}
-           {pdfDataUri && pages.length === 0 && !isLoadingPdf && !error &&(
-             <Alert variant="default">
-                <Info className="h-4 w-4"/>
-                <AlertTitle>No Pages Found</AlertTitle>
-                <AlertDescription>The uploaded PDF appears to have no pages or could not be processed for page previews.</AlertDescription>
-             </Alert>
-           )}
-        </div>
-
-        <div className="lg:w-1/3 space-y-6 lg:sticky lg:top-20 self-start">
-          <Card className="shadow-lg">
-            <CardHeader className="text-center pb-4">
-              <CardTitle className="text-2xl font-semibold">Split Options</CardTitle>
             </CardHeader>
             <CardContent>
-               <Tabs defaultValue="range" value={splitMode} onValueChange={(val) => setSplitMode(val as SplitMode)} className="w-full">
-                <TabsList className="grid w-full grid-cols-1">
-                  <TabsTrigger value="range" className="text-xs sm:text-sm"><GalleryThumbnails className="mr-1 h-4 w-4" />By Range</TabsTrigger>
-                </TabsList>
-                <TabsContent value="range" className="pt-4">
-                  <div className="mb-4">
-                    <Label className="text-sm font-medium block mb-2">Mode:</Label>
-                      <Button
-                        variant={rangeMode === 'custom' ? 'default' : 'outline'}
-                        onClick={() => setRangeMode('custom')}
-                        className="w-full"
-                        disabled={!file || totalPages === 0 || !!splitResultUri}
-                      >
-                        Define Custom Ranges
-                      </Button>
-                  </div>
-                  {rangeMode === 'custom' && !splitResultUri && (
-                    <div className="space-y-3">
-                      <Alert variant="default" className="text-sm">
-                        <Info className="h-4 w-4" />
-                        <AlertDescription>
-                          Define one or more page ranges. Each range will be saved as a separate PDF.
-                        </AlertDescription>
-                      </Alert>
-                      {customRanges.map((range, idx) => (
-                        <Card key={idx} className="p-3 bg-muted/25">
-                          <div className="flex justify-between items-center mb-2">
-                            <Label htmlFor={`from-${idx}`} className="text-sm font-medium">Range {idx + 1}</Label>
-                            {customRanges.length > 1 && (
-                              <Button variant="ghost" size="icon" onClick={() => handleRemoveRange(idx)} className="h-7 w-7">
-                                <XCircle className="h-4 w-4 text-destructive" />
-                              </Button>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-2 gap-3 items-end">
-                            <div>
-                              <Label htmlFor={`from-${idx}`} className="text-xs">From page</Label>
-                              <Input
-                                id={`from-${idx}`}
-                                type="number"
-                                value={range.from}
-                                onChange={(e) => handleRangeChange(idx, 'from', e.target.value)}
-                                min={1}
-                                max={totalPages}
-                                className="h-9"
-                                disabled={!file || totalPages === 0}
-                                placeholder="e.g. 1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`to-${idx}`} className="text-xs">To page</Label>
-                              <Input
-                                id={`to-${idx}`}
-                                type="number"
-                                value={range.to}
-                                onChange={(e) => handleRangeChange(idx, 'to', e.target.value)}
-                                min={range.from}
-                                max={totalPages}
-                                className="h-9"
-                                disabled={!file || totalPages === 0}
-                                placeholder={`e.g. ${totalPages || 1}`}
-                              />
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                      <Button variant="outline" onClick={handleAddRange} disabled={!file || totalPages === 0} className="w-full">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Another Range
-                      </Button>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+                <FileUploadZone onFilesSelected={handleFileSelected} multiple={false} accept="application/pdf" />
             </CardContent>
-            <CardFooter className="flex-col gap-2">
-                 {splitResultUri ? (
-                    <div ref={resultRef} className="w-full space-y-2">
-                        <Button onClick={handleDownload} size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom">
-                            <Download className="mr-2 h-5 w-5"/> Download ZIP
-                        </Button>
-                        <Button onClick={resetState} variant="outline" className="w-full">
-                            Split Another PDF
-                        </Button>
-                    </div>
-                 ) : (
-                    <>
-                    <Button
-                        onClick={handleSplit}
-                        disabled={!file || isSplitting || isLoadingPdf || (splitMode === 'range' && rangeMode === 'custom' && customRanges.length === 0)}
-                        className="w-full"
-                        size="lg"
-                    >
-                        {isSplitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Split className="mr-2 h-4 w-4" />}
-                        Split by Custom Ranges
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        onClick={async () => {
-                            if (!file || !pdfDataUri) { toast({ title: "No file selected", variant: "destructive" }); return; }
-                            setIsSplitting(true); setError(null); setSplitResultUri(null);
-                            try {
-                                const result = await splitPdfAction({ pdfDataUri, splitType: 'allPages' });
-                                if (result.error) throw new Error(result.error);
-                                if (result.zipDataUri) {
-                                    setSplitResultUri(result.zipDataUri);
-                                     if (resultRef.current) {
-                                        resultRef.current.scrollIntoView({ behavior: 'smooth' });
-                                    }
-                                }
-                            } catch (e: any) {
-                                setError(e.message || "Error splitting all pages.");
-                                toast({ title: "Split Failed", description: e.message, variant: "destructive" });
-                            } finally { setIsSplitting(false); }
-                        }}
-                        disabled={!file || isSplitting || isLoadingPdf || totalPages === 0}
-                        className="w-full"
-                    >
-                        <Files className="mr-2 h-4 w-4" /> Split All Pages
-                    </Button>
-                    </>
-                 )}
-            </CardFooter>
-          </Card>
-        </div>
-      </div>
+        </Card>
+        </>
+      )}
 
+      {isLoadingPdf && (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="ml-3 text-lg text-muted-foreground">Loading PDF...</p>
+        </div>
+      )}
+      
+      {file && pdfDataUri && pages.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Panel: Previews */}
+            <div className="lg:col-span-2">
+                <ScrollArea className="h-[calc(100vh-150px)] p-4">
+                    <div className="space-y-8">
+                        {finalRangesForPreview.map((range, index) => (
+                            <div key={index}>
+                                <h3 className="text-center font-medium text-muted-foreground mb-2">Range {index + 1}</h3>
+                                <div className="p-4 border border-dashed rounded-lg flex justify-center items-center gap-4 flex-wrap bg-muted/20">
+                                    <div className="flex flex-col items-center">
+                                        <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={range.from - 1} targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT} className="shadow-md" />
+                                        <span className="text-sm mt-2 text-muted-foreground">{range.from}</span>
+                                    </div>
+                                    {range.to > range.from && (
+                                        <>
+                                        <div className="text-muted-foreground font-bold text-xl">...</div>
+                                        <div className="flex flex-col items-center">
+                                            <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={range.to - 1} targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT} className="shadow-md" />
+                                            <span className="text-sm mt-2 text-muted-foreground">{range.to}</span>
+                                        </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </div>
+            
+            {/* Right Panel: Controls */}
+            <div className="lg:sticky lg:top-20 self-start">
+                 <Card className="shadow-lg">
+                    <CardHeader>
+                        <CardTitle className="text-2xl text-center">Split</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-3 gap-1 border p-1 rounded-md bg-muted">
+                            <Button variant={true ? 'secondary' : 'ghost'} className="h-auto py-2 flex-col gap-1 relative">
+                                <Check className="absolute top-1 right-1 h-3 w-3 text-green-500"/>
+                                <RangeIcon/> <span className="text-xs">Range</span>
+                            </Button>
+                            <Button variant={'ghost'} disabled className="h-auto py-2 flex-col gap-1 opacity-50"><PagesIcon/> <span className="text-xs">Pages</span></Button>
+                            <Button variant={'ghost'} disabled className="h-auto py-2 flex-col gap-1 opacity-50"><SizeIcon/> <span className="text-xs">Size</span></Button>
+                        </div>
+
+                        <div>
+                            <Label className="text-sm font-medium">Range mode:</Label>
+                            <div className="grid grid-cols-2 gap-1 mt-1">
+                                <Button variant={rangeMode === 'custom' ? 'secondary' : 'outline'} onClick={() => setRangeMode('custom')}>Custom ranges</Button>
+                                <Button variant={rangeMode === 'fixed' ? 'secondary' : 'outline'} onClick={() => setRangeMode('fixed')}>Fixed ranges</Button>
+                            </div>
+                        </div>
+
+                        {rangeMode === 'custom' && (
+                            <div className="space-y-2 pt-2">
+                                {customRanges.map((range, idx) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                        <Label className="text-sm text-muted-foreground min-w-[50px]">Range {idx + 1}</Label>
+                                        <Input type="number" value={range.from} onChange={(e) => handleRangeChange(idx, 'from', e.target.value)} min={1} max={totalPages} className="w-20" aria-label={`Range ${idx+1} from`}/>
+                                        <span className="text-muted-foreground">to</span>
+                                        <Input type="number" value={range.to} onChange={(e) => handleRangeChange(idx, 'to', e.target.value)} min={range.from} max={totalPages} className="w-20" aria-label={`Range ${idx+1} to`}/>
+                                         {customRanges.length > 1 && (
+                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveRange(idx)} className="h-7 w-7">
+                                                <XCircle className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))}
+                                <Button variant="outline" size="sm" onClick={handleAddRange} className="w-full"><PlusCircle className="mr-2 h-4 w-4"/> Add Range</Button>
+                            </div>
+                        )}
+                        
+                        {rangeMode === 'fixed' && (
+                             <div className="space-y-2 pt-2">
+                                <Label htmlFor="fixed-range-size">Split into page ranges of:</Label>
+                                <Input id="fixed-range-size" type="number" value={fixedRangeSize} onChange={(e) => setFixedRangeSize(parseInt(e.target.value) || 1)} min={1} max={totalPages} />
+                                <Alert variant="default" className="text-sm p-3">
+                                    <Info className="h-4 w-4"/>
+                                    <AlertDescription>
+                                        This PDF will be split into files of {fixedRangeSize} pages. {finalRangesForPreview.length} PDFs will be created.
+                                    </AlertDescription>
+                                </Alert>
+                             </div>
+                        )}
+
+                        <div className="flex items-center space-x-2 pt-2">
+                            <Checkbox id="merge-ranges" checked={mergeRanges} onCheckedChange={(checked) => setMergeRanges(Boolean(checked))} />
+                            <Label htmlFor="merge-ranges">Merge all ranges in one PDF file.</Label>
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                       {splitResultUri ? (
+                            <div ref={resultRef} className="w-full space-y-2">
+                                <Button onClick={handleDownload} size="lg" className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom">
+                                    <Download className="mr-2 h-5 w-5"/> Download
+                                </Button>
+                                <Button onClick={resetState} variant="outline" className="w-full">
+                                    Split Another PDF
+                                </Button>
+                            </div>
+                        ) : (
+                             <Button
+                                onClick={handleSplit}
+                                disabled={isSplitting || isLoadingPdf}
+                                className="w-full"
+                                size="lg"
+                            >
+                                {isSplitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Split className="mr-2 h-4 w-4" />}
+                                Split PDF <ArrowRight className="ml-2 h-4 w-4"/>
+                            </Button>
+                        )}
+                    </CardFooter>
+                 </Card>
+            </div>
+        </div>
+      )}
+      
       {error && !isSplitting && (
-        <Alert variant="destructive" className="mt-6">
+        <Alert variant="destructive" className="mt-6 max-w-xl mx-auto">
           <Info className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
     </div>
   );
 }
