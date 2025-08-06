@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -12,17 +11,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { getInitialPageDataAction, type PageData } from '@/app/organize/actions';
-import { Split, Loader2, Info, PlusCircle, XCircle, Download, ArrowRight, Check } from 'lucide-react';
+import { Split, Loader2, Info, PlusCircle, XCircle, Download, ArrowRight, Check, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { splitPdfAction, type CustomRange } from '@/app/split/actions';
+import { splitPdfAction, splitPdfByPagesAction, type CustomRange } from '@/app/split/actions';
 import { cn } from '@/lib/utils';
 import { RangeIcon, PagesIcon, SizeIcon } from '@/components/icons/split-tool-icons';
 
 const PREVIEW_TARGET_HEIGHT_SPLIT = 180;
 
+type MainMode = 'range' | 'pages' | 'size';
 type RangeMode = 'custom' | 'fixed';
+type PagesMode = 'all' | 'select';
 
 export default function SplitPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -35,19 +36,32 @@ export default function SplitPage() {
   const [splitResultUri, setSplitResultUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
+  
+  // Mode states
+  const [mainMode, setMainMode] = useState<MainMode>('range');
   const [rangeMode, setRangeMode] = useState<RangeMode>('custom');
+  const [pagesMode, setPagesMode] = useState<PagesMode>('all');
+  
+  // Input states
   const [customRanges, setCustomRanges] = useState<CustomRange[]>([{ from: 1, to: 1 }]);
   const [fixedRangeSize, setFixedRangeSize] = useState(1);
-  const [mergeRanges, setMergeRanges] = useState(false);
+  const [pagesToExtract, setPagesToExtract] = useState('');
+  const [mergeOutput, setMergeOutput] = useState(false);
+
   const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (totalPages > 0) {
       setCustomRanges([{ from: 1, to: totalPages }]);
       setFixedRangeSize(totalPages > 1 ? 2 : 1);
+      setPagesToExtract(`1-${totalPages}`);
     }
   }, [totalPages]);
+  
+  useEffect(() => {
+    // When switching main modes, reset the merge checkbox
+    setMergeOutput(false);
+  }, [mainMode]);
 
   const resetState = () => {
     setFile(null);
@@ -111,7 +125,10 @@ export default function SplitPage() {
   };
   
   const getFinalRanges = (): CustomRange[] => {
-    if (rangeMode === 'fixed') {
+    if (mainMode === 'range' && rangeMode === 'custom') {
+      return customRanges.filter(r => r.from >= 1 && r.to >= r.from && r.to <= totalPages);
+    }
+    if (mainMode === 'range' && rangeMode === 'fixed') {
       if (fixedRangeSize <= 0) return [];
       const ranges: CustomRange[] = [];
       for (let i = 1; i <= totalPages; i += fixedRangeSize) {
@@ -120,8 +137,7 @@ export default function SplitPage() {
       }
       return ranges;
     }
-    // For custom ranges
-    return customRanges.filter(r => r.from >= 1 && r.to >= r.from && r.to <= totalPages);
+    return [];
   }
 
   const handleSplit = async () => {
@@ -130,23 +146,37 @@ export default function SplitPage() {
       return;
     }
 
-    const finalRanges = getFinalRanges();
-    if (finalRanges.length === 0) {
-        toast({ title: "Invalid Ranges", description: "Please define at least one valid range to split.", variant: "destructive" });
-        return;
-    }
-
     setIsSplitting(true);
     setError(null);
     setSplitResultUri(null);
 
     try {
-      const result = await splitPdfAction({
-        pdfDataUri,
-        splitType: 'ranges',
-        ranges: finalRanges,
-        merge: mergeRanges,
-      });
+        let result;
+        if (mainMode === 'range') {
+            const finalRanges = getFinalRanges();
+            if (finalRanges.length === 0) {
+                toast({ title: "Invalid Ranges", description: "Please define at least one valid range.", variant: "destructive" });
+                setIsSplitting(false);
+                return;
+            }
+            result = await splitPdfAction({
+                pdfDataUri,
+                splitType: 'ranges',
+                ranges: finalRanges,
+                merge: mergeOutput,
+            });
+        } else if (mainMode === 'pages') {
+            result = await splitPdfByPagesAction({
+                pdfDataUri,
+                extractMode: pagesMode,
+                pagesToExtract: pagesToExtract,
+                merge: mergeOutput,
+            });
+        } else {
+            toast({ title: "Not Implemented", description: "This split mode is not yet available.", variant: "destructive" });
+            setIsSplitting(false);
+            return;
+        }
 
       if (result.error) {
         setError(result.error);
@@ -168,14 +198,14 @@ export default function SplitPage() {
 
   const handleDownload = () => {
     if (splitResultUri && file) {
-      const outputFilename = mergeRanges 
+      const outputFilename = mergeOutput 
         ? `${file.name.replace(/\.pdf$/i, '')}_merged_split.pdf` 
         : `${file.name.replace(/\.pdf$/i, '')}_split.zip`;
       downloadDataUri(splitResultUri, outputFilename);
     }
   };
 
-  const finalRangesForPreview = getFinalRanges();
+  const finalRangesForPreview = mainMode === 'range' ? getFinalRanges() : [];
 
   return (
     <div className="max-w-full mx-auto space-y-8">
@@ -212,28 +242,42 @@ export default function SplitPage() {
             {/* Left Panel: Previews */}
             <div className="lg:col-span-2">
                 <ScrollArea className="h-[calc(100vh-150px)] p-4">
-                    <div className="space-y-8">
-                        {finalRangesForPreview.map((range, index) => (
-                            <div key={index}>
-                                <h3 className="text-center font-medium text-muted-foreground mb-2">Range {index + 1}</h3>
-                                <div className="p-4 border border-dashed rounded-lg flex justify-center items-center gap-4 flex-wrap bg-muted/20">
-                                    <div className="flex flex-col items-center">
-                                        <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={range.from - 1} targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT} className="shadow-md" />
-                                        <span className="text-sm mt-2 text-muted-foreground">{range.from}</span>
-                                    </div>
-                                    {range.to > range.from && (
-                                        <>
-                                        <div className="text-muted-foreground font-bold text-xl">...</div>
+                    {mainMode === 'range' ? (
+                        <div className="space-y-8">
+                            {finalRangesForPreview.map((range, index) => (
+                                <div key={index}>
+                                    <h3 className="text-center font-medium text-muted-foreground mb-2">Range {index + 1}</h3>
+                                    <div className="p-4 border border-dashed rounded-lg flex justify-center items-center gap-4 flex-wrap bg-muted/20">
                                         <div className="flex flex-col items-center">
-                                            <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={range.to - 1} targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT} className="shadow-md" />
-                                            <span className="text-sm mt-2 text-muted-foreground">{range.to}</span>
+                                            <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={range.from - 1} targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT} className="shadow-md" />
+                                            <span className="text-sm mt-2 text-muted-foreground">{range.from}</span>
                                         </div>
-                                        </>
-                                    )}
+                                        {range.to > range.from && (
+                                            <>
+                                            <div className="text-muted-foreground font-bold text-xl">...</div>
+                                            <div className="flex flex-col items-center">
+                                                <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={range.to - 1} targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT} className="shadow-md" />
+                                                <span className="text-sm mt-2 text-muted-foreground">{range.to}</span>
+                                            </div>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {pages.map((p) => (
+                                <div key={p.id} className="flex flex-col items-center">
+                                    <div className="relative">
+                                        <CheckCircle className="absolute -top-2 -right-2 h-5 w-5 text-green-500 bg-white rounded-full"/>
+                                        <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={p.originalIndex} targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT + 40} className="shadow-md" />
+                                    </div>
+                                    <span className="text-sm mt-2 text-muted-foreground">{p.originalIndex + 1}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </ScrollArea>
             </div>
             
@@ -245,56 +289,80 @@ export default function SplitPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-3 gap-1 border p-1 rounded-md bg-muted">
-                            <Button variant={'secondary'} className={cn("h-auto py-2 flex-col gap-1", "border-2 border-primary")}>
+                            <Button variant={mainMode === 'range' ? 'secondary' : 'ghost'} onClick={() => setMainMode('range')} className={cn("h-auto py-2 flex-col gap-1 relative", mainMode === 'range' && "border-2 border-primary")}>
+                                {mainMode === 'range' && <Check className="absolute top-1 right-1 h-3 w-3 text-green-500"/>}
                                 <RangeIcon/> <span className="text-xs">Range</span>
                             </Button>
-                            <Button variant={'ghost'} disabled className="h-auto py-2 flex-col gap-1 opacity-50"><PagesIcon/> <span className="text-xs">Pages</span></Button>
-                            <Button variant={'ghost'} disabled className="h-auto py-2 flex-col gap-1 opacity-50"><SizeIcon/> <span className="text-xs">Size</span></Button>
+                            <Button variant={mainMode === 'pages' ? 'secondary' : 'ghost'} onClick={() => setMainMode('pages')} className={cn("h-auto py-2 flex-col gap-1 relative", mainMode === 'pages' && "border-2 border-primary")}>
+                                {mainMode === 'pages' && <Check className="absolute top-1 right-1 h-3 w-3 text-green-500"/>}
+                                <PagesIcon/> <span className="text-xs">Pages</span>
+                            </Button>
+                            <Button variant={'ghost'} onClick={() => setMainMode('size')} disabled className="h-auto py-2 flex-col gap-1 opacity-50"><SizeIcon/> <span className="text-xs">Size</span></Button>
                         </div>
-
-                        <div>
-                            <Label className="text-sm font-medium">Range mode:</Label>
-                            <div className="grid grid-cols-2 gap-1 mt-1">
-                                <Button variant={rangeMode === 'custom' ? 'secondary' : 'outline'} onClick={() => setRangeMode('custom')} className={cn(rangeMode === 'custom' && "border-2 border-primary")}>Custom ranges</Button>
-                                <Button variant={rangeMode === 'fixed' ? 'secondary' : 'outline'} onClick={() => setRangeMode('fixed')} className={cn(rangeMode === 'fixed' && "border-2 border-primary")}>Fixed ranges</Button>
-                            </div>
-                        </div>
-
-                        {rangeMode === 'custom' && (
-                            <div className="space-y-2 pt-2">
-                                {customRanges.map((range, idx) => (
-                                    <div key={idx} className="flex items-center gap-2">
-                                        <Label className="text-sm text-muted-foreground min-w-[50px]">Range {idx + 1}</Label>
-                                        <Input type="number" value={range.from} onChange={(e) => handleRangeChange(idx, 'from', e.target.value)} min={1} max={totalPages} className="w-20" aria-label={`Range ${idx+1} from`}/>
-                                        <span className="text-muted-foreground">to</span>
-                                        <Input type="number" value={range.to} onChange={(e) => handleRangeChange(idx, 'to', e.target.value)} min={range.from} max={totalPages} className="w-20" aria-label={`Range ${idx+1} to`}/>
-                                         {customRanges.length > 1 && (
-                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveRange(idx)} className="h-7 w-7">
-                                                <XCircle className="h-4 w-4 text-destructive" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                ))}
-                                <Button variant="outline" size="sm" onClick={handleAddRange} className="w-full"><PlusCircle className="mr-2 h-4 w-4"/> Add Range</Button>
-                            </div>
-                        )}
                         
-                        {rangeMode === 'fixed' && (
-                             <div className="space-y-2 pt-2">
-                                <Label htmlFor="fixed-range-size">Split into page ranges of:</Label>
-                                <Input id="fixed-range-size" type="number" value={fixedRangeSize} onChange={(e) => setFixedRangeSize(parseInt(e.target.value) || 1)} min={1} max={totalPages} />
-                                <Alert variant="default" className="text-sm p-3">
-                                    <Info className="h-4 w-4"/>
-                                    <AlertDescription>
-                                        This PDF will be split into files of {fixedRangeSize} pages. {finalRangesForPreview.length} PDFs will be created.
-                                    </AlertDescription>
-                                </Alert>
-                             </div>
+                        {mainMode === 'range' && (
+                            <>
+                                <div>
+                                    <Label className="text-sm font-medium">Range mode:</Label>
+                                    <div className="grid grid-cols-2 gap-1 mt-1">
+                                        <Button variant={rangeMode === 'custom' ? 'secondary' : 'outline'} onClick={() => setRangeMode('custom')} className={cn(rangeMode === 'custom' && "border-2 border-primary")}>Custom ranges</Button>
+                                        <Button variant={rangeMode === 'fixed' ? 'secondary' : 'outline'} onClick={() => setRangeMode('fixed')} className={cn(rangeMode === 'fixed' && "border-2 border-primary")}>Fixed ranges</Button>
+                                    </div>
+                                </div>
+
+                                {rangeMode === 'custom' && (
+                                    <div className="space-y-2 pt-2">
+                                        {customRanges.map((range, idx) => (
+                                            <div key={idx} className="flex items-center gap-2">
+                                                <Label className="text-sm text-muted-foreground min-w-[50px]">Range {idx + 1}</Label>
+                                                <Input type="number" value={range.from} onChange={(e) => handleRangeChange(idx, 'from', e.target.value)} min={1} max={totalPages} className="w-20" aria-label={`Range ${idx+1} from`}/>
+                                                <span className="text-muted-foreground">to</span>
+                                                <Input type="number" value={range.to} onChange={(e) => handleRangeChange(idx, 'to', e.target.value)} min={range.from} max={totalPages} className="w-20" aria-label={`Range ${idx+1} to`}/>
+                                                {customRanges.length > 1 && (
+                                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveRange(idx)} className="h-7 w-7">
+                                                        <XCircle className="h-4 w-4 text-destructive" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ))}
+                                        <Button variant="outline" size="sm" onClick={handleAddRange} className="w-full"><PlusCircle className="mr-2 h-4 w-4"/> Add Range</Button>
+                                    </div>
+                                )}
+                                
+                                {rangeMode === 'fixed' && (
+                                    <div className="space-y-2 pt-2">
+                                        <Label htmlFor="fixed-range-size">Split into page ranges of:</Label>
+                                        <Input id="fixed-range-size" type="number" value={fixedRangeSize} onChange={(e) => setFixedRangeSize(parseInt(e.target.value) || 1)} min={1} max={totalPages} />
+                                        <Alert variant="default" className="text-sm p-3">
+                                            <Info className="h-4 w-4"/>
+                                            <AlertDescription>
+                                                This PDF will be split into files of {fixedRangeSize} pages. {finalRangesForPreview.length} PDFs will be created.
+                                            </AlertDescription>
+                                        </Alert>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {mainMode === 'pages' && (
+                            <>
+                                <Label className="text-sm font-medium">Extract mode:</Label>
+                                <div className="grid grid-cols-2 gap-1 mt-1">
+                                    <Button variant={pagesMode === 'all' ? 'secondary' : 'outline'} onClick={() => setPagesMode('all')} className={cn(pagesMode === 'all' && "border-2 border-primary")}>Extract all pages</Button>
+                                    <Button variant={pagesMode === 'select' ? 'secondary' : 'outline'} onClick={() => setPagesMode('select')} className={cn(pagesMode === 'select' && "border-2 border-primary")}>Select pages</Button>
+                                </div>
+                                {pagesMode === 'select' && (
+                                    <div className="space-y-2 pt-2">
+                                        <Label htmlFor="pages-to-extract">Pages to extract:</Label>
+                                        <Input id="pages-to-extract" value={pagesToExtract} onChange={(e) => setPagesToExtract(e.target.value)} placeholder="e.g., 1-3,5,8-10"/>
+                                    </div>
+                                )}
+                            </>
                         )}
 
                         <div className="flex items-center space-x-2 pt-2">
-                            <Checkbox id="merge-ranges" checked={mergeRanges} onCheckedChange={(checked) => setMergeRanges(Boolean(checked))} />
-                            <Label htmlFor="merge-ranges">Merge all ranges in one PDF file.</Label>
+                            <Checkbox id="merge-output" checked={mergeOutput} onCheckedChange={(checked) => setMergeOutput(Boolean(checked))} />
+                            <Label htmlFor="merge-output">Merge extracted pages into one PDF file.</Label>
                         </div>
                     </CardContent>
                     <CardFooter>
