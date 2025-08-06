@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -269,8 +270,8 @@ export default function SplitPage() {
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {pages.map((p) => (
                                 <div key={p.id} className="flex flex-col items-center">
-                                    <div className="relative">
-                                        <CheckCircle className="absolute -top-2 -right-2 h-5 w-5 text-green-500 bg-white rounded-full"/>
+                                    <div className="relative pt-2 pr-2">
+                                        <CheckCircle className="absolute top-0 right-0 h-6 w-6 text-white bg-green-500 rounded-full z-10 border-2 border-white" />
                                         <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={p.originalIndex} targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT + 40} className="shadow-md" />
                                     </div>
                                     <span className="text-sm mt-2 text-muted-foreground">{p.originalIndex + 1}</span>
