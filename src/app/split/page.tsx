@@ -245,8 +245,7 @@ export default function SplitPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-3 gap-1 border p-1 rounded-md bg-muted">
-                            <Button variant={true ? 'secondary' : 'ghost'} className="h-auto py-2 flex-col gap-1 relative">
-                                <Check className="absolute top-1 right-1 h-3 w-3 text-green-500"/>
+                            <Button variant={'secondary'} className={cn("h-auto py-2 flex-col gap-1", "border-2 border-primary")}>
                                 <RangeIcon/> <span className="text-xs">Range</span>
                             </Button>
                             <Button variant={'ghost'} disabled className="h-auto py-2 flex-col gap-1 opacity-50"><PagesIcon/> <span className="text-xs">Pages</span></Button>
@@ -256,8 +255,8 @@ export default function SplitPage() {
                         <div>
                             <Label className="text-sm font-medium">Range mode:</Label>
                             <div className="grid grid-cols-2 gap-1 mt-1">
-                                <Button variant={rangeMode === 'custom' ? 'secondary' : 'outline'} onClick={() => setRangeMode('custom')}>Custom ranges</Button>
-                                <Button variant={rangeMode === 'fixed' ? 'secondary' : 'outline'} onClick={() => setRangeMode('fixed')}>Fixed ranges</Button>
+                                <Button variant={rangeMode === 'custom' ? 'secondary' : 'outline'} onClick={() => setRangeMode('custom')} className={cn(rangeMode === 'custom' && "border-2 border-primary")}>Custom ranges</Button>
+                                <Button variant={rangeMode === 'fixed' ? 'secondary' : 'outline'} onClick={() => setRangeMode('fixed')} className={cn(rangeMode === 'fixed' && "border-2 border-primary")}>Fixed ranges</Button>
                             </div>
                         </div>
 
