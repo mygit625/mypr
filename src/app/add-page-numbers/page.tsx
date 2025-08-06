@@ -32,7 +32,7 @@ import { ListOrdered, Loader2, Info, ArrowRightCircle, Check, Download } from 'l
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { addPageNumbersAction, type PageNumberPosition } from './actions';
+import { addPageNumbersAction, type PageNumberPosition } from '@/app/add-page-numbers/actions';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -54,7 +54,6 @@ export default function AddPageNumbersPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedUri, setProcessedUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   // Form state
@@ -71,7 +70,6 @@ export default function AddPageNumbersPage() {
     setPages([]);
     setError(null);
     setProcessedUri(null);
-    setShowConfetti(false);
   };
 
   const handleFileSelected = async (selectedFiles: File[]) => {
@@ -134,8 +132,6 @@ export default function AddPageNumbersPage() {
         toast({ title: "Processing Error", description: result.error, variant: "destructive" });
       } else if (result.numberedPdfDataUri) {
         setProcessedUri(result.numberedPdfDataUri);
-        setShowConfetti(true);
-        toast({ title: "Success!", description: "Page numbers added. Click Download to save." });
       }
     } catch (e: any) {
       setError(e.message || "An unexpected error occurred.");

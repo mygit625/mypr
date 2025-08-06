@@ -12,7 +12,7 @@ import { Combine, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download } 
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { mergePdfsAction } from './actions';
+import { mergePdfsAction } from '@/app/merge/actions';
 import { cn } from '@/lib/utils';
 
 interface SelectedPdfItem {
@@ -165,10 +165,6 @@ export default function MergeClientPage() {
         });
       } else if (result.mergedPdfDataUri) {
         setMergedPdfUri(result.mergedPdfDataUri);
-        toast({
-          title: "Merge Successful!",
-          description: "Your PDFs have been merged. Click Download to save.",
-        });
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during merge.";

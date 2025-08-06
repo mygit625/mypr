@@ -15,11 +15,10 @@ import { FileMinus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-// getInitialPageDataAction is re-exported from ./actions
-import { getInitialPageDataAction } from './actions';
-// assembleIndividualPagesAction is used for the final PDF creation
-import { assembleIndividualPagesAction } from '../organize/actions';
+import { getInitialPageDataAction } from '@/app/remove-pages/actions';
+import { assembleIndividualPagesAction } from '@/app/organize/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -33,7 +32,7 @@ interface SelectedPdfPageItem {
   pageIndexInOriginalFile: number;
   totalPagesInOriginalFile: number;
   displayName: string;
-  rotation: number; // Keep for potential future use or consistency, but no UI to change it now
+  rotation: number;
   isMarkedForDeletion: boolean;
 }
 
@@ -51,6 +50,8 @@ export default function RemovePagesPage() {
   const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfPageItem[]>([]);
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processedUri, setProcessedUri] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -58,6 +59,16 @@ export default function RemovePagesPage() {
   const insertAtIndexRef = useRef<number | null>(null);
   const dragItemIndex = useRef<number | null>(null);
   const dragOverItemIndex = useRef<number | null>(null);
+
+  const resetState = () => {
+    setSelectedPdfItems([]);
+    setProcessedUri(null);
+    setError(null);
+    setShowConfetti(false);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     setError(null);
@@ -94,7 +105,7 @@ export default function RemovePagesPage() {
             pageIndexInOriginalFile: i,
             totalPagesInOriginalFile: numPages,
             displayName: `${file.name} (Page ${i + 1} of ${numPages})`,
-            rotation: 0, // Initialize rotation to 0
+            rotation: 0,
             isMarkedForDeletion: false,
           });
         }
@@ -210,12 +221,8 @@ export default function RemovePagesPage() {
           variant: "destructive",
         });
       } else if (result.organizedPdfDataUri) {
-        downloadDataUri(result.organizedPdfDataUri, "removed_pages_document.pdf");
-        toast({
-          title: "Processing Successful!",
-          description: "Your PDF has been processed and download has started.",
-        });
-        setSelectedPdfItems([]);
+        setProcessedUri(result.organizedPdfDataUri);
+        setShowConfetti(true);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during processing.";
@@ -223,6 +230,12 @@ export default function RemovePagesPage() {
       toast({ title: "Processing Failed", description: errorMessage, variant: "destructive" });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (processedUri) {
+        downloadDataUri(processedUri, "removed_pages_document.pdf");
     }
   };
 
@@ -252,6 +265,7 @@ export default function RemovePagesPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <FileMinus2 className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Remove PDF Pages</h1>
@@ -343,7 +357,7 @@ export default function RemovePagesPage() {
                             <PdfPagePreview
                                 pdfDataUri={pageItem.originalFileDataUri}
                                 pageIndex={pageItem.pageIndexInOriginalFile}
-                                rotation={pageItem.rotation} // Rotation data still passed to preview
+                                rotation={pageItem.rotation}
                                 targetHeight={PREVIEW_TARGET_HEIGHT_REMOVE}
                                 className={cn("border rounded", pageItem.isMarkedForDeletion && "opacity-50")}
                             />
@@ -405,20 +419,31 @@ export default function RemovePagesPage() {
                   <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort Pages
                 </Button>
               </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={handleProcessAndDownload}
-                  disabled={selectedPdfItems.length < 1 || (selectedPdfItems.length > 0 && keptPagesCount < 1) || isProcessing || isLoadingPreviews}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isProcessing ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                  )}
-                  Apply & Download ({keptPagesCount} pages)
-                </Button>
+              <CardFooter className="flex-col gap-2">
+                {processedUri ? (
+                    <>
+                        <Button onClick={handleDownload} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" size="lg">
+                            <Download className="mr-2 h-5 w-5"/> Download Processed PDF
+                        </Button>
+                        <Button onClick={resetState} className="w-full" variant="outline">
+                            Process Another PDF
+                        </Button>
+                    </>
+                ) : (
+                    <Button
+                        onClick={handleProcessAndDownload}
+                        disabled={selectedPdfItems.length < 1 || (selectedPdfItems.length > 0 && keptPagesCount < 1) || isProcessing || isLoadingPreviews}
+                        className="w-full"
+                        size="lg"
+                    >
+                        {isProcessing ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Download className="mr-2 h-4 w-4" />
+                        )}
+                        Apply & Download ({keptPagesCount} pages)
+                    </Button>
+                )}
               </CardFooter>
             </Card>
           </div>
@@ -435,4 +460,3 @@ export default function RemovePagesPage() {
     </div>
   );
 }
-    

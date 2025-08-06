@@ -19,8 +19,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { splitPdfAction, type CustomRange } from './actions';
+import { splitPdfAction, type CustomRange } from '@/app/split/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 const PREVIEW_TARGET_HEIGHT_SPLIT = 200;
 
@@ -46,10 +47,10 @@ export default function SplitPage() {
   const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (totalPages > 0 && customRanges.length === 1 && customRanges[0].from === 1 && customRanges[0].to === 1) {
-      setCustomRanges([{ from: 1, to: totalPages > 0 ? totalPages : 1 }]);
+    if (totalPages > 0) {
+      setCustomRanges([{ from: 1, to: totalPages }]);
     }
-  }, [totalPages, customRanges]);
+  }, [totalPages]);
 
   const resetState = () => {
     setFile(null);
@@ -77,11 +78,6 @@ export default function SplitPage() {
         } else if (result.pages) {
           setPages(result.pages);
           setTotalPages(result.pages.length);
-          if (result.pages.length > 0) {
-            setCustomRanges([{ from: 1, to: result.pages.length }]);
-          } else {
-            setCustomRanges([{ from: 1, to: 1 }]);
-          }
         }
       } catch (e: any) {
         setError(e.message || "Failed to read or process file.");
@@ -162,7 +158,6 @@ export default function SplitPage() {
       } else if (result.zipDataUri) {
         setSplitResultUri(result.zipDataUri);
         setShowConfetti(true);
-        toast({ title: "Split Successful!", description: "Your PDF has been split. Click Download to save." });
         if (resultRef.current) {
           resultRef.current.scrollIntoView({ behavior: 'smooth' });
         }
@@ -184,6 +179,7 @@ export default function SplitPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Split className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Split PDF File</h1>
@@ -359,7 +355,6 @@ export default function SplitPage() {
                                 if (result.zipDataUri) {
                                     setSplitResultUri(result.zipDataUri);
                                     setShowConfetti(true);
-                                    toast({ title: "Split Successful!", description: "All pages extracted." });
                                      if (resultRef.current) {
                                         resultRef.current.scrollIntoView({ behavior: 'smooth' });
                                     }

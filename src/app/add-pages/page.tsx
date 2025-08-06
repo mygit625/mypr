@@ -11,11 +11,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { FilePlus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine } from 'lucide-react';
+import { FilePlus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { assemblePdfAction } from './actions';
+import { assemblePdfAction } from '@/app/add-pages/actions';
 import { cn } from '@/lib/utils';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
@@ -46,6 +46,7 @@ export default function AddPagesPage() {
   const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfPageItem[]>([]);
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isAssembling, setIsAssembling] = useState(false);
+  const [assembledPdfUri, setAssembledPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -53,6 +54,15 @@ export default function AddPagesPage() {
   const insertAtIndexRef = useRef<number | null>(null);
   const dragItemIndex = useRef<number | null>(null);
   const dragOverItemIndex = useRef<number | null>(null);
+
+  const resetState = () => {
+    setSelectedPdfItems([]);
+    setAssembledPdfUri(null);
+    setError(null);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     setError(null);
@@ -156,7 +166,7 @@ export default function AddPagesPage() {
     toast({ description: "Pages sorted by name (original file, then page number)." });
   };
 
-  const handleAssembleAndDownload = async () => {
+  const handleAssemble = async () => {
     if (selectedPdfItems.length < 1) {
       toast({
         title: "No pages selected",
@@ -185,12 +195,7 @@ export default function AddPagesPage() {
           variant: "destructive",
         });
       } else if (result.assembledPdfDataUri) {
-        downloadDataUri(result.assembledPdfDataUri, "added_pages_document.pdf");
-        toast({
-          title: "Assembly Successful!",
-          description: "Your PDF pages have been assembled and download has started.",
-        });
-        setSelectedPdfItems([]);
+        setAssembledPdfUri(result.assembledPdfDataUri);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during assembly.";
@@ -198,6 +203,12 @@ export default function AddPagesPage() {
       toast({ title: "Assembly Failed", description: errorMessage, variant: "destructive" });
     } finally {
       setIsAssembling(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (assembledPdfUri) {
+        downloadDataUri(assembledPdfUri, "added_pages_document.pdf");
     }
   };
 
@@ -365,20 +376,31 @@ export default function AddPagesPage() {
                   <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort Pages
                 </Button>
               </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={handleAssembleAndDownload}
-                  disabled={selectedPdfItems.length < 1 || isAssembling || isLoadingPreviews}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isAssembling ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Combine className="mr-2 h-4 w-4" />
-                  )}
-                  Assemble & Download Pages ({selectedPdfItems.length})
-                </Button>
+              <CardFooter className="flex-col gap-2">
+                {assembledPdfUri ? (
+                    <>
+                        <Button onClick={handleDownload} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" size="lg">
+                            <Download className="mr-2 h-5 w-5"/> Download Assembled PDF
+                        </Button>
+                        <Button onClick={resetState} className="w-full" variant="outline">
+                            Process Another File
+                        </Button>
+                    </>
+                ) : (
+                    <Button
+                        onClick={handleAssemble}
+                        disabled={selectedPdfItems.length < 1 || isAssembling || isLoadingPreviews}
+                        className="w-full"
+                        size="lg"
+                    >
+                    {isAssembling ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <Combine className="mr-2 h-4 w-4" />
+                    )}
+                    Assemble Pages ({selectedPdfItems.length})
+                    </Button>
+                )}
               </CardFooter>
             </Card>
           </div>

@@ -15,8 +15,9 @@ import { RotateCcw, RotateCw, Loader2, Info, Plus, Download } from 'lucide-react
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { rotateAllPagesAction } from './actions';
+import { rotateAllPagesAction } from '@/app/rotate/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -28,7 +29,7 @@ interface SelectedPdfFileItem {
   dataUri: string;
   name: string;
   numPages: number;
-  rotation: number; // Rotation for the entire file
+  rotation: number;
   processedUri?: string | null;
 }
 
@@ -37,8 +38,9 @@ const PREVIEW_TARGET_HEIGHT_ROTATE = 220;
 export default function RotatePdfPage() {
   const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfFileItem[]>([]);
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessingId, setIsProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -100,41 +102,31 @@ export default function RotatePdfPage() {
     );
   };
 
-  const handleApplyChanges = async () => {
-    if (selectedPdfItems.length < 1) {
-      toast({ title: "No files loaded", variant: "destructive" });
+  const handleApplyRotation = async (item: SelectedPdfFileItem) => {
+    if (item.rotation === 0) {
+      toast({ description: "No rotation to apply." });
       return;
     }
 
-    setIsProcessing(true);
+    setIsProcessingId(item.id);
     setError(null);
-    let successCount = 0;
     
-    const updatedItems = await Promise.all(selectedPdfItems.map(async (item) => {
-      if (item.rotation === 0 && !item.processedUri) return item; // No changes needed
-      try {
-        const result = await rotateAllPagesAction({ 
-          pdfDataUri: item.processedUri || item.dataUri, 
-          rotation: item.rotation 
-        });
-        if (result.error) throw new Error(result.error);
-        successCount++;
-        return { ...item, processedUri: result.processedPdfDataUri, rotation: 0 };
-      } catch (e: any) {
-        toast({ title: `Error rotating ${item.name}`, description: e.message, variant: "destructive" });
-        return item;
-      }
-    }));
-    
-    setSelectedPdfItems(updatedItems);
-
-    if (successCount > 0) {
-        toast({
-            title: "Processing Complete!",
-            description: `Rotation applied to ${successCount} PDF(s).`,
-        });
+    try {
+      const result = await rotateAllPagesAction({ 
+        pdfDataUri: item.processedUri || item.dataUri, 
+        rotation: item.rotation 
+      });
+      if (result.error) throw new Error(result.error);
+      
+      setSelectedPdfItems(prev => prev.map(i => 
+        i.id === item.id ? { ...i, processedUri: result.processedPdfDataUri, rotation: 0 } : i
+      ));
+      setShowConfetti(true);
+    } catch (e: any) {
+      toast({ title: `Error rotating ${item.name}`, description: e.message, variant: "destructive" });
+    } finally {
+      setIsProcessingId(null);
     }
-    setIsProcessing(false);
   };
   
   const handleDownload = (item: SelectedPdfFileItem) => {
@@ -144,6 +136,7 @@ export default function RotatePdfPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <RotateCcw className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Rotate PDF Files</h1>
@@ -177,7 +170,7 @@ export default function RotatePdfPage() {
             <Card className="w-full max-w-4xl">
                 <CardHeader>
                     <CardTitle>Rotate Files</CardTitle>
-                    <CardDescription>Apply rotations to each file. Click "Apply Rotations" to process the changes, then download the files.</CardDescription>
+                    <CardDescription>Apply rotations to each file individually, then download.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <ScrollArea className="h-[400px] p-2 border rounded-md">
@@ -189,7 +182,7 @@ export default function RotatePdfPage() {
                                         <PdfPagePreview
                                             pdfDataUri={fileItem.processedUri || fileItem.dataUri}
                                             pageIndex={0}
-                                            rotation={0} // Preview rotation is now part of the processedUri
+                                            rotation={0}
                                             targetHeight={PREVIEW_TARGET_HEIGHT_ROTATE}
                                             className="bg-white"
                                         />
@@ -202,20 +195,21 @@ export default function RotatePdfPage() {
                                         <Button size="sm" variant="outline" onClick={() => handleRotateFile(fileItem.id, 'ccw')}><RotateCcw className="h-4 w-4 mr-1"/> Left</Button>
                                         <Button size="sm" variant="outline" onClick={() => handleRotateFile(fileItem.id, 'cw')}><RotateCw className="h-4 w-4 mr-1"/> Right</Button>
                                     </div>
-                                    <p className="text-sm font-bold text-primary">{fileItem.rotation}°</p>
-                                     <Button size="sm" className="w-full mt-2" onClick={() => handleDownload(fileItem)}>
-                                        <Download className="h-4 w-4 mr-2"/> Download
-                                    </Button>
+                                    <p className="text-sm font-bold text-primary h-5">{fileItem.rotation !== 0 ? `${fileItem.rotation}°` : ''}</p>
+                                    <div className="w-full mt-2 space-y-2">
+                                      <Button size="sm" className="w-full" onClick={() => handleApplyRotation(fileItem)} disabled={isProcessingId !== null || fileItem.rotation === 0}>
+                                        {isProcessingId === fileItem.id ? <Loader2 className="h-4 w-4 animate-spin"/> : "Apply Rotation"}
+                                      </Button>
+                                      <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" onClick={() => handleDownload(fileItem)}>
+                                          <Download className="h-4 w-4 mr-2"/> Download
+                                      </Button>
+                                    </div>
                                 </Card>
                             ))}
                         </div>
                     </ScrollArea>
                 </CardContent>
                 <CardFooter className="flex-col sm:flex-row gap-2">
-                    <Button onClick={handleApplyChanges} disabled={isProcessing} className="w-full">
-                        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : null}
-                        Apply Rotations
-                    </Button>
                     <Button onClick={() => setSelectedPdfItems([])} variant="destructive" className="w-full">
                         Clear All
                     </Button>

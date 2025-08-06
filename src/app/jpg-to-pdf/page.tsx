@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { convertJpgsToPdfAction, convertSingleJpgToPdfAction, type CompressionLevel } from './actions';
+import { convertJpgsToPdfAction, convertSingleJpgToPdfAction, type CompressionLevel } from '@/app/jpg-to-pdf/actions';
 import { cn } from '@/lib/utils';
 
 interface SelectedImageItem {
@@ -38,6 +38,7 @@ export default function JpgToPdfPage() {
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [isConvertingSingleImageId, setIsConvertingSingleImageId] = useState<string | null>(null);
+  const [processedUri, setProcessedUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>("recommended");
   const { toast } = useToast();
@@ -46,6 +47,15 @@ export default function JpgToPdfPage() {
   const insertAtIndexRef = useRef<number | null>(null);
   const dragItemIndex = useRef<number | null>(null);
   const dragOverItemIndex = useRef<number | null>(null);
+
+  const resetState = () => {
+    setSelectedImageItems([]);
+    setProcessedUri(null);
+    setError(null);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     setError(null);
@@ -211,12 +221,7 @@ export default function JpgToPdfPage() {
           variant: "destructive",
         });
       } else if (result.pdfDataUri) {
-        downloadDataUri(result.pdfDataUri, "converted_document.pdf");
-        toast({
-          title: "Conversion Successful!",
-          description: "Your JPG images have been converted to PDF and download has started.",
-        });
-        setSelectedImageItems([]);
+        setProcessedUri(result.pdfDataUri);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during PDF creation.";
@@ -224,6 +229,12 @@ export default function JpgToPdfPage() {
       toast({ title: "Conversion Failed", description: errorMessage, variant: "destructive" });
     } finally {
       setIsConverting(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (processedUri) {
+        downloadDataUri(processedUri, "converted_document.pdf");
     }
   };
 
@@ -424,20 +435,31 @@ export default function JpgToPdfPage() {
                   </RadioGroup>
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={handleCombineAndDownload}
-                  disabled={selectedImageItems.length < 1 || isConverting || isLoadingPreviews || isConvertingSingleImageId !== null}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isConverting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                  )}
-                  Combine & Download PDF ({selectedImageItems.length})
-                </Button>
+              <CardFooter className="flex-col gap-2">
+                {processedUri ? (
+                    <>
+                        <Button onClick={handleDownload} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" size="lg">
+                            <Download className="mr-2 h-5 w-5"/> Download Combined PDF
+                        </Button>
+                        <Button onClick={resetState} className="w-full" variant="outline">
+                            Convert More Images
+                        </Button>
+                    </>
+                ) : (
+                    <Button
+                        onClick={handleCombineAndDownload}
+                        disabled={selectedImageItems.length < 1 || isConverting || isLoadingPreviews || isConvertingSingleImageId !== null}
+                        className="w-full"
+                        size="lg"
+                    >
+                        {isConverting ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Download className="mr-2 h-4 w-4" />
+                        )}
+                        Combine & Download PDF ({selectedImageItems.length})
+                    </Button>
+                )}
               </CardFooter>
             </Card>
           </div>

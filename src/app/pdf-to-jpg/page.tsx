@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -62,6 +63,8 @@ export default function PdfToJpgPage() {
   const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfPageItem[]>([]);
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false); // Used for both single and ZIP conversion
+  const [processedUri, setProcessedUri] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -72,6 +75,16 @@ export default function PdfToJpgPage() {
 
   const [jpgQuality, setJpgQuality] = useState(0.9);
   const [imageScale, setImageScale] = useState(1.5);
+
+  const resetState = () => {
+    setSelectedPdfItems([]);
+    setProcessedUri(null);
+    setError(null);
+    setShowConfetti(false);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     setError(null);
@@ -191,8 +204,8 @@ export default function PdfToJpgPage() {
       const zipReader = new FileReader();
       zipReader.onload = function(event) {
         if (event.target && typeof event.target.result === 'string') {
-          downloadDataUri(event.target.result, `${selectedPdfItems[0].originalFileName}_pages.zip`);
-          toast({ title: "Conversion Successful!", description: `${filesInZip} JPG images zipped and download started.` });
+          setProcessedUri(event.target.result);
+          setShowConfetti(true);
         } else {
             throw new Error("Failed to read ZIP blob as Data URI.");
         }
@@ -264,18 +277,15 @@ export default function PdfToJpgPage() {
 
   const handleFilesSelected = async (newFilesFromInput: File[], insertAt: number | null) => {
     if (newFilesFromInput.length === 0) return;
-    // For PDF to JPG, typically operate on one PDF at a time to explode its pages
     const fileToProcess = newFilesFromInput.length > 0 ? [newFilesFromInput[0]] : [];
      if (fileToProcess.length === 0) return;
 
     const processedNewPageItems = await processFiles(fileToProcess);
 
     setSelectedPdfItems((prevItems) => {
-      // If we want to replace existing pages when a new PDF is added (common for this tool type)
       if (insertAt === null || prevItems.length === 0) {
         return processedNewPageItems;
       }
-      // If we allow adding pages from other PDFs (like organize)
       const updatedItems = [...prevItems];
       if (insertAt !== null && insertAt >= 0 && insertAt <= updatedItems.length) {
         updatedItems.splice(insertAt, 0, ...processedNewPageItems);
@@ -295,12 +305,11 @@ export default function PdfToJpgPage() {
       setSelectedPdfItems([]);
       return;
     }
-    // "PDF to JPG" usually focuses on one PDF at a time. Explode its pages.
     const fileToProcess = newFilesFromInput.length > 0 ? [newFilesFromInput[0]] : [];
     if (fileToProcess.length === 0) return;
     
     const processedNewPageItems = await processFiles(fileToProcess);
-    setSelectedPdfItems(processedNewPageItems); // Replace current items
+    setSelectedPdfItems(processedNewPageItems); 
   };
 
   const handleRemovePageCard = (idToRemove: string) => {
@@ -308,7 +317,7 @@ export default function PdfToJpgPage() {
   };
 
   const handleAddFilesTrigger = (index: number) => {
-    insertAtIndexRef.current = index; // Store where to insert new pages
+    insertAtIndexRef.current = index; 
     fileInputRef.current?.click();
   };
 
@@ -353,14 +362,10 @@ export default function PdfToJpgPage() {
 
   const displayItems: DisplayItem[] = [];
   if (selectedPdfItems.length > 0 || isLoadingPreviews) {
-    // No initial add button if we always replace pages on new upload for this tool
     selectedPdfItems.forEach((pageItem, index) => {
       displayItems.push({ type: 'pdf_page', id: pageItem.id, data: pageItem, originalItemIndex: index });
-      // "Add files" button can be placed between items if desired for merging page lists from multiple PDFs
-      // For a typical "PDF to JPG", this might be omitted if only one PDF's pages are handled at a time.
-      // displayItems.push({ type: 'add_button', id: `add-slot-${index + 1}`, insertAtIndex: index + 1 });
     });
-     if (selectedPdfItems.length > 0) { // Add button at the end if items exist
+     if (selectedPdfItems.length > 0) { 
         displayItems.push({ type: 'add_button', id: `add-slot-${selectedPdfItems.length}`, insertAtIndex: selectedPdfItems.length });
     }
   }
@@ -368,6 +373,7 @@ export default function PdfToJpgPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <FileImage className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">PDF to JPG Converter</h1>
@@ -392,7 +398,7 @@ export default function PdfToJpgPage() {
           type="file"
           ref={fileInputRef}
           onChange={handleHiddenInputChange}
-          multiple={false} // Change to true if allowing adding pages from multiple PDFs
+          multiple={false}
           accept="application/pdf"
           className="hidden"
       />
@@ -466,7 +472,6 @@ export default function PdfToJpgPage() {
                       </Card>
                     );
                   } else if (item.type === 'add_button') {
-                    // This button allows adding pages from another PDF if `multiple` is true on fileInputRef
                     return (
                       <div key={item.id} className="flex items-center justify-center self-stretch h-auto w-12">
                         <Button
@@ -526,20 +531,31 @@ export default function PdfToJpgPage() {
                   <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort Pages
                 </Button>
               </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={handleDownloadAllAsZip}
-                  disabled={selectedPdfItems.length < 1 || isProcessing || isLoadingPreviews}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isProcessing ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                  )}
-                  Download All as ZIP ({selectedPdfItems.length})
-                </Button>
+              <CardFooter className="flex-col gap-2">
+                {processedUri ? (
+                    <>
+                        <Button onClick={() => downloadDataUri(processedUri, `${selectedPdfItems[0].originalFileName}_pages.zip`)} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" size="lg">
+                            <Download className="mr-2 h-5 w-5"/> Download ZIP
+                        </Button>
+                        <Button onClick={resetState} className="w-full" variant="outline">
+                            Convert Another PDF
+                        </Button>
+                    </>
+                ) : (
+                    <Button
+                    onClick={handleDownloadAllAsZip}
+                    disabled={selectedPdfItems.length < 1 || isProcessing || isLoadingPreviews}
+                    className="w-full"
+                    size="lg"
+                    >
+                    {isProcessing ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                    )}
+                    Download All as ZIP ({selectedPdfItems.length})
+                    </Button>
+                )}
               </CardFooter>
             </Card>
           </div>
@@ -556,5 +572,3 @@ export default function PdfToJpgPage() {
     </div>
   );
 }
-
-    
