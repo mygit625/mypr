@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -26,6 +26,51 @@ type MainMode = 'range' | 'pages' | 'size';
 type RangeMode = 'custom' | 'fixed';
 type PagesMode = 'all' | 'select';
 
+// Helper function to convert a set of numbers to a range string
+function numbersToRangeString(numbers: Set<number>): string {
+  if (numbers.size === 0) return '';
+  const sorted = Array.from(numbers).sort((a, b) => a - b);
+  const ranges = [];
+  let start = sorted[0];
+  let end = sorted[0];
+
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === end + 1) {
+      end = sorted[i];
+    } else {
+      ranges.push(start === end ? `${start}` : `${start}-${end}`);
+      start = sorted[i];
+      end = sorted[i];
+    }
+  }
+  ranges.push(start === end ? `${start}` : `${start}-${end}`);
+  return ranges.join(',');
+}
+
+// Helper function to parse a range string into a set of numbers
+function rangeStringToNumbers(rangeStr: string, totalPages: number): Set<number> {
+  const result = new Set<number>();
+  if (!rangeStr.trim()) return result;
+
+  const parts = rangeStr.split(',');
+  for (const part of parts) {
+    const trimmedPart = part.trim();
+    if (trimmedPart.includes('-')) {
+      const [start, end] = trimmedPart.split('-').map(Number);
+      if (!isNaN(start) && !isNaN(end) && start <= end) {
+        for (let i = start; i <= end; i++) {
+          if (i >= 1 && i <= totalPages) result.add(i);
+        }
+      }
+    } else {
+      const pageNum = Number(trimmedPart);
+      if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) result.add(pageNum);
+    }
+  }
+  return result;
+}
+
+
 export default function SplitPage() {
   const [file, setFile] = useState<File | null>(null);
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
@@ -46,21 +91,27 @@ export default function SplitPage() {
   // Input states
   const [customRanges, setCustomRanges] = useState<CustomRange[]>([{ from: 1, to: 1 }]);
   const [fixedRangeSize, setFixedRangeSize] = useState(1);
-  const [pagesToExtract, setPagesToExtract] = useState('');
+  const [pagesToExtractInput, setPagesToExtractInput] = useState('');
   const [mergeOutput, setMergeOutput] = useState(false);
 
   const resultRef = useRef<HTMLDivElement>(null);
 
+  const selectedPageNumbers = useMemo(() => {
+    if (pagesMode === 'all') {
+      return new Set(Array.from({ length: totalPages }, (_, i) => i + 1));
+    }
+    return rangeStringToNumbers(pagesToExtractInput, totalPages);
+  }, [pagesMode, pagesToExtractInput, totalPages]);
+  
   useEffect(() => {
     if (totalPages > 0) {
       setCustomRanges([{ from: 1, to: totalPages }]);
       setFixedRangeSize(totalPages > 1 ? 2 : 1);
-      setPagesToExtract(`1-${totalPages}`);
+      setPagesToExtractInput(`1-${totalPages}`);
     }
   }, [totalPages]);
   
   useEffect(() => {
-    // When switching main modes, reset the merge checkbox
     setMergeOutput(false);
   }, [mainMode]);
 
@@ -139,7 +190,20 @@ export default function SplitPage() {
       return ranges;
     }
     return [];
-  }
+  };
+  
+  const handlePageClick = (pageIndex: number) => { // 0-indexed
+    const pageNum = pageIndex + 1;
+    setPagesMode('select');
+
+    const newSelected = new Set(selectedPageNumbers);
+    if (newSelected.has(pageNum)) {
+      newSelected.delete(pageNum);
+    } else {
+      newSelected.add(pageNum);
+    }
+    setPagesToExtractInput(numbersToRangeString(newSelected));
+  };
 
   const handleSplit = async () => {
     if (!file || !pdfDataUri) {
@@ -170,7 +234,7 @@ export default function SplitPage() {
             result = await splitPdfByPagesAction({
                 pdfDataUri,
                 extractMode: pagesMode,
-                pagesToExtract: pagesToExtract,
+                pagesToExtract: pagesToExtractInput,
                 merge: mergeOutput,
             });
         } else {
@@ -207,6 +271,7 @@ export default function SplitPage() {
   };
 
   const finalRangesForPreview = mainMode === 'range' ? getFinalRanges() : [];
+  const filesToBeCreated = mainMode === 'range' ? finalRangesForPreview.length : (pagesMode === 'all' ? totalPages : selectedPageNumbers.size);
 
   return (
     <div className="max-w-full mx-auto space-y-8">
@@ -266,12 +331,14 @@ export default function SplitPage() {
                                 </div>
                             ))}
                         </div>
-                    ) : (
+                    ) : ( // mainMode === 'pages'
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {pages.map((p) => (
-                                <div key={p.id} className="flex flex-col items-center">
+                                <div key={p.id} className="flex flex-col items-center cursor-pointer" onClick={() => handlePageClick(p.originalIndex)}>
                                     <div className="relative pt-2 pr-2">
-                                        <CheckCircle className="absolute top-0 right-0 h-6 w-6 text-white bg-green-500 rounded-full z-10 border-2 border-white" />
+                                        {selectedPageNumbers.has(p.originalIndex + 1) && (
+                                            <CheckCircle className="absolute top-0 right-0 h-6 w-6 text-white fill-green-500 rounded-full z-10 border-2 border-white" />
+                                        )}
                                         <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={p.originalIndex} targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT + 40} className="shadow-md" />
                                     </div>
                                     <span className="text-sm mt-2 text-muted-foreground">{p.originalIndex + 1}</span>
@@ -290,11 +357,11 @@ export default function SplitPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-3 gap-1 border p-1 rounded-md bg-muted">
-                            <Button variant={mainMode === 'range' ? 'secondary' : 'ghost'} onClick={() => setMainMode('range')} className={cn("h-auto py-2 flex-col gap-1 relative", mainMode === 'range' && "border-2 border-primary")}>
+                            <Button variant={mainMode === 'range' ? 'secondary' : 'ghost'} onClick={() => setMainMode('range')} className={cn("h-auto py-2 flex-col gap-1 relative", mainMode === 'range' && "ring-2 ring-primary")}>
                                 {mainMode === 'range' && <Check className="absolute top-1 right-1 h-3 w-3 text-green-500"/>}
                                 <RangeIcon/> <span className="text-xs">Range</span>
                             </Button>
-                            <Button variant={mainMode === 'pages' ? 'secondary' : 'ghost'} onClick={() => setMainMode('pages')} className={cn("h-auto py-2 flex-col gap-1 relative", mainMode === 'pages' && "border-2 border-primary")}>
+                            <Button variant={mainMode === 'pages' ? 'secondary' : 'ghost'} onClick={() => setMainMode('pages')} className={cn("h-auto py-2 flex-col gap-1 relative", mainMode === 'pages' && "ring-2 ring-primary")}>
                                 {mainMode === 'pages' && <Check className="absolute top-1 right-1 h-3 w-3 text-green-500"/>}
                                 <PagesIcon/> <span className="text-xs">Pages</span>
                             </Button>
@@ -306,8 +373,8 @@ export default function SplitPage() {
                                 <div>
                                     <Label className="text-sm font-medium">Range mode:</Label>
                                     <div className="grid grid-cols-2 gap-1 mt-1">
-                                        <Button variant={rangeMode === 'custom' ? 'secondary' : 'outline'} onClick={() => setRangeMode('custom')} className={cn(rangeMode === 'custom' && "border-2 border-primary")}>Custom ranges</Button>
-                                        <Button variant={rangeMode === 'fixed' ? 'secondary' : 'outline'} onClick={() => setRangeMode('fixed')} className={cn(rangeMode === 'fixed' && "border-2 border-primary")}>Fixed ranges</Button>
+                                        <Button variant={rangeMode === 'custom' ? 'secondary' : 'outline'} onClick={() => setRangeMode('custom')} className={cn(rangeMode === 'custom' && "ring-2 ring-primary")}>Custom ranges</Button>
+                                        <Button variant={rangeMode === 'fixed' ? 'secondary' : 'outline'} onClick={() => setRangeMode('fixed')} className={cn(rangeMode === 'fixed' && "ring-2 ring-primary")}>Fixed ranges</Button>
                                     </div>
                                 </div>
 
@@ -334,12 +401,6 @@ export default function SplitPage() {
                                     <div className="space-y-2 pt-2">
                                         <Label htmlFor="fixed-range-size">Split into page ranges of:</Label>
                                         <Input id="fixed-range-size" type="number" value={fixedRangeSize} onChange={(e) => setFixedRangeSize(parseInt(e.target.value) || 1)} min={1} max={totalPages} />
-                                        <Alert variant="default" className="text-sm p-3">
-                                            <Info className="h-4 w-4"/>
-                                            <AlertDescription>
-                                                This PDF will be split into files of {fixedRangeSize} pages. {finalRangesForPreview.length} PDFs will be created.
-                                            </AlertDescription>
-                                        </Alert>
                                     </div>
                                 )}
                             </>
@@ -349,17 +410,28 @@ export default function SplitPage() {
                             <>
                                 <Label className="text-sm font-medium">Extract mode:</Label>
                                 <div className="grid grid-cols-2 gap-1 mt-1">
-                                    <Button variant={pagesMode === 'all' ? 'secondary' : 'outline'} onClick={() => setPagesMode('all')} className={cn(pagesMode === 'all' && "border-2 border-primary")}>Extract all pages</Button>
-                                    <Button variant={pagesMode === 'select' ? 'secondary' : 'outline'} onClick={() => setPagesMode('select')} className={cn(pagesMode === 'select' && "border-2 border-primary")}>Select pages</Button>
+                                    <Button variant={pagesMode === 'all' ? 'secondary' : 'outline'} onClick={() => setPagesMode('all')} className={cn(pagesMode === 'all' && "ring-2 ring-primary")}>Extract all pages</Button>
+                                    <Button variant={pagesMode === 'select' ? 'secondary' : 'outline'} onClick={() => setPagesMode('select')} className={cn(pagesMode === 'select' && "ring-2 ring-primary")}>Select pages</Button>
                                 </div>
                                 {pagesMode === 'select' && (
                                     <div className="space-y-2 pt-2">
                                         <Label htmlFor="pages-to-extract">Pages to extract:</Label>
-                                        <Input id="pages-to-extract" value={pagesToExtract} onChange={(e) => setPagesToExtract(e.target.value)} placeholder="e.g., 1-3,5,8-10"/>
+                                        <Input id="pages-to-extract" value={pagesToExtractInput} onChange={(e) => setPagesToExtractInput(e.target.value)} placeholder="e.g., 1-3,5,8-10"/>
                                     </div>
                                 )}
                             </>
                         )}
+                        
+                        {(mainMode === 'range' || mainMode === 'pages') &&
+                         <Alert variant="default" className="text-sm p-3 mt-2">
+                            <Info className="h-4 w-4"/>
+                            <AlertDescription>
+                                {!mergeOutput && `This will create ${filesToBeCreated} PDF files.`}
+                                {mergeOutput && `The ${filesToBeCreated} selected pages will be merged into a single PDF.`}
+                            </AlertDescription>
+                        </Alert>
+                        }
+
 
                         <div className="flex items-center space-x-2 pt-2">
                             <Checkbox id="merge-output" checked={mergeOutput} onCheckedChange={(checked) => setMergeOutput(Boolean(checked))} />
@@ -404,3 +476,5 @@ export default function SplitPage() {
     </div>
   );
 }
+
+    
