@@ -1,7 +1,24 @@
 
 'use server';
 
+// Polyfill for Promise.withResolvers if needed
+if (typeof Promise.withResolvers !== 'function') {
+  Promise.withResolvers = function withResolvers<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: any) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
+
 import { PDFDocument } from 'pdf-lib';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
+import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
+import { createCanvas, type Canvas } from 'canvas';
 import type { Buffer } from 'buffer';
 
 export type CompressionLevel = "extreme" | "recommended" | "less";
@@ -18,6 +35,43 @@ export interface CompressPdfOutput {
   error?: string;
 }
 
+// Node.js environment-specific canvas factory
+const nodeCanvasFactory = {
+  create: (width: number, height: number) => {
+    const canvas = createCanvas(width, height);
+    return {
+      canvas,
+      context: canvas.getContext('2d'),
+    };
+  },
+  reset: (obj: { canvas: Canvas; context: any }, width: number, height: number) => {
+    obj.canvas.width = width;
+    obj.canvas.height = height;
+  },
+  destroy: (obj: { canvas: Canvas; context: any }) => {
+    obj.canvas.width = 0;
+    obj.canvas.height = 0;
+    // @ts-ignore
+    obj.canvas = null;
+    // @ts-ignore
+    obj.context = null;
+  },
+};
+
+const getCompressionSettings = (level: CompressionLevel) => {
+  switch (level) {
+    case "extreme":
+      return { quality: 0.5, scale: 1.0 }; // 50% quality, 150 DPI
+    case "recommended":
+      return { quality: 0.7, scale: 1.5 }; // 70% quality, 220 DPI
+    case "less":
+      return { quality: 0.9, scale: 2.0 }; // 90% quality, 300 DPI
+    default:
+      return { quality: 0.7, scale: 1.5 };
+  }
+};
+
+
 export async function compressPdfAction(input: CompressPdfInput): Promise<CompressPdfOutput> {
   if (!input.pdfDataUri) {
     return { error: "No PDF file provided for compression." };
@@ -32,29 +86,44 @@ export async function compressPdfAction(input: CompressPdfInput): Promise<Compre
     const pdfBytes = Buffer.from(base64String, 'base64');
     const originalSize = pdfBytes.length;
 
-    const pdfDoc = await PDFDocument.load(pdfBytes, {
-      ignoreEncryption: true,
-      updateMetadata: false, // Prevents errors from corrupt metadata
-    });
+    const { quality, scale } = getCompressionSettings(input.compressionLevel);
 
-    if (input.compressionLevel === "extreme") {
-      // For extreme compression, remove metadata as an extra step
-      pdfDoc.setTitle('');
-      pdfDoc.setAuthor('');
-      pdfDoc.setSubject('');
-      pdfDoc.setKeywords([]);
-      pdfDoc.setProducer('');
-      pdfDoc.setCreator('');
-      pdfDoc.setCreationDate(new Date(0));
-      pdfDoc.setModificationDate(new Date(0));
+    const newPdfDoc = await PDFDocument.create();
+    const pdfDoc: PDFDocumentProxy = await pdfjsLib.getDocument({ data: pdfBytes.buffer }).promise;
+    
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+        const page: PDFPageProxy = await pdfDoc.getPage(i);
+        const viewport = page.getViewport({ scale });
+        
+        const canvasAndContext = nodeCanvasFactory.create(viewport.width, viewport.height);
+        const renderContext: RenderParameters = {
+            canvasContext: canvasAndContext.context,
+            viewport: viewport,
+            canvasFactory: nodeCanvasFactory as any,
+        };
+
+        await page.render(renderContext).promise;
+
+        const jpgImageBytes = canvasAndContext.canvas.toBuffer('image/jpeg', { quality });
+        const jpgImage = await newPdfDoc.embedJpg(jpgImageBytes);
+        
+        const newPage = newPdfDoc.addPage([jpgImage.width, jpgImage.height]);
+        newPage.drawImage(jpgImage, {
+            x: 0,
+            y: 0,
+            width: jpgImage.width,
+            height: jpgImage.height,
+        });
+
+        nodeCanvasFactory.destroy(canvasAndContext);
+        page.cleanup();
+    }
+    
+    if (typeof (pdfDoc as any).destroy === 'function') {
+        await (pdfDoc as any).destroy();
     }
 
-    // Saving the document with useObjectStreams: true is the primary compression method here.
-    // It restructures the PDF to be more efficient.
-    const compressedPdfBytes = await pdfDoc.save({
-      useObjectStreams: true,
-    });
-    
+    const compressedPdfBytes = await newPdfDoc.save();
     const compressedSize = compressedPdfBytes.length;
 
     const compressedPdfDataUri = `data:application/pdf;base64,${Buffer.from(compressedPdfBytes).toString('base64')}`;
