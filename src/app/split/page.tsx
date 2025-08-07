@@ -152,17 +152,19 @@ export default function SplitPage() {
           throw new Error(result.error);
         } else if (result.pages) {
           setPages(result.pages);
-          setTotalPages(result.pages.length);
+          const numPages = result.pages.length;
+          setTotalPages(numPages);
 
-          // New logic to set default split size
-          const halfSizeInBytes = selectedFile.size / 2;
-          const oneMB = 1024 * 1024;
-          if (halfSizeInBytes > oneMB) {
-            setSizeUnit('MB');
-            setMaxSize(Math.round(halfSizeInBytes / oneMB));
-          } else {
-            setSizeUnit('KB');
-            setMaxSize(Math.round(halfSizeInBytes / 1024));
+          if (numPages > 0) {
+            const defaultSizeInBytes = (selectedFile.size / numPages) * 1.5;
+            const oneMB = 1024 * 1024;
+            if (defaultSizeInBytes > oneMB) {
+              setSizeUnit('MB');
+              setMaxSize(Math.round(defaultSizeInBytes / oneMB));
+            } else {
+              setSizeUnit('KB');
+              setMaxSize(Math.round(defaultSizeInBytes / 1024));
+            }
           }
         }
       } catch (e: any) {
