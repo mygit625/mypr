@@ -153,6 +153,17 @@ export default function SplitPage() {
         } else if (result.pages) {
           setPages(result.pages);
           setTotalPages(result.pages.length);
+
+          // New logic to set default split size
+          const halfSizeInBytes = selectedFile.size / 2;
+          const oneMB = 1024 * 1024;
+          if (halfSizeInBytes > oneMB) {
+            setSizeUnit('MB');
+            setMaxSize(Math.round(halfSizeInBytes / oneMB));
+          } else {
+            setSizeUnit('KB');
+            setMaxSize(Math.round(halfSizeInBytes / 1024));
+          }
         }
       } catch (e: any) {
         setError(e.message || "Failed to read or process file.");
@@ -257,9 +268,7 @@ export default function SplitPage() {
                 maxSizeInBytes,
                 allowCompression,
             });
-        }
-         else {
-            toast({ title: "Not Implemented", description: "This split mode is not yet available.", variant: "destructive" });
+        } else {
             setIsSplitting(false);
             return;
         }
