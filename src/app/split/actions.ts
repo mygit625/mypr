@@ -238,23 +238,26 @@ export async function splitPdfBySizeAction(input: SplitPdfBySizeInput): Promise<
       let pagesInCurrentDoc = 0;
 
       while (currentPageIndex < totalPages) {
-        const pageIndicesToCopy = [currentPageIndex];
-        const tempPdf = await PDFDocument.create();
-        const [copiedPage] = await tempPdf.copyPages(originalPdf, pageIndicesToCopy);
-        
-        // Estimate size increase
+        // Create a temporary PDF with just the next page to estimate its size
         const pageAsPdf = await PDFDocument.create();
+        const [copiedPage] = await pageAsPdf.copyPages(originalPdf, [currentPageIndex]);
         pageAsPdf.addPage(copiedPage);
         const pageBytes = await pageAsPdf.save({ useObjectStreams: input.allowCompression });
 
+        // If adding this page exceeds the limit (and it's not the first page),
+        // break the inner loop to save the current PDF chunk.
         if (pagesInCurrentDoc > 0 && currentSize + pageBytes.length > input.maxSizeInBytes) {
-          break; // This page would exceed the max size, so break to save the current doc
+          break;
         }
         
+        // If it fits, copy the page to the actual new PDF document
         const [finalCopiedPage] = await newPdf.copyPages(originalPdf, [currentPageIndex]);
         newPdf.addPage(finalCopiedPage);
         
-        currentSize += pageBytes.length; // This is an approximation
+        // This is an approximation; we re-save to get a more accurate size.
+        const tempSavedBytes = await newPdf.save({ useObjectStreams: input.allowCompression });
+        currentSize = tempSavedBytes.length;
+        
         pagesInCurrentDoc++;
         currentPageIndex++;
       }
