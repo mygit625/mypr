@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,7 @@ import { Split, Loader2, Info, PlusCircle, XCircle, Download, ArrowRight, Check,
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { splitPdfAction, splitPdfByPagesAction, type CustomRange } from '@/app/split/actions';
+import { splitPdfAction, splitPdfByPagesAction, splitPdfBySizeAction, type CustomRange } from '@/app/split/actions';
 import { cn } from '@/lib/utils';
 import { RangeIcon, PagesIcon, SizeIcon } from '@/components/icons/split-tool-icons';
 
@@ -25,6 +25,7 @@ const PREVIEW_TARGET_HEIGHT_SPLIT = 180;
 type MainMode = 'range' | 'pages' | 'size';
 type RangeMode = 'custom' | 'fixed';
 type PagesMode = 'all' | 'select';
+type SizeUnit = 'KB' | 'MB';
 
 // Helper function to convert a set of numbers to a range string
 function numbersToRangeString(numbers: Set<number>): string {
@@ -70,6 +71,15 @@ function rangeStringToNumbers(rangeStr: string, totalPages: number): Set<number>
   return result;
 }
 
+function formatBytes(bytes: number, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
 
 export default function SplitPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -93,6 +103,9 @@ export default function SplitPage() {
   const [fixedRangeSize, setFixedRangeSize] = useState(1);
   const [pagesToExtractInput, setPagesToExtractInput] = useState('');
   const [mergeOutput, setMergeOutput] = useState(false);
+  const [maxSize, setMaxSize] = useState(320);
+  const [sizeUnit, setSizeUnit] = useState<SizeUnit>('KB');
+  const [allowCompression, setAllowCompression] = useState(true);
 
   const resultRef = useRef<HTMLDivElement>(null);
 
@@ -237,7 +250,15 @@ export default function SplitPage() {
                 pagesToExtract: pagesToExtractInput,
                 merge: mergeOutput,
             });
-        } else {
+        } else if (mainMode === 'size') {
+            const maxSizeInBytes = sizeUnit === 'MB' ? maxSize * 1024 * 1024 : maxSize * 1024;
+            result = await splitPdfBySizeAction({
+                pdfDataUri,
+                maxSizeInBytes,
+                allowCompression,
+            });
+        }
+         else {
             toast({ title: "Not Implemented", description: "This split mode is not yet available.", variant: "destructive" });
             setIsSplitting(false);
             return;
@@ -263,7 +284,8 @@ export default function SplitPage() {
 
   const handleDownload = () => {
     if (splitResultUri && file) {
-      const outputFilename = mergeOutput 
+      const isSinglePdf = mainMode !== 'size' && mergeOutput;
+      const outputFilename = isSinglePdf
         ? `${file.name.replace(/\.pdf$/i, '')}_merged_split.pdf` 
         : `${file.name.replace(/\.pdf$/i, '')}_split.zip`;
       downloadDataUri(splitResultUri, outputFilename);
@@ -271,7 +293,11 @@ export default function SplitPage() {
   };
 
   const finalRangesForPreview = mainMode === 'range' ? getFinalRanges() : [];
-  const filesToBeCreated = mainMode === 'range' ? finalRangesForPreview.length : (pagesMode === 'all' ? totalPages : selectedPageNumbers.size);
+  const filesToBeCreated = mainMode === 'range' 
+      ? finalRangesForPreview.length 
+      : (mainMode === 'pages' 
+          ? (pagesMode === 'all' ? totalPages : selectedPageNumbers.size) 
+          : 'Multiple');
 
   return (
     <div className="max-w-full mx-auto space-y-8">
@@ -331,7 +357,7 @@ export default function SplitPage() {
                                 </div>
                             ))}
                         </div>
-                    ) : ( // mainMode === 'pages'
+                    ) : mainMode === 'pages' ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {pages.map((p) => (
                                 <div key={p.id} className="flex flex-col items-center cursor-pointer" onClick={() => handlePageClick(p.originalIndex)}>
@@ -344,6 +370,13 @@ export default function SplitPage() {
                                     <span className="text-sm mt-2 text-muted-foreground">{p.originalIndex + 1}</span>
                                 </div>
                             ))}
+                        </div>
+                    ) : ( // mainMode === 'size'
+                        <div className="flex justify-center items-center h-full">
+                           <div className="flex flex-col items-center">
+                                <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={0} targetHeight={PREVIEW_TARGET_HEIGHT_SPLIT * 1.5} className="shadow-xl" />
+                                <p className="text-sm text-muted-foreground mt-2 truncate max-w-xs" title={file.name}>{file.name}</p>
+                           </div>
                         </div>
                     )}
                 </ScrollArea>
@@ -365,7 +398,10 @@ export default function SplitPage() {
                                 {mainMode === 'pages' && <Check className="absolute top-1 right-1 h-3 w-3 text-green-500"/>}
                                 <PagesIcon/> <span className="text-xs">Pages</span>
                             </Button>
-                            <Button variant={'ghost'} onClick={() => setMainMode('size')} disabled className="h-auto py-2 flex-col gap-1 opacity-50"><SizeIcon/> <span className="text-xs">Size</span></Button>
+                            <Button variant={mainMode === 'size' ? 'secondary' : 'ghost'} onClick={() => setMainMode('size')} className={cn("h-auto py-2 flex-col gap-1 relative", mainMode === 'size' && "ring-2 ring-primary")}>
+                                {mainMode === 'size' && <Check className="absolute top-1 right-1 h-3 w-3 text-green-500"/>}
+                                <SizeIcon/> <span className="text-xs">Size</span>
+                            </Button>
                         </div>
                         
                         {mainMode === 'range' && (
@@ -403,6 +439,10 @@ export default function SplitPage() {
                                         <Input id="fixed-range-size" type="number" value={fixedRangeSize} onChange={(e) => setFixedRangeSize(parseInt(e.target.value) || 1)} min={1} max={totalPages} />
                                     </div>
                                 )}
+                                <div className="flex items-center space-x-2 pt-2">
+                                    <Checkbox id="merge-output-range" checked={mergeOutput} onCheckedChange={(checked) => setMergeOutput(Boolean(checked))} />
+                                    <Label htmlFor="merge-output-range">Merge all ranges in one PDF file.</Label>
+                                </div>
                             </>
                         )}
 
@@ -419,24 +459,43 @@ export default function SplitPage() {
                                         <Input id="pages-to-extract" value={pagesToExtractInput} onChange={(e) => setPagesToExtractInput(e.target.value)} placeholder="e.g., 1-3,5,8-10"/>
                                     </div>
                                 )}
+                                <div className="flex items-center space-x-2 pt-2">
+                                    <Checkbox id="merge-output-pages" checked={mergeOutput} onCheckedChange={(checked) => setMergeOutput(Boolean(checked))} />
+                                    <Label htmlFor="merge-output-pages">Merge extracted pages into one PDF file.</Label>
+                                </div>
                             </>
                         )}
                         
-                        {(mainMode === 'range' || mainMode === 'pages') &&
-                         <Alert variant="default" className="text-sm p-3 mt-2">
-                            <Info className="h-4 w-4"/>
-                            <AlertDescription>
-                                {!mergeOutput && `This will create ${filesToBeCreated} PDF files.`}
-                                {mergeOutput && `The ${filesToBeCreated} selected pages will be merged into a single PDF.`}
-                            </AlertDescription>
-                        </Alert>
-                        }
-
-
-                        <div className="flex items-center space-x-2 pt-2">
-                            <Checkbox id="merge-output" checked={mergeOutput} onCheckedChange={(checked) => setMergeOutput(Boolean(checked))} />
-                            <Label htmlFor="merge-output">Merge extracted pages into one PDF file.</Label>
-                        </div>
+                        {mainMode === 'size' && (
+                            <div className="space-y-4 pt-2">
+                                <div className="text-sm text-muted-foreground">
+                                    <p>Original file size: <span className="font-medium text-foreground">{formatBytes(file.size)}</span></p>
+                                    <p>Total pages: <span className="font-medium text-foreground">{totalPages}</span></p>
+                                </div>
+                                <div>
+                                    <Label htmlFor="max-size-input">Maximum size per file:</Label>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <Input id="max-size-input" type="number" value={maxSize} onChange={(e) => setMaxSize(parseInt(e.target.value) || 0)} min={1} />
+                                        <div className="flex items-center rounded-md border bg-background">
+                                            <Button variant={sizeUnit === 'KB' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSizeUnit('KB')} className="rounded-r-none">KB</Button>
+                                            <Button variant={sizeUnit === 'MB' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSizeUnit('MB')} className="rounded-l-none border-l">MB</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <Alert variant="default" className="text-sm p-3">
+                                    <Info className="h-4 w-4"/>
+                                    <AlertDescription>
+                                        This PDF will be split into files no larger than {maxSize} {sizeUnit} each.
+                                    </AlertDescription>
+                                </Alert>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id="allow-compression" checked={allowCompression} onCheckedChange={(checked) => setAllowCompression(Boolean(checked))} />
+                                    <Label htmlFor="allow-compression">Allow compression</Label>
+                                </div>
+                            </div>
+                        )}
+                        
+                      
                     </CardContent>
                     <CardFooter>
                        {splitResultUri ? (
@@ -476,5 +535,3 @@ export default function SplitPage() {
     </div>
   );
 }
-
-    
