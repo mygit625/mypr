@@ -35,17 +35,21 @@ export async function compressPdfAction(input: CompressPdfInput): Promise<Compre
     const pdfBytes = Buffer.from(base64String, 'base64');
     const originalSize = pdfBytes.length;
 
-    // Load the PDF document
-    // ignoreEncryption is true to attempt processing, but some encrypted files might still fail.
     const pdfDoc = await PDFDocument.load(pdfBytes, { 
         ignoreEncryption: true,
     });
     
-    // Note: pdf-lib primarily compresses by optimizing PDF structure (e.g., object streams).
-    // The 'compressionLevel' input is received but not directly used to alter pdf-lib's behavior
-    // in this iteration, as pdf-lib doesn't offer explicit quality/ratio settings for general compression.
-    // For example, useObjectStreams is generally beneficial and enabled by default in modern pdf-lib.
-    console.log(`Compression action called with level: ${input.compressionLevel}`);
+    // For "extreme" compression, we'll also remove metadata to potentially save more space.
+    if (input.compressionLevel === "extreme") {
+      pdfDoc.setTitle('');
+      pdfDoc.setAuthor('');
+      pdfDoc.setSubject('');
+      pdfDoc.setKeywords([]);
+      pdfDoc.setProducer('');
+      pdfDoc.setCreator('');
+      pdfDoc.setCreationDate(new Date(0));
+      pdfDoc.setModificationDate(new Date(0));
+    }
 
     const compressedPdfBytes = await pdfDoc.save({
         useObjectStreams: true, 
