@@ -16,7 +16,6 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { compressPdfAction, type CompressionLevel } from '@/app/compress/actions';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { PageConfetti } from '@/components/ui/page-confetti';
 
 interface CompressionResultStats {
   originalSize: number;
@@ -34,7 +33,6 @@ export default function CompressPage() {
   const [compressedPdfUri, setCompressedPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>("recommended");
-  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,7 +42,6 @@ export default function CompressPage() {
     setCompressionStats(null);
     setCompressedPdfUri(null);
     setError(null);
-    setShowConfetti(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; 
     }
@@ -115,7 +112,6 @@ export default function CompressPage() {
             reductionPercentage: parseFloat(reduction.toFixed(2))
         });
         setCompressedPdfUri(result.compressedPdfDataUri);
-        setShowConfetti(true);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during compression.";
@@ -148,7 +144,6 @@ export default function CompressPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-0">
-      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Minimize2 className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-4xl font-bold tracking-tight">Compress PDF File</h1>
