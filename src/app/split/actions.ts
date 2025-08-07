@@ -1,3 +1,4 @@
+
 "use server";
 
 import { PDFDocument } from 'pdf-lib';
@@ -208,6 +209,72 @@ export async function splitPdfByPagesAction(input: SplitPdfByPagesInput): Promis
     if (error.message && error.message.toLowerCase().includes('encrypted')) {
         return { error: "The PDF is encrypted and cannot be modified."}
     }
+    return { error: error.message || "An unexpected error occurred." };
+  }
+}
+
+export interface SplitPdfBySizeInput {
+  pdfDataUri: string;
+  maxSizeInBytes: number;
+  allowCompression: boolean;
+}
+
+export async function splitPdfBySizeAction(input: SplitPdfBySizeInput): Promise<SplitPdfOutput> {
+  if (!input.pdfDataUri) return { error: "No PDF file provided." };
+  if (input.maxSizeInBytes <= 0) return { error: "Maximum size must be a positive number." };
+
+  try {
+    const pdfBytes = Buffer.from(input.pdfDataUri.split(';base64,').pop()!, 'base64');
+    const originalPdf = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+    const totalPages = originalPdf.getPageCount();
+
+    const zip = new JSZip();
+    let fileCounter = 1;
+    let currentPageIndex = 0;
+
+    while (currentPageIndex < totalPages) {
+      const newPdf = await PDFDocument.create();
+      let currentSize = 0;
+      let pagesInCurrentDoc = 0;
+
+      while (currentPageIndex < totalPages) {
+        const pageIndicesToCopy = [currentPageIndex];
+        const tempPdf = await PDFDocument.create();
+        const [copiedPage] = await tempPdf.copyPages(originalPdf, pageIndicesToCopy);
+        
+        // Estimate size increase
+        const pageAsPdf = await PDFDocument.create();
+        pageAsPdf.addPage(copiedPage);
+        const pageBytes = await pageAsPdf.save({ useObjectStreams: input.allowCompression });
+
+        if (pagesInCurrentDoc > 0 && currentSize + pageBytes.length > input.maxSizeInBytes) {
+          break; // This page would exceed the max size, so break to save the current doc
+        }
+        
+        const [finalCopiedPage] = await newPdf.copyPages(originalPdf, [currentPageIndex]);
+        newPdf.addPage(finalCopiedPage);
+        
+        currentSize += pageBytes.length; // This is an approximation
+        pagesInCurrentDoc++;
+        currentPageIndex++;
+      }
+      
+      if (newPdf.getPageCount() > 0) {
+          const newPdfBytes = await newPdf.save({ useObjectStreams: input.allowCompression });
+          zip.file(`split_part_${fileCounter++}.pdf`, newPdfBytes);
+      }
+    }
+    
+    if (Object.keys(zip.files).length === 0) {
+      return { error: "Could not split the PDF. The first page might be larger than the maximum size." };
+    }
+
+    const zipBytes = await zip.generateAsync({ type: "uint8array" });
+    const zipDataUri = `data:application/zip;base64,${Buffer.from(zipBytes).toString('base64')}`;
+
+    return { zipDataUri };
+  } catch (error: any) {
+    console.error("Error splitting PDF by size:", error);
     return { error: error.message || "An unexpected error occurred." };
   }
 }
