@@ -103,7 +103,7 @@ export default function SplitPage() {
   const [fixedRangeSize, setFixedRangeSize] = useState(1);
   const [pagesToExtractInput, setPagesToExtractInput] = useState('');
   const [mergeOutput, setMergeOutput] = useState(false);
-  const [maxSize, setMaxSize] = useState(320);
+  const [maxSize, setMaxSize] = useState<number | string>(320);
   const [sizeUnit, setSizeUnit] = useState<SizeUnit>('KB');
   const [allowCompression, setAllowCompression] = useState(true);
 
@@ -264,7 +264,7 @@ export default function SplitPage() {
                 merge: mergeOutput,
             });
         } else if (mainMode === 'size') {
-            const maxSizeInBytes = sizeUnit === 'MB' ? maxSize * 1024 * 1024 : maxSize * 1024;
+            const maxSizeInBytes = sizeUnit === 'MB' ? (Number(maxSize) || 0) * 1024 * 1024 : (Number(maxSize) || 0) * 1024;
             result = await splitPdfBySizeAction({
                 pdfDataUri,
                 maxSizeInBytes,
@@ -300,6 +300,18 @@ export default function SplitPage() {
         ? `${file.name.replace(/\.pdf$/i, '')}_merged_split.pdf` 
         : `${file.name.replace(/\.pdf$/i, '')}_split.zip`;
       downloadDataUri(splitResultUri, outputFilename);
+    }
+  };
+  
+  const handleMaxSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value === '') {
+        setMaxSize('');
+    } else {
+        const numValue = parseInt(value, 10);
+        if (!isNaN(numValue)) {
+            setMaxSize(numValue);
+        }
     }
   };
 
@@ -486,7 +498,7 @@ export default function SplitPage() {
                                 <div>
                                     <Label htmlFor="max-size-input">Maximum size per file:</Label>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <Input id="max-size-input" type="number" value={maxSize} onChange={(e) => setMaxSize(parseInt(e.target.value) || 0)} min={1} />
+                                        <Input id="max-size-input" type="number" value={maxSize} onChange={handleMaxSizeChange} min={1} />
                                         <div className="flex items-center rounded-md border bg-background">
                                             <Button variant={sizeUnit === 'KB' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSizeUnit('KB')} className="rounded-r-none">KB</Button>
                                             <Button variant={sizeUnit === 'MB' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSizeUnit('MB')} className="rounded-l-none border-l">MB</Button>
