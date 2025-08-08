@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Logo } from '@/components/icons/logo';
 import ClientFooterYear from '@/components/layout/client-footer-year';
@@ -11,7 +12,7 @@ const footerSections = [
       { label: 'Home', href: '/' },
       { label: 'PDF Tools', href: '/pdf-tools' },
       { label: 'Image Tools', href: '/image-tools' },
-      { label: 'About Us', href: '#' },
+      { label: 'About Us', href: '/about' },
       { label: 'Contact', href: '#' },
     ],
   },
