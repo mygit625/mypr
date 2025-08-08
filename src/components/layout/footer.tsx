@@ -10,6 +10,7 @@ const footerSections = [
     links: [
       { label: 'Home', href: '/' },
       { label: 'PDF Tools', href: '/pdf-tools' },
+      { label: 'Image Tools', href: '/image-tools' },
       { label: 'About Us', href: '#' },
       { label: 'Contact', href: '#' },
     ],
@@ -33,12 +34,11 @@ const footerSections = [
     ],
   },
   {
-    title: 'Company',
+    title: 'Legal',
     links: [
-      { label: 'Our Story', href: '#' },
-      { label: 'Blog', href: '#' },
-      { label: 'Careers', href: '#' },
-      { label: 'Legal & Privacy', href: '#' },
+      { label: 'Privacy Policy', href: '/privacy-policy' },
+      { label: 'Terms & Conditions', href: '/terms-and-conditions' },
+      { label: 'Data Deletion', href: '/data-deletion' },
     ],
   },
 ];
@@ -47,6 +47,7 @@ const socialLinks = [
   { label: 'GitHub', Icon: Github, href: '#' },
   { label: 'Twitter', Icon: Twitter, href: '#' },
   { label: 'LinkedIn', Icon: Linkedin, href: '#' },
+  { label: 'Globe', Icon: Globe, href: '#' },
 ];
 
 export default function Footer() {
