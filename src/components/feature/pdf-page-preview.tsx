@@ -35,6 +35,50 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// --- PDF Document Caching ---
+const pdfDocCache = new Map<string, Promise<PDFDocumentProxy>>();
+
+function getPdfDocument(dataUri: string): Promise<PDFDocumentProxy> {
+  if (pdfDocCache.has(dataUri)) {
+    return pdfDocCache.get(dataUri)!;
+  }
+
+  const base64Marker = ';base64,';
+  const base64Index = dataUri.indexOf(base64Marker);
+  if (base64Index === -1) {
+    const errorPromise = Promise.reject(new Error("Invalid PDF data URI format."));
+    pdfDocCache.set(dataUri, errorPromise);
+    return errorPromise;
+  }
+
+  const pdfBase64Data = dataUri.substring(base64Index + base64Marker.length);
+  const pdfBinaryData = atob(pdfBase64Data);
+  const pdfDataArray = new Uint8Array(pdfBinaryData.length);
+  for (let i = 0; i < pdfBinaryData.length; i++) {
+    pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
+  }
+
+  const loadingTask = pdfjsLib.getDocument({ data: pdfDataArray });
+  const docPromise = loadingTask.promise;
+  pdfDocCache.set(dataUri, docPromise);
+
+  // Optional: Clean up cache after some time if memory is a concern
+  setTimeout(() => {
+    if (pdfDocCache.get(dataUri) === docPromise) {
+      docPromise.then(doc => {
+        if (typeof (doc as any).destroy === 'function') {
+           (doc as any).destroy();
+        }
+      });
+      pdfDocCache.delete(dataUri);
+    }
+  }, 300000); // 5 minutes
+
+  return docPromise;
+}
+// --- End Caching ---
+
+
 interface PdfPagePreviewProps {
   pdfDataUri: string | null;
   pageIndex: number; // 0-indexed
@@ -70,24 +114,12 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
       return;
     }
 
-    let pdfDoc: PDFDocumentProxy | null = null;
     let page: PDFPageProxy | null = null;
+    let renderTaskInstance: any = null;
 
     const renderPdfPage = async () => {
       try {
-        const base64Marker = ';base64,';
-        const base64Index = pdfDataUri.indexOf(base64Marker);
-        if (base64Index === -1) throw new Error("Invalid PDF data URI format.");
-        
-        const pdfBase64Data = pdfDataUri.substring(base64Index + base64Marker.length);
-        const pdfBinaryData = atob(pdfBase64Data);
-        const pdfDataArray = new Uint8Array(pdfBinaryData.length);
-        for (let i = 0; i < pdfBinaryData.length; i++) {
-          pdfDataArray[i] = pdfBinaryData.charCodeAt(i);
-        }
-        
-        const loadingTask = pdfjsLib.getDocument({ data: pdfDataArray });
-        pdfDoc = await loadingTask.promise;
+        const pdfDoc = await getPdfDocument(pdfDataUri);
 
         if (!isActive || !pdfDoc) return;
         if (pdfDoc.numPages === 0) throw new Error("PDF has no pages.");
@@ -121,31 +153,27 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         currentCanvas.height = canvasHeight;
         context.clearRect(0, 0, canvasWidth, canvasHeight);
 
-        const RENDER_TIMEOUT = 15000;
         const renderContextParams: RenderParameters = { canvasContext: context, viewport: viewport };
-        const renderTask = page.render(renderContextParams);
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Render timed out for page ${pageIndex + 1}`)), RENDER_TIMEOUT)
-        );
-
-        await Promise.race([renderTask.promise, timeoutPromise]);
+        renderTaskInstance = page.render(renderContextParams);
+       
+        await renderTaskInstance.promise;
+        renderTaskInstance = null; // Clear instance after completion
 
         if (isActive) setIsLoading(false);
 
       } catch (err: any) {
+        if (err.name === 'RenderingCancelledException') {
+            console.log(`Rendering cancelled for page ${pageIndex + 1}`);
+            return; 
+        }
         console.error(`PdfPagePreview Error (page ${pageIndex + 1}):`, err);
         if (isActive) {
           setRenderError(err.message || `Failed to render PDF page ${pageIndex + 1}.`);
           setIsLoading(false);
         }
       } finally {
-        if (isActive) { // Ensure cleanup only happens if component is still active
-            if (page && typeof page.cleanup === 'function') {
-              try { page.cleanup(); } catch (cleanupError) { console.warn("Error during page.cleanup():", cleanupError); }
-            }
-            if (pdfDoc && typeof (pdfDoc as any).destroy === 'function') {
-              try { await (pdfDoc as any).destroy(); } catch (destroyError) { console.warn("Error during pdfDoc.destroy():", destroyError); }
-            }
+        if (page && typeof page.cleanup === 'function') {
+            page.cleanup();
         }
       }
     };
@@ -154,23 +182,17 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
 
     return () => {
       isActive = false;
-      // Cleanup attempt for pdfDoc and page if renderPdfPage didn't reach its finally block
-      // This is more of a safety net. The primary cleanup should be in renderPdfPage's finally.
-        if (page && typeof page.cleanup === 'function') {
-            try { page.cleanup(); } catch (e) { /* silent */ }
-        }
-        if (pdfDoc && typeof (pdfDoc as any).destroy === 'function') {
-            (pdfDoc as any).destroy().catch(() => {/* silent */});
-        }
+      if (renderTaskInstance) {
+          renderTaskInstance.cancel();
+      }
     };
-  }, [pdfDataUri, pageIndex, rotation, targetHeight]); // Effect dependencies
+  }, [pdfDataUri, pageIndex, rotation, targetHeight]);
 
   const wrapperStyle: React.CSSProperties = {
     height: `${targetHeight}px`, 
-    // width is determined by parent or content aspect ratio
   };
 
-  if (!pdfDataUri && !isLoading) { // If no PDF is provided at all
+  if (!pdfDataUri && !isLoading) {
      return (
         <div 
             className={cn("relative flex items-center justify-center rounded-md border border-dashed border-muted-foreground/30", className)} 
@@ -185,7 +207,7 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
     <div
       className={cn(
         "relative bg-transparent overflow-hidden flex items-center justify-center rounded-md",
-        className // User-provided classes like border
+        className
       )}
       style={wrapperStyle}
     >
@@ -208,11 +230,11 @@ const PdfPagePreview: React.FC<PdfPagePreviewProps> = ({
         </div>
       )}
       <canvas
-        key={uniqueCanvasKey} // Re-keying the canvas forces a re-mount
+        key={uniqueCanvasKey}
         ref={canvasRef}
         className={cn(
             "border border-muted shadow-sm rounded-md bg-white",
-            (isLoading || renderError) && "opacity-0" // Hide if loading or error
+            (isLoading || renderError) && "opacity-0"
         )}
         style={{
           maxWidth: '100%',
