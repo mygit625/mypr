@@ -18,7 +18,6 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { getInitialPageDataAction } from '@/app/remove-pages/actions';
 import { assembleIndividualPagesAction } from '@/app/organize/actions';
 import { cn } from '@/lib/utils';
-import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -51,7 +50,6 @@ export default function RemovePagesPage() {
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedUri, setProcessedUri] = useState<string | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -64,7 +62,6 @@ export default function RemovePagesPage() {
     setSelectedPdfItems([]);
     setProcessedUri(null);
     setError(null);
-    setShowConfetti(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -222,7 +219,6 @@ export default function RemovePagesPage() {
         });
       } else if (result.organizedPdfDataUri) {
         setProcessedUri(result.organizedPdfDataUri);
-        setShowConfetti(true);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during processing.";
@@ -265,7 +261,6 @@ export default function RemovePagesPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
-      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <FileMinus2 className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Remove PDF Pages</h1>

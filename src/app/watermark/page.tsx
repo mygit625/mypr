@@ -18,7 +18,6 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { watermarkPdfAction, type WatermarkPosition } from '@/app/watermark/actions';
 import { cn } from '@/lib/utils';
 import { getInitialPageDataAction, type PageData } from '@/app/organize/actions';
-import { PageConfetti } from '@/components/ui/page-confetti';
 
 const PREVIEW_TARGET_HEIGHT_WATERMARK = 250;
 
@@ -30,7 +29,6 @@ export default function WatermarkPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedUri, setProcessedUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   // Form state
@@ -47,7 +45,6 @@ export default function WatermarkPage() {
     setPages([]);
     setError(null);
     setProcessedUri(null);
-    setShowConfetti(false);
   };
 
   const handleFileSelected = async (selectedFiles: File[]) => {
@@ -102,7 +99,6 @@ export default function WatermarkPage() {
         toast({ title: "Processing Error", description: result.error, variant: "destructive" });
       } else if (result.watermarkedPdfDataUri) {
         setProcessedUri(result.watermarkedPdfDataUri);
-        setShowConfetti(true);
       }
     } catch (e: any) {
       setError(e.message || "An unexpected error occurred.");
@@ -132,7 +128,6 @@ export default function WatermarkPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
-       <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Droplets className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-4xl font-bold tracking-tight">Add Watermark to PDF</h1>

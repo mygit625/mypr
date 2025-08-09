@@ -17,7 +17,6 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { rotateAllPagesAction } from '@/app/rotate/actions';
 import { cn } from '@/lib/utils';
-import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -40,7 +39,6 @@ export default function RotatePdfPage() {
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isProcessingId, setIsProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -121,7 +119,6 @@ export default function RotatePdfPage() {
       setSelectedPdfItems(prev => prev.map(i => 
         i.id === item.id ? { ...i, processedUri: result.processedPdfDataUri, rotation: 0 } : i
       ));
-      setShowConfetti(true);
     } catch (e: any) {
       toast({ title: `Error rotating ${item.name}`, description: e.message, variant: "destructive" });
     } finally {
@@ -136,7 +133,6 @@ export default function RotatePdfPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
-      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <RotateCcw className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Rotate PDF Files</h1>

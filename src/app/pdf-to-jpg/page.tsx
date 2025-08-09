@@ -32,7 +32,6 @@ import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
-import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -64,7 +63,6 @@ export default function PdfToJpgPage() {
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false); // Used for both single and ZIP conversion
   const [processedUri, setProcessedUri] = useState<string | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -80,7 +78,6 @@ export default function PdfToJpgPage() {
     setSelectedPdfItems([]);
     setProcessedUri(null);
     setError(null);
-    setShowConfetti(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -205,7 +202,6 @@ export default function PdfToJpgPage() {
       zipReader.onload = function(event) {
         if (event.target && typeof event.target.result === 'string') {
           setProcessedUri(event.target.result);
-          setShowConfetti(true);
         } else {
             throw new Error("Failed to read ZIP blob as Data URI.");
         }
@@ -373,7 +369,6 @@ export default function PdfToJpgPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
-      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <FileImage className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">PDF to JPG Converter</h1>
