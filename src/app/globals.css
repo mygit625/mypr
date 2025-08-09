@@ -108,7 +108,7 @@ body {
 
 @layer utilities {
   .animate-pulse-zoom {
-    animation: pulse-zoom 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: pulse-zoom 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   @keyframes pulse-zoom {
@@ -117,6 +117,17 @@ body {
     }
     50% {
       transform: scale(1.05);
+    }
+  }
+
+  @keyframes confetti-fall {
+    from {
+      transform: translateY(-20px) rotate(var(--rotation-start));
+      opacity: 1;
+    }
+    to {
+      transform: translateY(var(--y-end)) rotate(var(--rotation-end));
+      opacity: 0;
     }
   }
 }
