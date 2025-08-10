@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import Footer from '@/components/layout/footer';
 import { ThemeProvider } from '@/components/layout/theme-provider';
 import { AuthProvider } from '@/contexts/auth-context';
+import Script from 'next/script';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -45,6 +46,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Google tag (gtag.js) */}
+        <Script async src="https://www.googletagmanager.com/gtag/js?id=G-3FCG8RPTMG"></Script>
+        <Script id="google-analytics">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-3FCG8RPTMG');
+          `}
+        </Script>
+      </head>
       <body 
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background`}
         suppressHydrationWarning={true}
