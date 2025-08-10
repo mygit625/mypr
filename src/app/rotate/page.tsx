@@ -16,6 +16,7 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { assembleIndividualPagesAction } from '@/app/rotate/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -39,6 +40,7 @@ export default function RotatePdfPage() {
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedUri, setProcessedUri] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -50,6 +52,7 @@ export default function RotatePdfPage() {
     setSelectedPdfItems([]);
     setProcessedUri(null);
     setError(null);
+    setShowConfetti(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -160,6 +163,7 @@ export default function RotatePdfPage() {
       
       if (result.organizedPdfDataUri) {
         setProcessedUri(result.organizedPdfDataUri);
+        setShowConfetti(true);
       }
     } catch (e: any) {
       setError(e.message || "An unexpected error occurred.");
@@ -190,6 +194,7 @@ export default function RotatePdfPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <RotateCw className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Rotate PDF Pages</h1>
@@ -304,7 +309,7 @@ export default function RotatePdfPage() {
                 ) : (
                     <Button
                         onClick={handleApplyAndDownload}
-                        disabled={isProcessing || isLoadingPreviews}
+                        disabled={isProcessing || isLoadingPreviews || selectedPdfItems.length === 0}
                         className="w-full"
                         size="lg"
                     >
