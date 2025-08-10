@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 import type { PDFDocumentProxy } from 'pdfjs-dist/types/src/display/api';
 
@@ -11,43 +10,57 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { RotateCcw, RotateCw, Loader2, Info, Plus, Download } from 'lucide-react';
+import { RotateCcw, RotateCw, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
-import { rotateAllPagesAction } from '@/app/rotate/actions';
+import { assembleIndividualPagesAction } from '@/app/rotate/actions';
 import { cn } from '@/lib/utils';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 }
 
-interface SelectedPdfFileItem {
+interface SelectedPdfPageItem {
   id: string;
-  file: File;
-  dataUri: string;
-  name: string;
-  numPages: number;
+  originalFileId: string;
+  originalFileName: string;
+  originalFileDataUri: string;
+  pageIndexInOriginalFile: number;
+  totalPagesInOriginalFile: number;
+  displayName: string;
   rotation: number;
-  processedUri?: string | null;
 }
 
-const PREVIEW_TARGET_HEIGHT_ROTATE = 220;
+const PREVIEW_TARGET_HEIGHT_ROTATE = 180;
 
 export default function RotatePdfPage() {
-  const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfFileItem[]>([]);
+  const [selectedPdfItems, setSelectedPdfItems] = useState<SelectedPdfPageItem[]>([]);
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
-  const [isProcessingId, setIsProcessingId] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processedUri, setProcessedUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragItemIndex = useRef<number | null>(null);
+  const dragOverItemIndex = useRef<number | null>(null);
 
-  const processFiles = async (files: File[]): Promise<SelectedPdfFileItem[]> => {
+  const resetState = () => {
+    setSelectedPdfItems([]);
+    setProcessedUri(null);
+    setError(null);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
+
+  const processFiles = async (files: File[]): Promise<SelectedPdfPageItem[]> => {
     setIsLoadingPreviews(true);
-    const newFileItems: SelectedPdfFileItem[] = [];
+    const newPageItems: SelectedPdfPageItem[] = [];
 
     for (const file of files) {
+      const originalFileId = crypto.randomUUID();
       try {
         const dataUri = await readFileAsDataURL(file);
         const base64Marker = ';base64,';
@@ -61,37 +74,52 @@ export default function RotatePdfPage() {
         }
 
         const pdfDoc: PDFDocumentProxy = await pdfjsLib.getDocument({ data: pdfDataArray }).promise;
-        
-        newFileItems.push({
-          id: crypto.randomUUID(),
-          file: file,
-          dataUri: dataUri,
-          name: file.name,
-          numPages: pdfDoc.numPages,
-          rotation: 0, 
-        });
+        const numPages = pdfDoc.numPages;
+
+        for (let i = 0; i < numPages; i++) {
+          newPageItems.push({
+            id: crypto.randomUUID(),
+            originalFileId: originalFileId,
+            originalFileName: file.name,
+            originalFileDataUri: dataUri,
+            pageIndexInOriginalFile: i,
+            totalPagesInOriginalFile: numPages,
+            displayName: `${file.name} (Page ${i + 1} of ${numPages})`,
+            rotation: 0,
+          });
+        }
       } catch (e: any) {
-        toast({ title: "File Process Error", description: `Could not process file: ${file.name}. ${e.message}`, variant: "destructive" });
+        toast({
+          title: "File Process Error",
+          description: `Could not process file: ${file.name}. ${e.message}`,
+          variant: "destructive",
+        });
       }
     }
     setIsLoadingPreviews(false);
-    return newFileItems;
+    return newPageItems;
   };
 
-  const handleFilesSelected = async (newFilesFromInput: File[]) => {
-    if (newFilesFromInput.length === 0) return;
-    const processedNewFileItems = await processFiles(newFilesFromInput);
-    setSelectedPdfItems(prev => [...prev, ...processedNewFileItems]);
+  const handleInitialFilesSelected = async (newFilesFromInput: File[]) => {
+    const processedNewPageItems = await processFiles(newFilesFromInput);
+    setSelectedPdfItems(processedNewPageItems);
   };
 
-  const handleRemoveFile = (idToRemove: string) => {
+  const handleRemovePage = (idToRemove: string) => {
     setSelectedPdfItems((prevItems) => prevItems.filter(item => item.id !== idToRemove));
   };
+
+  const handleSortByName = () => {
+    setSelectedPdfItems((prevItems) =>
+      [...prevItems].sort((a, b) => a.displayName.localeCompare(b.displayName))
+    );
+    toast({ description: "Pages sorted by name." });
+  };
   
-  const handleRotateFile = (fileId: string, direction: 'cw' | 'ccw') => {
+  const handleRotatePage = (pageId: string, direction: 'cw' | 'ccw') => {
     setSelectedPdfItems(prevItems =>
       prevItems.map(item => {
-        if (item.id === fileId) {
+        if (item.id === pageId) {
           const newRotation = (item.rotation + (direction === 'cw' ? 90 : -90) + 360) % 360;
           return { ...item, rotation: newRotation };
         }
@@ -99,45 +127,74 @@ export default function RotatePdfPage() {
       })
     );
   };
+  
+  const handleRotateAll = () => {
+    setSelectedPdfItems(prevItems => 
+        prevItems.map(item => ({
+            ...item,
+            rotation: (item.rotation + 90 + 360) % 360
+        }))
+    );
+    toast({ description: "All pages rotated 90° clockwise." });
+  };
 
-  const handleApplyRotation = async (item: SelectedPdfFileItem) => {
-    if (item.rotation === 0) {
-      toast({ description: "No rotation to apply." });
+  const handleApplyAndDownload = async () => {
+    if (selectedPdfItems.length < 1) {
+      toast({ title: "No pages to process", variant: "destructive" });
       return;
     }
 
-    setIsProcessingId(item.id);
+    setIsProcessing(true);
     setError(null);
-    
+
     try {
-      const result = await rotateAllPagesAction({ 
-        pdfDataUri: item.processedUri || item.dataUri, 
-        rotation: item.rotation 
-      });
+      const pagesToAssemble = selectedPdfItems.map(item => ({
+        sourcePdfDataUri: item.originalFileDataUri,
+        pageIndexToCopy: item.pageIndexInOriginalFile,
+        rotation: item.rotation,
+      }));
+
+      const result = await assembleIndividualPagesAction({ orderedPagesToAssemble: pagesToAssemble });
+
       if (result.error) throw new Error(result.error);
       
-      setSelectedPdfItems(prev => prev.map(i => 
-        i.id === item.id ? { ...i, processedUri: result.processedPdfDataUri, rotation: 0 } : i
-      ));
+      if (result.organizedPdfDataUri) {
+        setProcessedUri(result.organizedPdfDataUri);
+      }
     } catch (e: any) {
-      toast({ title: `Error rotating ${item.name}`, description: e.message, variant: "destructive" });
+      setError(e.message || "An unexpected error occurred.");
     } finally {
-      setIsProcessingId(null);
+      setIsProcessing(false);
     }
   };
-  
-  const handleDownload = (item: SelectedPdfFileItem) => {
-    const uri = item.processedUri || item.dataUri;
-    downloadDataUri(uri, `rotated_${item.name}`);
-  }
+
+  const handleDownload = () => {
+    if (processedUri) {
+        downloadDataUri(processedUri, "rotated_document.pdf");
+    }
+  };
+
+  const handleDragStart = (index: number) => { dragItemIndex.current = index; };
+  const handleDragEnter = (index: number) => { dragOverItemIndex.current = index; };
+  const handleDragEnd = () => {
+    if (dragItemIndex.current !== null && dragOverItemIndex.current !== null && dragItemIndex.current !== dragOverItemIndex.current) {
+      const newItems = [...selectedPdfItems];
+      const draggedItem = newItems.splice(dragItemIndex.current, 1)[0];
+      newItems.splice(dragOverItemIndex.current, 0, draggedItem);
+      setSelectedPdfItems(newItems);
+    }
+    dragItemIndex.current = null;
+    dragOverItemIndex.current = null;
+  };
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => e.preventDefault();
 
   return (
     <div className="max-w-full mx-auto space-y-8">
       <header className="text-center py-8">
-        <RotateCcw className="mx-auto h-16 w-16 text-primary mb-4" />
-        <h1 className="text-3xl font-bold tracking-tight">Rotate PDF Files</h1>
+        <RotateCw className="mx-auto h-16 w-16 text-primary mb-4" />
+        <h1 className="text-3xl font-bold tracking-tight">Rotate PDF Pages</h1>
         <p className="text-muted-foreground mt-2">
-          Upload PDFs, apply rotations, and download the modified files.
+          Rotate individual pages, reorder them, and download your newly organized PDF.
         </p>
       </header>
 
@@ -148,71 +205,121 @@ export default function RotatePdfPage() {
             <CardDescription>Select or drag PDF files to begin.</CardDescription>
           </CardHeader>
           <CardContent>
-            <FileUploadZone onFilesSelected={handleFilesSelected} multiple={true} accept="application/pdf" />
+            <FileUploadZone onFilesSelected={handleInitialFilesSelected} multiple={true} accept="application/pdf" />
           </CardContent>
         </Card>
       )}
 
-      {isLoadingPreviews && selectedPdfItems.length === 0 && (
+      {isLoadingPreviews && (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="ml-3 text-lg text-muted-foreground">Processing PDF files...</p>
+          <p className="ml-3 text-lg text-muted-foreground">Processing PDF pages...</p>
         </div>
       )}
 
       {selectedPdfItems.length > 0 && (
-        <>
-        <div className="flex justify-center">
-            <Card className="w-full max-w-4xl">
-                <CardHeader>
-                    <CardTitle>Rotate Files</CardTitle>
-                    <CardDescription>Apply rotations to each file individually, then download.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[400px] p-2 border rounded-md">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {selectedPdfItems.map((fileItem) => (
-                                <Card key={fileItem.id} className="flex flex-col items-center p-3 shadow-sm">
-                                    <div className="relative w-full mb-2">
-                                        <div className="flex justify-center items-center w-full h-auto border rounded" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_ROTATE + 20}px`}}>
-                                        <PdfPagePreview
-                                            pdfDataUri={fileItem.processedUri || fileItem.dataUri}
-                                            pageIndex={0}
-                                            rotation={0}
-                                            targetHeight={PREVIEW_TARGET_HEIGHT_ROTATE}
-                                            className="bg-white"
-                                        />
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={fileItem.name}>
-                                        {fileItem.name}
-                                    </p>
-                                    <div className="flex justify-center space-x-2 my-2">
-                                        <Button size="sm" variant="outline" onClick={() => handleRotateFile(fileItem.id, 'ccw')}><RotateCcw className="h-4 w-4 mr-1"/> Left</Button>
-                                        <Button size="sm" variant="outline" onClick={() => handleRotateFile(fileItem.id, 'cw')}><RotateCw className="h-4 w-4 mr-1"/> Right</Button>
-                                    </div>
-                                    <p className="text-sm font-bold text-primary h-5">{fileItem.rotation !== 0 ? `${fileItem.rotation}°` : ''}</p>
-                                    <div className="w-full mt-2 space-y-2">
-                                      <Button size="sm" className="w-full" onClick={() => handleApplyRotation(fileItem)} disabled={isProcessingId !== null || fileItem.rotation === 0}>
-                                        {isProcessingId === fileItem.id ? <Loader2 className="h-4 w-4 animate-spin"/> : "Apply Rotation"}
-                                      </Button>
-                                      <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" onClick={() => handleDownload(fileItem)}>
-                                          <Download className="h-4 w-4 mr-2"/> Download
-                                      </Button>
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                </CardContent>
-                <CardFooter className="flex-col sm:flex-row gap-2">
-                    <Button onClick={() => setSelectedPdfItems([])} variant="destructive" className="w-full">
-                        Clear All
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-grow lg:w-3/4">
+             <div className="mb-4 text-center">
+                 <Button onClick={handleRotateAll} variant="outline" disabled={isProcessing}>
+                    <RotateCw className="mr-2 h-4 w-4"/> Rotate All Pages
+                 </Button>
+            </div>
+            <ScrollArea className="h-[calc(100vh-280px)] p-1 border rounded-md bg-muted/10">
+              <div className="flex flex-wrap items-start gap-3 p-2">
+                {selectedPdfItems.map((pageItem, index) => (
+                  <Card
+                    key={pageItem.id}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragEnter={() => handleDragEnter(index)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={handleDragOver}
+                    className="flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-shadow cursor-grab active:cursor-grabbing bg-card h-full justify-between w-48"
+                  >
+                    <div className="relative w-full mb-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemovePage(pageItem.id)}
+                        className="absolute top-0 right-0 z-10 h-7 w-7 bg-background/50 hover:bg-destructive/80 hover:text-destructive-foreground rounded-full"
+                        aria-label="Remove page"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <div className="flex justify-center space-x-1 mb-1.5">
+                        <Button variant="outline" size="xs" onClick={() => handleRotatePage(pageItem.id, 'ccw')} aria-label="Rotate Left">
+                          <RotateCcw className="h-3 w-3" />
+                        </Button>
+                        <Button variant="outline" size="xs" onClick={() => handleRotatePage(pageItem.id, 'cw')} aria-label="Rotate Right">
+                          <RotateCw className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_ROTATE + 20}px`}}>
+                        <PdfPagePreview
+                            pdfDataUri={pageItem.originalFileDataUri}
+                            pageIndex={pageItem.pageIndexInOriginalFile}
+                            rotation={pageItem.rotation}
+                            targetHeight={PREVIEW_TARGET_HEIGHT_ROTATE}
+                            className="border rounded"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={pageItem.displayName}>
+                      {pageItem.displayName}
+                    </p>
+                    <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1" aria-hidden="true" />
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+
+          <div className="lg:w-1/4 space-y-4 lg:sticky lg:top-24 self-start">
+            <Card className="shadow-lg">
+              <CardHeader className="text-center">
+                <CardTitle>Rotation Options</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Alert variant="default" className="text-sm p-3">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Drag pages to reorder. Use rotation buttons on each page or the main button to rotate all.
+                  </AlertDescription>
+                </Alert>
+                <Button onClick={handleSortByName} variant="outline" className="w-full" disabled={selectedPdfItems.length < 2}>
+                  <ArrowDownAZ className="mr-2 h-4 w-4" /> Sort Pages
+                </Button>
+              </CardContent>
+              <CardFooter className="flex-col gap-2">
+                {processedUri ? (
+                    <>
+                        <Button onClick={handleDownload} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" size="lg">
+                            <Download className="mr-2 h-5 w-5"/> Download Rotated PDF
+                        </Button>
+                        <Button onClick={resetState} className="w-full" variant="outline">
+                            Rotate Another PDF
+                        </Button>
+                    </>
+                ) : (
+                    <Button
+                        onClick={handleApplyAndDownload}
+                        disabled={isProcessing || isLoadingPreviews}
+                        className="w-full"
+                        size="lg"
+                    >
+                        {isProcessing ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Download className="mr-2 h-4 w-4" />
+                        )}
+                        Apply & Download
                     </Button>
-                </CardFooter>
+                )}
+              </CardFooter>
             </Card>
+          </div>
         </div>
-        </>
       )}
 
       {error && (
