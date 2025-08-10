@@ -215,10 +215,6 @@ export default function OrganizePage() {
         });
       } else if (result.organizedPdfDataUri) {
         setOrganizedPdfUri(result.organizedPdfDataUri);
-        toast({
-            title: "Success!",
-            description: "Your PDF has been organized and is ready for download.",
-        });
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during organization.";
