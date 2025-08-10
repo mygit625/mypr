@@ -105,7 +105,7 @@ export default function RemovePagesPage() {
             pageIndexInOriginalFile: i,
             totalPagesInOriginalFile: numPages,
             displayName: `${file.name} (Page ${i + 1} of ${numPages})`,
-            rotation: 0, 
+            rotation: 0,
             isMarkedForDeletion: false,
           });
         }
@@ -319,8 +319,8 @@ export default function RemovePagesPage() {
                         onDragEnd={handleDragEnd}
                         onDragOver={handleDragOver}
                         className={cn(
-                          "flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-all cursor-grab active:cursor-grabbing bg-card h-full justify-between w-48",
-                          pageItem.isMarkedForDeletion && "opacity-60 ring-2 ring-destructive border-destructive"
+                          "relative flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-all cursor-grab active:cursor-grabbing bg-card h-full justify-between w-48",
+                           pageItem.isMarkedForDeletion && "ring-2 ring-destructive border-destructive"
                         )}
                       >
                         {pageItem.isMarkedForDeletion && (
@@ -328,7 +328,7 @@ export default function RemovePagesPage() {
                                 <span className="text-destructive-foreground font-semibold bg-destructive px-2 py-0.5 rounded text-xs">Marked for Deletion</span>
                            </div>
                         )}
-                        <div className={cn("relative w-full mb-1", pageItem.isMarkedForDeletion && "pointer-events-none")}>
+                        <div className="relative w-full mb-1">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -353,17 +353,17 @@ export default function RemovePagesPage() {
                                 {pageItem.isMarkedForDeletion ? "Keep" : "Delete"}
                               </Button>
                           </div>
-                          <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_REMOVE + 20}px`}}>
+                          <div className={cn("flex justify-center items-center w-full h-auto", pageItem.isMarkedForDeletion && "opacity-50 pointer-events-none")} style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_REMOVE + 20}px`}}>
                             <PdfPagePreview
                                 pdfDataUri={pageItem.originalFileDataUri}
                                 pageIndex={pageItem.pageIndexInOriginalFile}
-                                rotation={pageItem.rotation} // Rotation data still passed to preview
+                                rotation={pageItem.rotation}
                                 targetHeight={PREVIEW_TARGET_HEIGHT_REMOVE}
-                                className={cn("border rounded", pageItem.isMarkedForDeletion && "opacity-50")}
+                                className="border rounded"
                             />
                           </div>
                         </div>
-                        <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={pageItem.displayName}>
+                        <p className={cn("text-xs text-center truncate w-full px-1 text-muted-foreground", pageItem.isMarkedForDeletion && "opacity-50 pointer-events-none")} title={pageItem.displayName}>
                           {pageItem.displayName}
                         </p>
                         {!pageItem.isMarkedForDeletion && <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1" aria-hidden="true" />}
