@@ -18,6 +18,7 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { getInitialPageDataAction } from '@/app/remove-pages/actions';
 import { assembleIndividualPagesAction } from '@/app/organize/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -50,6 +51,7 @@ export default function RemovePagesPage() {
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedUri, setProcessedUri] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -62,6 +64,7 @@ export default function RemovePagesPage() {
     setSelectedPdfItems([]);
     setProcessedUri(null);
     setError(null);
+    setShowConfetti(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -219,6 +222,7 @@ export default function RemovePagesPage() {
         });
       } else if (result.organizedPdfDataUri) {
         setProcessedUri(result.organizedPdfDataUri);
+        setShowConfetti(true);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during processing.";
@@ -261,6 +265,7 @@ export default function RemovePagesPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <FileMinus2 className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Remove PDF Pages</h1>
@@ -308,14 +313,16 @@ export default function RemovePagesPage() {
                     return (
                       <Card
                         key={pageItem.id}
-                        draggable
+                        draggable={!pageItem.isMarkedForDeletion}
                         onDragStart={() => handleDragStart(item.originalItemIndex!)}
                         onDragEnter={() => handleDragEnter(item.originalItemIndex!)}
                         onDragEnd={handleDragEnd}
                         onDragOver={handleDragOver}
                         className={cn(
-                          "flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-all cursor-grab active:cursor-grabbing bg-card h-full justify-between w-48",
-                          pageItem.isMarkedForDeletion && "opacity-60 ring-2 ring-destructive border-destructive"
+                          "relative flex flex-col items-center p-3 shadow-md hover:shadow-lg transition-all bg-card h-full justify-between w-48",
+                          pageItem.isMarkedForDeletion 
+                            ? "ring-2 ring-destructive border-destructive"
+                            : "cursor-grab active:cursor-grabbing"
                         )}
                       >
                         {pageItem.isMarkedForDeletion && (
@@ -323,7 +330,7 @@ export default function RemovePagesPage() {
                                 <span className="text-destructive-foreground font-semibold bg-destructive px-2 py-0.5 rounded text-xs">Marked for Deletion</span>
                            </div>
                         )}
-                        <div className={cn("relative w-full mb-1", pageItem.isMarkedForDeletion && "pointer-events-none")}>
+                        <div className="relative w-full mb-1">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -338,7 +345,7 @@ export default function RemovePagesPage() {
                                 variant={pageItem.isMarkedForDeletion ? "outline" : "destructive"} 
                                 size="xs" 
                                 onClick={() => handleTogglePageDeletion(pageItem.id)}
-                                className={cn("w-full", pageItem.isMarkedForDeletion && "border-green-500 hover:bg-green-100")}
+                                className={cn("w-full z-20", pageItem.isMarkedForDeletion && "border-green-500 hover:bg-green-100")}
                                 title={pageItem.isMarkedForDeletion ? "Keep this page" : "Mark to delete this page"}
                               >
                                 {pageItem.isMarkedForDeletion ? 
@@ -348,17 +355,17 @@ export default function RemovePagesPage() {
                                 {pageItem.isMarkedForDeletion ? "Keep" : "Delete"}
                               </Button>
                           </div>
-                          <div className="flex justify-center items-center w-full h-auto" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_REMOVE + 20}px`}}>
+                          <div className={cn("flex justify-center items-center w-full h-auto", pageItem.isMarkedForDeletion && "opacity-50")} style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_REMOVE + 20}px`}}>
                             <PdfPagePreview
                                 pdfDataUri={pageItem.originalFileDataUri}
                                 pageIndex={pageItem.pageIndexInOriginalFile}
                                 rotation={pageItem.rotation}
                                 targetHeight={PREVIEW_TARGET_HEIGHT_REMOVE}
-                                className={cn("border rounded", pageItem.isMarkedForDeletion && "opacity-50")}
+                                className="border rounded"
                             />
                           </div>
                         </div>
-                        <p className="text-xs text-center truncate w-full px-1 text-muted-foreground" title={pageItem.displayName}>
+                        <p className={cn("text-xs text-center truncate w-full px-1 text-muted-foreground", pageItem.isMarkedForDeletion && "opacity-50")} title={pageItem.displayName}>
                           {pageItem.displayName}
                         </p>
                         {!pageItem.isMarkedForDeletion && <GripVertical className="h-5 w-5 text-muted-foreground/50 mt-1" aria-hidden="true" />}
