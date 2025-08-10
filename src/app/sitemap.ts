@@ -2,8 +2,8 @@
 import { MetadataRoute } from 'next'
  
 const toolPaths = [
+  // PDF Tools
   '/pdf-tools',
-  '/image-tools',
   '/merge',
   '/split',
   '/compress',
@@ -27,12 +27,30 @@ const toolPaths = [
   '/edit',
   '/add-page-numbers',
   '/watermark',
+
+  // Image Tools
+  '/image-tools',
+  '/crop-image',
+  '/circle-crop',
+  '/remove-background',
+  
+  // AI Tools
+  '/cover-letter-generator',
+
+  // Utility Tools
   '/unit-converters',
   '/qr-code',
-  '/cover-letter-generator',
-  '/circle-crop',
-  '/crop-image',
   '/smart-url-shortener',
+
+  // Automation Tools
+  '/automation-tools',
+
+  // Informational Pages
+  '/about',
+  '/contact',
+  '/privacy-policy',
+  '/terms-and-conditions',
+  '/data-deletion',
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -49,7 +67,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     {
       url: baseUrl,
       lastModified: new Date(),
-      changeFrequency: 'yearly',
+      changeFrequency: 'weekly',
       priority: 1,
     },
     ...toolUrls
