@@ -17,6 +17,7 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { assembleIndividualPagesAction } from '@/app/organize/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -49,6 +50,7 @@ export default function OrganizePage() {
   const [isOrganizing, setIsOrganizing] = useState(false);
   const [organizedPdfUri, setOrganizedPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,6 +62,7 @@ export default function OrganizePage() {
       setSelectedPdfItems([]);
       setOrganizedPdfUri(null);
       setError(null);
+      setShowConfetti(false);
       if (fileInputRef.current) {
           fileInputRef.current.value = "";
       }
@@ -215,6 +218,7 @@ export default function OrganizePage() {
         });
       } else if (result.organizedPdfDataUri) {
         setOrganizedPdfUri(result.organizedPdfDataUri);
+        setShowConfetti(true);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during organization.";
@@ -264,6 +268,7 @@ export default function OrganizePage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <LayoutGrid className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Organize PDF Pages</h1>
