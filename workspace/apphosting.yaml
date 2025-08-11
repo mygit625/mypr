@@ -27,6 +27,10 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: GEMINI_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME
 
 # Automatic scaling settings for your backend.
 # These are the default values and can be adjusted as needed.
