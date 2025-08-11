@@ -75,7 +75,7 @@ export default function RepairPage() {
         setRepairedPdfUri(result.repairedPdfDataUri);
         toast({
           title: "Repair Attempted Successfully!",
-          description: "The PDF has been processed. Click Download to save.",
+          description: "The PDF has been processed. Check the preview and download your file.",
           duration: 7000,
         });
       }
@@ -97,9 +97,17 @@ export default function RepairPage() {
         toast({ description: "No repaired file available to download.", variant: "destructive" });
     }
   };
+  
+  const resetAndStartOver = () => {
+      setFile(null);
+      setPdfDataUri(null);
+      setRepairedPdfUri(null);
+      setError(null);
+      setRepairAttempted(false);
+  }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8">
       <header className="text-center py-8">
         <Wrench className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Repair PDF</h1>
@@ -107,56 +115,59 @@ export default function RepairPage() {
           Attempt to fix corrupted or damaged PDF files. Upload your PDF to begin.
         </p>
       </header>
-
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>Upload PDF</CardTitle>
-          <CardDescription>Select the PDF file you want to attempt to repair.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <FileUploadZone
-            onFilesSelected={handleFileSelectedForUploadZone}
-            multiple={false}
-            accept="application/pdf"
-          />
-          {pdfDataUri && file && !repairAttempted && (
-            <div className="mt-4 border rounded-lg p-4">
-              <h3 className="text-sm font-medium mb-2 text-center">Preview of Uploaded PDF (First Page)</h3>
-              <div className="flex justify-center items-center" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_REPAIR}px` }}>
-                <PdfPagePreview 
-                    pdfDataUri={pdfDataUri} 
-                    pageIndex={0} 
-                    targetHeight={PREVIEW_TARGET_HEIGHT_REPAIR} 
-                    className="max-w-full"
-                />
+      
+      {!repairAttempted && (
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle>Upload PDF</CardTitle>
+            <CardDescription>Select the PDF file you want to attempt to repair.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FileUploadZone
+              onFilesSelected={handleFileSelectedForUploadZone}
+              multiple={false}
+              accept="application/pdf"
+            />
+            {pdfDataUri && file && (
+              <div className="mt-4 border rounded-lg p-4">
+                <h3 className="text-sm font-medium mb-2 text-center">Preview of Uploaded PDF (First Page)</h3>
+                <div className="flex justify-center items-center" style={{ minHeight: `${PREVIEW_TARGET_HEIGHT_REPAIR}px` }}>
+                  <PdfPagePreview 
+                      pdfDataUri={pdfDataUri} 
+                      pageIndex={0} 
+                      targetHeight={PREVIEW_TARGET_HEIGHT_REPAIR} 
+                      className="max-w-full"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground text-center truncate" title={file.name}>
+                  {file.name}
+                </p>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground text-center truncate" title={file.name}>
-                {file.name}
-              </p>
-            </div>
-          )}
-        </CardContent>
-        <CardFooter>
-          <Button
-            onClick={handleRepair}
-            disabled={!file || isRepairing || repairAttempted}
-            className="w-full"
-            size="lg"
-          >
-            {isRepairing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Attempting Repair...
-              </>
-            ) : (
-              <>
-                <Wrench className="mr-2 h-4 w-4" />
-                Repair PDF
-              </>
             )}
-          </Button>
-        </CardFooter>
-      </Card>
+          </CardContent>
+          <CardFooter>
+            <Button
+              onClick={handleRepair}
+              disabled={!file || isRepairing}
+              className="w-full"
+              size="lg"
+            >
+              {isRepairing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Attempting Repair...
+                </>
+              ) : (
+                <>
+                  <Wrench className="mr-2 h-4 w-4" />
+                  Repair PDF
+                </>
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+
 
       {repairAttempted && !isRepairing && (
         <Card className="mt-6 shadow-md">
@@ -166,41 +177,61 @@ export default function RepairPage() {
               Repair Process Completed
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-center space-y-4">
+          <CardContent className="space-y-4">
             {error ? (
               <Alert variant="destructive">
                 <Info className="h-4 w-4" />
-                <AlertTitle>Repair Unsuccessful or Encountered Issues</AlertTitle>
+                <AlertTitle>Repair Unsuccessful</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             ) : (
-              <Alert variant="default" className="border-green-500 bg-green-50">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertTitle className="text-green-700">Repair Attempted</AlertTitle>
-                <AlertDescription className="text-green-600">
-                  The PDF has been processed. Please check the downloaded file to see if the repair was successful.
-                  Some types of corruption may not be fixable.
-                </AlertDescription>
-              </Alert>
+              <>
+                <Alert variant="default" className="border-green-500 bg-green-50">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertTitle className="text-green-700">Repair Attempted</AlertTitle>
+                  <AlertDescription className="text-green-600">
+                    The PDF has been processed. Check the preview below and download the file to verify the repair.
+                  </AlertDescription>
+                </Alert>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    <div>
+                        <h3 className="text-sm font-medium text-center mb-2">Original</h3>
+                        <PdfPagePreview 
+                            pdfDataUri={pdfDataUri} 
+                            pageIndex={0} 
+                            targetHeight={PREVIEW_TARGET_HEIGHT_REPAIR} 
+                            className="border rounded-md"
+                        />
+                    </div>
+                     <div>
+                        <h3 className="text-sm font-medium text-center mb-2">Repaired</h3>
+                        <PdfPagePreview 
+                            pdfDataUri={repairedPdfUri} 
+                            pageIndex={0} 
+                            targetHeight={PREVIEW_TARGET_HEIGHT_REPAIR} 
+                            className="border rounded-md"
+                        />
+                    </div>
+                </div>
+              </>
             )}
-            {repairedPdfUri && !error && (
-              <Button
-                onClick={handleDownload}
-                className="w-full mt-4"
-                size="lg"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Download Repaired PDF
-              </Button>
-            )}
-            <Button onClick={() => handleFileSelectedForUploadZone([])} variant="outline" className="w-full">
-              Start Over
-            </Button>
           </CardContent>
-           <CardFooter>
-                <p className="text-xs text-muted-foreground text-center w-full">
-                    Note: The repair process loads and re-saves the PDF, which can fix some structural issues.
-                    It may not be able to recover data from severely damaged files or fix all types of corruption.
+           <CardFooter className="flex-col gap-2">
+                {repairedPdfUri && !error && (
+                    <Button
+                        onClick={handleDownload}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom"
+                        size="lg"
+                    >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Repaired PDF
+                    </Button>
+                )}
+                <Button onClick={resetAndStartOver} variant="outline" className="w-full">
+                    Start Over with a New File
+                </Button>
+                 <p className="text-xs text-muted-foreground text-center w-full pt-4">
+                    Note: This tool can fix some structural PDF issues. It may not recover data from severely damaged files.
                 </p>
             </CardFooter>
         </Card>
