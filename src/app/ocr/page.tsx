@@ -59,15 +59,25 @@ export default function OcrPdfPage() {
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
   const [pagesToOcr, setPagesToOcr] = useState<PageToOcr[]>([]);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
-  const [isProcessingOcr, setIsProcessingOcr] = useState(false); 
+  const [isProcessingOcr, setIsProcessingOcr] = useState(false);
+  const [ocrCompleted, setOcrCompleted] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const resetState = () => {
+    setPdfFile(null);
+    setPdfDataUri(null);
+    setPagesToOcr([]);
+    setGlobalError(null);
+    setOcrCompleted(false);
+  };
 
   const processUploadedPdf = async (file: File) => {
     setIsLoadingPdf(true);
     setGlobalError(null);
     setPagesToOcr([]);
     setPdfFile(file);
+    setOcrCompleted(false);
 
     try {
       const dataUri = await readFileAsDataURL(file);
@@ -119,10 +129,7 @@ export default function OcrPdfPage() {
     if (selectedFiles.length > 0) {
       processUploadedPdf(selectedFiles[0]);
     } else {
-      setPdfFile(null);
-      setPdfDataUri(null);
-      setPagesToOcr([]);
-      setGlobalError(null);
+      resetState();
     }
   };
 
@@ -186,8 +193,10 @@ export default function OcrPdfPage() {
     }
 
     setIsProcessingOcr(true);
+    setOcrCompleted(false);
     setGlobalError(null);
     
+    let hasSuccessfulExtraction = false;
     for (const page of selectedPages) {
       setPagesToOcr(prev => prev.map(p => (p.id === page.id ? { ...p, isProcessing: true, error: null, extractedText: null } : p)));
       try {
@@ -201,6 +210,7 @@ export default function OcrPdfPage() {
         setPagesToOcr(prev =>
           prev.map(p => (p.id === page.id ? { ...p, extractedText: result.text || "No text detected.", isProcessing: false } : p))
         );
+        hasSuccessfulExtraction = true;
       } catch (e: any) {
         console.error(`Error OCRing page ${page.displayName}:`, e);
         setPagesToOcr(prev =>
@@ -209,6 +219,9 @@ export default function OcrPdfPage() {
       }
     }
     setIsProcessingOcr(false);
+    if (hasSuccessfulExtraction) {
+        setOcrCompleted(true);
+    }
     toast({ title: "OCR Process Completed", description: "Text extraction attempt finished for selected pages." });
   };
 
@@ -243,15 +256,17 @@ export default function OcrPdfPage() {
         </p>
       </header>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>1. Upload PDF</CardTitle>
-          <CardDescription>Select the PDF file you want to process for OCR.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FileUploadZone onFilesSelected={handleFileSelected} multiple={false} accept="application/pdf" />
-        </CardContent>
-      </Card>
+      {!pdfFile && (
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle>1. Upload PDF</CardTitle>
+            <CardDescription>Select the PDF file you want to process for OCR.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FileUploadZone onFilesSelected={handleFileSelected} multiple={false} accept="application/pdf" />
+          </CardContent>
+        </Card>
+      )}
 
       {globalError && (
         <Alert variant="destructive">
@@ -329,27 +344,30 @@ export default function OcrPdfPage() {
               </ScrollArea>
             </CardContent>
             <CardFooter className="flex-col items-stretch space-y-3">
-              <Button
-                onClick={handleExtractText}
-                disabled={isProcessingOcr || selectedCount === 0}
-                className="w-full"
-                size="lg"
-              >
-                {isProcessingOcr ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <ScanText className="mr-2 h-5 w-5" />
-                )}
-                Extract Text from Selected Pages ({selectedCount})
-              </Button>
-              <Button
-                onClick={handleDownloadText}
-                variant="outline"
-                className="w-full"
-                disabled={isProcessingOcr || pagesToOcr.every(p => !p.extractedText)}
-              >
-                <Download className="mr-2 h-4 w-4" /> Download All Extracted Text
-              </Button>
+              {ocrCompleted ? (
+                <>
+                  <Button onClick={handleDownloadText} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" size="lg">
+                    <Download className="mr-2 h-5 w-5"/> Download All Extracted Text
+                  </Button>
+                  <Button onClick={resetState} className="w-full" variant="outline">
+                    Process Another PDF
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={handleExtractText}
+                  disabled={isProcessingOcr || selectedCount === 0}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isProcessingOcr ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  ) : (
+                    <ScanText className="mr-2 h-5 w-5" />
+                  )}
+                  Extract Text from Selected Pages ({selectedCount})
+                </Button>
+              )}
             </CardFooter>
           </Card>
         </>
