@@ -47,16 +47,9 @@ export async function createDynamicLinkAction(prevState: CreateLinkState, formDa
   const { desktopUrl, androidUrl, iosUrl } = validatedLinks.data;
 
   try {
-     let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
     if (!baseUrl || baseUrl.includes('your-project-id')) {
-        console.warn("NEXT_PUBLIC_BASE_URL is not set. Falling back to request headers.");
-        const headersList = headers();
-        const host = headersList.get('host');
-        const proto = headersList.get('x-forwarded-proto') || 'http';
-        if (!host) {
-             throw new Error("Could not determine the host from request headers.");
-        }
-        baseUrl = `${proto}://${host}`;
+        throw new Error("NEXT_PUBLIC_BASE_URL is not set correctly in your environment configuration.");
     }
 
     let code = nanoid(7);
