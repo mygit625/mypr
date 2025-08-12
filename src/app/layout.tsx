@@ -1,5 +1,4 @@
 
-
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -23,7 +22,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: {
     default: 'Toolsinn - Free Online PDF Tools & Document Utilities',
-    template: '%s | Toolsinn',
+    template: '%s | Toolsinn.com',
   },
   description: 'Your one-stop destination for free online tools. Merge, split, compress, convert, and edit PDFs, plus QR code generation, unit converters, and more.',
   keywords: ['PDF tools', 'merge PDF', 'split PDF', 'compress PDF', 'convert PDF', 'QR code generator', 'unit converter', 'online tools'],
