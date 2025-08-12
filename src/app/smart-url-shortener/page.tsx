@@ -20,6 +20,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
+import AuthForm from '@/components/feature/AuthForm';
+import { useAuth } from '@/contexts/auth-context';
 
 
 function SubmitButton() {
@@ -165,6 +167,9 @@ export default function UrlShortenerPage() {
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [baseUrl, setBaseUrl] = useState('');
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const { user, loading } = useAuth();
+
 
   useEffect(() => {
     const currentBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
@@ -228,16 +233,32 @@ export default function UrlShortenerPage() {
         </p>
       </header>
 
-      <Alert>
-          <UserPlus className="h-4 w-4" />
-          <AlertTitle>Want to save and manage your links?</AlertTitle>
-          <AlertDescription>
-              Sign up for a free account to keep track of all your created shortlinks, view detailed analytics, and manage them from a central dashboard.
-              <Button variant="link" asChild className="p-0 h-auto ml-1">
-                <Link href="#">Get started!</Link>
-              </Button>
-          </AlertDescription>
-      </Alert>
+      {!user && !loading && (
+        <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+          <Alert>
+              <UserPlus className="h-4 w-4" />
+              <AlertTitle>Want to save and manage your links?</AlertTitle>
+              <AlertDescription>
+                  Sign up for a free account to keep track of all your created shortlinks, view detailed analytics, and manage them from a central dashboard.
+                  <DialogTrigger asChild>
+                    <Button variant="link" asChild className="p-0 h-auto ml-1">
+                      <span className="cursor-pointer">Get started!</span>
+                    </Button>
+                  </DialogTrigger>
+              </AlertDescription>
+          </Alert>
+          <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                  <DialogTitle>Login or Sign Up</DialogTitle>
+                  <DialogDescription>
+                      Access your account to manage your links.
+                  </DialogDescription>
+              </DialogHeader>
+              <AuthForm onSuccess={() => setAuthDialogOpen(false)} />
+          </DialogContent>
+        </Dialog>
+      )}
+
 
       <Card>
         <form action={formAction} ref={formRef}>
