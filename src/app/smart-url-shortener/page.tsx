@@ -11,12 +11,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, Download, BarChart2, UserPlus, Info } from 'lucide-react';
+import { Link as LinkIcon, Copy, Loader2, CheckCircle, AlertCircle, Smartphone, Apple, Laptop, Download, BarChart2, UserPlus, Info, QrCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { QRCodeCanvas } from 'qrcode.react';
 import { downloadDataUri } from '@/lib/download-utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
 
@@ -121,6 +122,42 @@ function StatsDialog({ linkId, initialClickCount }: { linkId: string, initialCli
     )
 }
 
+function QrCodePopover({ shortUrl }: { shortUrl: string }) {
+  const canvasId = `qr-canvas-${shortUrl.split('/').pop()}`;
+  
+  const downloadQr = () => {
+    const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+    if (canvas) {
+      downloadDataUri(canvas.toDataURL("image/png"), `qrcode_${shortUrl.split('/').pop()}.png`);
+    }
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <QrCode className="h-5 w-5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="p-2 border rounded-md bg-white">
+            <QRCodeCanvas
+              id={canvasId}
+              value={shortUrl}
+              size={128}
+              level={"H"}
+            />
+          </div>
+          <Button onClick={downloadQr} size="sm" className="w-full">
+            <Download className="mr-2 h-4 w-4" /> Download
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 export default function UrlShortenerPage() {
   const initialState: CreateLinkState = { message: null, shortUrl: null, error: null };
   const [state, formAction] = useActionState(createDynamicLinkAction, initialState);
@@ -130,9 +167,8 @@ export default function UrlShortenerPage() {
   const [baseUrl, setBaseUrl] = useState('');
 
   useEffect(() => {
-    // Set base URL on the client-side to ensure it's available for display
     const currentBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
-    setBaseUrl(currentBaseUrl.replace(/\/$/, '')); // Remove trailing slash if present
+    setBaseUrl(currentBaseUrl.replace(/\/$/, '')); 
 
     const handleWindowFocus = () => {
         getLinksAction().then(setRecentLinks).catch(err => {
@@ -310,13 +346,14 @@ export default function UrlShortenerPage() {
                 <TableHead>Short URL</TableHead>
                 <TableHead>Destinations</TableHead>
                 <TableHead>Created</TableHead>
+                <TableHead>QR Code</TableHead>
                 <TableHead className="text-right">Statistics</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {recentLinks.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                         No links created yet. Your links will appear here.
                     </TableCell>
                 </TableRow>
@@ -350,6 +387,9 @@ export default function UrlShortenerPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {link.createdAt ? formatDistanceToNow(link.createdAt, { addSuffix: true }) : 'Just now'}
+                  </TableCell>
+                  <TableCell>
+                    <QrCodePopover shortUrl={`${baseUrl}/${link.id}`} />
                   </TableCell>
                   <TableCell className="text-right">
                     <StatsDialog linkId={link.id} initialClickCount={link.clickCount ?? 0} />
