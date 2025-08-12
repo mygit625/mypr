@@ -30,15 +30,24 @@ export interface ClickData {
   };
 }
 
-const linksCollection = adminDb.collection('dynamicLinks');
+// Helper function to check if the admin SDK is available
+function getLinksCollection() {
+  if (!adminDb) {
+    throw new Error('Firebase Admin SDK is not initialized. Please set FIREBASE_SERVICE_ACCOUNT_KEY.');
+  }
+  return adminDb.collection('dynamicLinks');
+}
+
 
 export async function isCodeUnique(code: string): Promise<boolean> {
+  const linksCollection = getLinksCollection();
   const docRef = linksCollection.doc(code);
   const docSnap = await docRef.get();
   return !docSnap.exists;
 }
 
 export async function createDynamicLink(code: string, links: Links): Promise<void> {
+  const linksCollection = getLinksCollection();
   const docRef = linksCollection.doc(code);
   const newLink = {
     links,
@@ -49,6 +58,7 @@ export async function createDynamicLink(code: string, links: Links): Promise<voi
 }
 
 export async function getLink(code: string): Promise<DynamicLink | null> {
+  const linksCollection = getLinksCollection();
   const docRef = linksCollection.doc(code);
   const docSnap = await docRef.get();
   if (!docSnap.exists) return null;
@@ -63,6 +73,7 @@ export async function getLink(code: string): Promise<DynamicLink | null> {
 
 
 export async function logClick(code: string, clickData: Omit<ClickData, 'timestamp'>): Promise<void> {
+    const linksCollection = getLinksCollection();
     const linkDocRef = linksCollection.doc(code);
     const clicksCollectionRef = linkDocRef.collection('clicks');
 
@@ -72,7 +83,7 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
             timestamp: Timestamp.now(),
         };
         
-        const batch = adminDb.batch();
+        const batch = getLinksCollection().firestore.batch();
         const newClickRef = clicksCollectionRef.doc();
         batch.set(newClickRef, completeClickData);
         batch.update(linkDocRef, { clickCount: admin.firestore.FieldValue.increment(1) });
@@ -85,6 +96,7 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
 
 
 export async function getRecentLinks(): Promise<DynamicLink[]> {
+  const linksCollection = getLinksCollection();
   const q = linksCollection.orderBy('createdAt', 'desc').limit(10);
   const querySnapshot = await q.get();
   return querySnapshot.docs.map(doc => {
@@ -96,6 +108,7 @@ export async function getRecentLinks(): Promise<DynamicLink[]> {
 
 
 export async function getRecentClicksForLink(linkId: string, count: number = 5): Promise<ClickData[]> {
+    const linksCollection = getLinksCollection();
     const q = linksCollection.doc(linkId).collection('clicks').orderBy('timestamp', 'desc').limit(count);
     const querySnapshot = await q.get();
     return querySnapshot.docs.map(doc => {
@@ -106,6 +119,7 @@ export async function getRecentClicksForLink(linkId: string, count: number = 5):
 }
 
 export async function getClicksForLink(linkId: string): Promise<ClickData[]> {
+    const linksCollection = getLinksCollection();
     const q = linksCollection.doc(linkId).collection('clicks').orderBy('timestamp', 'desc');
     const querySnapshot = await q.get();
      return querySnapshot.docs.map(doc => {
@@ -118,10 +132,11 @@ export async function getClicksForLink(linkId: string): Promise<ClickData[]> {
 
 export async function recalculateAllClickCounts(): Promise<{success: boolean, updatedCount: number, error?: string}> {
   try {
+    const linksCollection = getLinksCollection();
     const linksSnapshot = await linksCollection.get();
     let updatedCount = 0;
     
-    const batch = adminDb.batch();
+    const batch = getLinksCollection().firestore.batch();
 
     for (const linkDoc of linksSnapshot.docs) {
       const linkId = linkDoc.id;

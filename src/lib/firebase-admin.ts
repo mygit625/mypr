@@ -1,6 +1,8 @@
 import * as admin from 'firebase-admin';
 
-let app: admin.app.App;
+let app: admin.app.App | undefined;
+let adminDb: admin.firestore.Firestore | undefined;
+let adminAuth: admin.auth.Auth | undefined;
 
 if (admin.apps.length === 0) {
   const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
@@ -12,17 +14,18 @@ if (admin.apps.length === 0) {
       });
     } catch (e) {
       console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. Admin SDK not initialized.", e);
-      app = admin.initializeApp();
     }
   } else {
-    console.warn("FIREBASE_SERVICE_ACCOUNT_KEY is not set. Admin SDK not initialized with admin privileges.");
-    app = admin.initializeApp();
+    console.warn("FIREBASE_SERVICE_ACCOUNT_KEY is not set. Admin SDK features will be unavailable.");
   }
 } else {
   app = admin.apps[0]!;
 }
 
-const adminDb = admin.firestore(app);
-const adminAuth = admin.auth(app);
+if (app) {
+  adminDb = admin.firestore(app);
+  adminAuth = admin.auth(app);
+}
 
+// Export potentially undefined values. Consuming modules must handle this.
 export { adminDb, adminAuth, admin };
