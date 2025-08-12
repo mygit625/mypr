@@ -30,10 +30,10 @@ export interface ClickData {
   };
 }
 
-// Helper function to check if the admin SDK is available
+// Helper function to check if the admin SDK is available and throw a clear error if not.
 function getLinksCollection() {
   if (!adminDb) {
-    throw new Error('Firebase Admin SDK is not initialized. Please set FIREBASE_SERVICE_ACCOUNT_KEY.');
+    throw new Error('Firebase Admin SDK is not initialized. Please set FIREBASE_SERVICE_ACCOUNT_KEY in your local environment for this feature to work.');
   }
   return adminDb.collection('dynamicLinks');
 }
@@ -83,7 +83,8 @@ export async function logClick(code: string, clickData: Omit<ClickData, 'timesta
             timestamp: Timestamp.now(),
         };
         
-        const batch = getLinksCollection().firestore.batch();
+        // This requires adminDb to be initialized.
+        const batch = adminDb!.batch();
         const newClickRef = clicksCollectionRef.doc();
         batch.set(newClickRef, completeClickData);
         batch.update(linkDocRef, { clickCount: admin.firestore.FieldValue.increment(1) });
@@ -136,7 +137,7 @@ export async function recalculateAllClickCounts(): Promise<{success: boolean, up
     const linksSnapshot = await linksCollection.get();
     let updatedCount = 0;
     
-    const batch = getLinksCollection().firestore.batch();
+    const batch = adminDb!.batch();
 
     for (const linkDoc of linksSnapshot.docs) {
       const linkId = linkDoc.id;
