@@ -1,7 +1,6 @@
 
 'use server';
 
-import { headers } from 'next/headers';
 import { nanoid } from 'nanoid';
 import { createDynamicLink, getRecentLinks, isCodeUnique, type DynamicLink, getRecentClicksForLink, type ClickData, logClick, recalculateAllClickCounts, getClicksForLink } from '@/lib/url-shortener-db';
 import { z } from 'zod';
