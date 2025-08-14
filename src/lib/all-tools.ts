@@ -1,4 +1,3 @@
-
 import type { LucideIcon } from 'lucide-react';
 import {
   Combine, Split, Minimize2, LayoutGrid, RotateCcw, FileMinus2, FilePlus2,
@@ -42,6 +41,7 @@ export const allTools: Tool[] = [
   { title: 'Edit PDF', description: 'Add text, images, or annotations to a PDF.', href: '/edit', Icon: Edit3, category: 'PDF' },
   { title: 'Add Page Numbers', description: 'Insert page numbers into your PDF documents.', href: '/add-page-numbers', Icon: ListOrdered, category: 'PDF' },
   { title: 'Watermark PDF', description: 'Stamp an image or text over your PDF files.', href: '/watermark', Icon: Droplets, category: 'PDF' },
+  { title: 'Crop PDF', description: 'Select and crop areas of your PDF pages.', href: '/crop-pdf', Icon: Crop, category: 'PDF' },
 
   // Image Tools
   { title: 'Compress Image', description: 'Reduce file size of JPG, PNG, and GIF images.', href: '#', Icon: Minimize2, category: 'Image' },

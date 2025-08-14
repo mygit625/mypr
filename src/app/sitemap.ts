@@ -1,4 +1,3 @@
-
 import { MetadataRoute } from 'next'
  
 const toolPaths = [
@@ -27,6 +26,7 @@ const toolPaths = [
   '/edit',
   '/add-page-numbers',
   '/watermark',
+  '/crop-pdf',
 
   // Image Tools
   '/image-tools',
