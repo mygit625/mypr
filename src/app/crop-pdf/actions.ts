@@ -1,3 +1,4 @@
+
 'use server';
 
 import { PDFDocument, type PDFPage } from 'pdf-lib';
@@ -39,7 +40,9 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
       const { width, height } = page.getSize();
       
       const newX = width * input.cropArea.x;
-      const newY = height * input.cropArea.y;
+      // pdf-lib's y-coordinate starts from the bottom, so we must calculate it based on the page height.
+      // The client sends y as the top offset percentage.
+      const newY = height * (1 - input.cropArea.y - input.cropArea.height);
       const newWidth = width * input.cropArea.width;
       const newHeight = height * input.cropArea.height;
       
