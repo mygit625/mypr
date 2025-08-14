@@ -23,7 +23,6 @@ import {
   Building, 
   Type, 
   Upload, 
-  File,
   ChevronLeft,
   ChevronRight,
   ZoomIn,
@@ -61,7 +60,7 @@ const signatureStyles = [
 ];
 
 const colorOptions = [
-  { id: 'black', value: '#000000', ringColor: 'ring-blue-500' },
+  { id: 'black', value: '#000000', ringColor: 'ring-gray-800' },
   { id: 'red', value: '#e53935', ringColor: 'ring-red-500' },
   { id: 'blue', value: '#1e88e5', ringColor: 'ring-blue-500' },
   { id: 'green', value: '#43a047', ringColor: 'ring-green-500' },
@@ -73,7 +72,6 @@ export default function SignPdfPage() {
   const [selectedColor, setSelectedColor] = useState('#000000');
   const [selectedSignatureStyle, setSelectedSignatureStyle] = useState('style1');
   
-  // This state will be used later to control dialog visibility
   const [showSignatureDialog, setShowSignatureDialog] = useState(true);
 
   return (
@@ -171,26 +169,26 @@ export default function SignPdfPage() {
 
                       <Tabs defaultValue="signature" className="w-full">
                           <TabsList variant="underline" className="grid w-full grid-cols-3">
-                              <TabsTrigger value="signature" className="tabs-trigger-underline"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
-                              <TabsTrigger value="initials" className="tabs-trigger-underline"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
-                              <TabsTrigger value="company_stamp" className="tabs-trigger-underline"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
+                              <TabsTrigger value="signature" variant="underline"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
+                              <TabsTrigger value="initials" variant="underline"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
+                              <TabsTrigger value="company_stamp" variant="underline"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
                           </TabsList>
                           <TabsContent value="signature" className="mt-4">
                               <div className="flex">
                                   <Tabs defaultValue="text" orientation="vertical" className="w-32 border-r mr-4">
                                       <TabsList className="grid grid-cols-1 h-auto p-0 bg-transparent">
-                                          <TabsTrigger value="text" className="tabs-trigger-underline justify-start h-12"><Type className="mr-2 h-5 w-5"/> Text</TabsTrigger>
-                                          <TabsTrigger value="draw" className="tabs-trigger-underline justify-start h-12"><DrawIcon className="mr-2 h-5 w-5"/> Draw</TabsTrigger>
-                                          <TabsTrigger value="upload" className="tabs-trigger-underline justify-start h-12"><Upload className="mr-2 h-5 w-5"/> Upload</TabsTrigger>
+                                          <TabsTrigger value="text" variant="underline" className="justify-start h-12"><Type className="mr-2 h-5 w-5"/> Text</TabsTrigger>
+                                          <TabsTrigger value="draw" variant="underline" className="justify-start h-12"><DrawIcon className="mr-2 h-5 w-5"/> Draw</TabsTrigger>
+                                          <TabsTrigger value="upload" variant="underline" className="justify-start h-12"><Upload className="mr-2 h-5 w-5"/> Upload</TabsTrigger>
                                       </TabsList>
                                   </Tabs>
                                   <div className="flex-1">
                                       <RadioGroup value={selectedSignatureStyle} onValueChange={setSelectedSignatureStyle} className="grid grid-cols-2 gap-4">
                                           {signatureStyles.map(style => (
                                               <div key={style.id} className="flex items-center">
-                                                  <RadioGroupItem value={style.id} id={style.id} />
-                                                  <Label htmlFor={style.id} className="ml-2 w-full cursor-pointer">
-                                                      <div className={`py-2 px-3 border rounded-md ${selectedSignatureStyle === style.id ? 'border-primary' : ''}`}>
+                                                  <RadioGroupItem value={style.id} id={style.id} className="sr-only" />
+                                                  <Label htmlFor={style.id} className="w-full cursor-pointer">
+                                                      <div className={`py-2 px-3 border rounded-md ${selectedSignatureStyle === style.id ? 'border-primary ring-2 ring-primary' : ''}`}>
                                                           <p className={`${style.font} ${style.size}`} style={{ color: selectedColor }}>
                                                               {fullName || 'Your Name'}
                                                           </p>
@@ -225,7 +223,7 @@ export default function SignPdfPage() {
                       </Tabs>
                   </CardContent>
                   <CardFooter className="flex justify-end">
-                      <Button size="lg" className="h-12 px-8 text-base">Apply</Button>
+                      <Button size="lg" className="h-12 px-8 text-base bg-red-600 hover:bg-red-700">Apply</Button>
                   </CardFooter>
               </Card>
           </div>
