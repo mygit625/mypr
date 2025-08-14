@@ -34,7 +34,7 @@ export default function CropPdfPage() {
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 80, height: 80 }); // in percentages
+  const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 80, height: 80 }); // Now in absolute pixels relative to container
   const [croppedPdfUri, setCroppedPdfUri] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -115,20 +115,19 @@ export default function CropPdfPage() {
             const { clientWidth: containerWidth, clientHeight: containerHeight } = containerRef.current;
             const { canvasWidth, canvasHeight } = dims;
 
-            // Canvas is centered, find its top-left corner relative to the container
             const canvasX = (containerWidth - canvasWidth) / 2;
             const canvasY = (containerHeight - canvasHeight) / 2;
-
+            
             const newWidth = canvasWidth * 0.8;
             const newHeight = canvasHeight * 0.8;
             const newX = canvasX + (canvasWidth - newWidth) / 2;
             const newY = canvasY + (canvasHeight - newHeight) / 2;
-
+            
              setCropBox({
-                x: (newX / containerWidth) * 100,
-                y: (newY / containerHeight) * 100,
-                width: (newWidth / containerWidth) * 100,
-                height: (newHeight / containerHeight) * 100,
+                x: newX,
+                y: newY,
+                width: newWidth,
+                height: newHeight,
             });
         }
       });
@@ -141,8 +140,8 @@ export default function CropPdfPage() {
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     return {
-      x: (clientX - rect.left) / rect.width * 100,
-      y: (clientY - rect.top) / rect.height * 100,
+      x: clientX - rect.left,
+      y: clientY - rect.top,
     };
   };
 
@@ -155,10 +154,12 @@ export default function CropPdfPage() {
   };
 
   const handleInteractionMove = (e: ReactMouseEvent | ReactTouchEvent) => {
-    if (!interaction) return;
+    if (!interaction || !containerRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     const currentPos = getRelativeCoords(e);
+    const { clientWidth: cWidth, clientHeight: cHeight } = containerRef.current;
+    
     const dx = currentPos.x - startPos.x;
     const dy = currentPos.y - startPos.y;
 
@@ -205,16 +206,14 @@ export default function CropPdfPage() {
             break;
     }
     
-    // Clamp values to be within bounds [0, 100] and have minimum size
-    newWidth = Math.max(5, newWidth);
-    newHeight = Math.max(5, newHeight);
+    newWidth = Math.max(20, newWidth);
+    newHeight = Math.max(20, newHeight);
 
-    newX = Math.max(0, Math.min(newX, 100 - newWidth));
-    newY = Math.max(0, Math.min(newY, 100 - newHeight));
+    newX = Math.max(0, Math.min(newX, cWidth - newWidth));
+    newY = Math.max(0, Math.min(newY, cHeight - newHeight));
     
-    // Ensure width/height don't go beyond boundaries from the new X/Y
-    newWidth = Math.min(newWidth, 100 - newX);
-    newHeight = Math.min(newHeight, 100 - newY);
+    newWidth = Math.min(newWidth, cWidth - newX);
+    newHeight = Math.min(newHeight, cHeight - newY);
 
     setCropBox({ x: newX, y: newY, width: newWidth, height: newHeight });
   };
@@ -224,21 +223,33 @@ export default function CropPdfPage() {
   };
   
   const handleCrop = async () => {
-    if (!file) return;
+    if (!file || !canvasRef.current) return;
     setIsProcessing(true);
     setError(null);
     try {
       const pdfDataUri = await readFileAsDataURL(file);
+      const canvas = canvasRef.current;
+      const container = containerRef.current!;
+
+      // The canvas is centered, calculate its offset within the container
+      const canvasXOffset = (container.clientWidth - canvas.width) / 2;
+      const canvasYOffset = (container.clientHeight - canvas.height) / 2;
+
+      // Convert the absolute crop box pixels into pixels relative to the canvas
+      const cropArea: CropArea = {
+          x: cropBox.x - canvasXOffset,
+          y: cropBox.y - canvasYOffset,
+          width: cropBox.width,
+          height: cropBox.height,
+      };
+
       const result = await cropPdfAction({
         pdfDataUri,
-        cropArea: {
-            x: cropBox.x / 100,
-            y: cropBox.y / 100,
-            width: cropBox.width / 100,
-            height: cropBox.height / 100,
-        },
+        cropArea,
         applyTo: cropMode,
         currentPage: currentPage,
+        clientCanvasWidth: canvas.width,
+        clientCanvasHeight: canvas.height,
       });
 
       if (result.error) throw new Error(result.error);
@@ -291,21 +302,21 @@ export default function CropPdfPage() {
               <CardContent className="p-4">
                 <div
                   ref={containerRef}
-                  className="relative w-full h-[70vh] bg-muted/30 overflow-hidden touch-none select-none"
+                  className="relative w-full h-[70vh] bg-muted/30 overflow-hidden touch-none select-none flex items-center justify-center"
                   onMouseMove={handleInteractionMove}
                   onMouseUp={endInteraction}
                   onMouseLeave={endInteraction}
                   onTouchMove={handleInteractionMove}
                   onTouchEnd={endInteraction}
                 >
-                  <canvas ref={canvasRef} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  <canvas ref={canvasRef} />
                   <div
                     className="absolute border-2 border-dashed border-primary bg-primary/20 cursor-move"
                     style={{ 
-                      left: `${cropBox.x}%`, 
-                      top: `${cropBox.y}%`, 
-                      width: `${cropBox.width}%`, 
-                      height: `${cropBox.height}%` 
+                      left: `${cropBox.x}px`, 
+                      top: `${cropBox.y}px`, 
+                      width: `${cropBox.width}px`, 
+                      height: `${cropBox.height}px` 
                     }}
                     onMouseDown={(e) => startInteraction(e, 'move')}
                     onTouchStart={(e) => startInteraction(e, 'move')}

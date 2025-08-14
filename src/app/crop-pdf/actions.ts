@@ -16,6 +16,8 @@ export interface CropPdfInput {
   cropArea: CropArea;
   applyTo: 'all' | 'current';
   currentPage: number; // 1-indexed
+  clientCanvasWidth: number; // Width of the rendered canvas on the client
+  clientCanvasHeight: number; // Height of the rendered canvas on the client
 }
 
 export interface CropPdfOutput {
@@ -32,23 +34,40 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
     const pdfBytes = Buffer.from(input.pdfDataUri.split(',')[1], 'base64');
     const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
     
-    const pagesToCrop = input.applyTo === 'all'
-      ? pdfDoc.getPages()
-      : [pdfDoc.getPage(input.currentPage - 1)];
+    const pagesToCropIndices = input.applyTo === 'all'
+      ? pdfDoc.getPageIndices()
+      : [input.currentPage - 1];
 
-    for (const page of pagesToCrop) {
-      const { width: pageWidth, height: pageHeight } = page.getSize();
-      
-      const newWidth = pageWidth * input.cropArea.width;
-      const newHeight = pageHeight * input.cropArea.height;
-      const newX = pageWidth * input.cropArea.x;
-      
-      // Correct calculation for pdf-lib's y-coordinate system (origin is bottom-left).
-      // The client sends `y` as the top offset percentage.
-      // The correct y for pdf-lib is: page_height - (top_offset_in_points + crop_box_height_in_points)
-      const newY = pageHeight - (pageHeight * input.cropArea.y + newHeight);
-      
-      page.setCropBox(newX, newY, newWidth, newHeight);
+    for (const pageIndex of pagesToCropIndices) {
+        if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) continue;
+
+        const page = pdfDoc.getPage(pageIndex);
+        const { width: pageWidth, height: pageHeight } = page.getSize();
+        
+        // The client canvas is scaled to fit. We need to respect its aspect ratio
+        // to find the correct scale factor for our calculations.
+        const pageAspectRatio = pageWidth / pageHeight;
+        const canvasAspectRatio = input.clientCanvasWidth / input.clientCanvasHeight;
+
+        let scale: number;
+        if (pageAspectRatio > canvasAspectRatio) {
+            // Page is wider than canvas area, so width is the limiting factor
+            scale = pageWidth / input.clientCanvasWidth;
+        } else {
+            // Page is taller or same aspect ratio, so height is the limiting factor
+            scale = pageHeight / input.clientCanvasHeight;
+        }
+        
+        const cropX = input.cropArea.x * scale;
+        const cropY = input.cropArea.y * scale;
+        const cropWidth = input.cropArea.width * scale;
+        const cropHeight = input.cropArea.height * scale;
+
+        // pdf-lib's y-coordinate starts from the bottom.
+        // The final Y is: page_height - (y_offset_from_top + crop_height)
+        const finalY = pageHeight - (cropY + cropHeight);
+
+        page.setCropBox(cropX, finalY, cropWidth, cropHeight);
     }
     
     const croppedPdfBytes = await pdfDoc.save();
