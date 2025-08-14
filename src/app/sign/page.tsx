@@ -200,13 +200,16 @@ export default function SignPdfPage() {
                         <TabsContent value="signature" className="p-0">
                              <div className="flex">
                                 <div className="w-16 flex flex-col items-center gap-2 border-r p-2 bg-muted/40">
-                                  <Button variant={signatureMode === 'text' ? 'secondary' : 'ghost'} size="icon" onClick={() => setSignatureMode('text')} title="Text">
+                                  <Button variant={signatureMode === 'text' ? 'secondary' : 'ghost'} size="icon" onClick={() => setSignatureMode('text')} title="Text"
+                                    className={cn(signatureMode === 'text' && "ring-2 ring-primary bg-primary/10 text-primary")}>
                                     <Type className="h-5 w-5" />
                                   </Button>
-                                  <Button variant={signatureMode === 'draw' ? 'secondary' : 'ghost'} size="icon" onClick={() => setSignatureMode('draw')} title="Draw">
+                                  <Button variant={signatureMode === 'draw' ? 'secondary' : 'ghost'} size="icon" onClick={() => setSignatureMode('draw')} title="Draw"
+                                    className={cn(signatureMode === 'draw' && "ring-2 ring-primary bg-primary/10 text-primary")}>
                                     <Pencil className="h-5 w-5" />
                                   </Button>
-                                  <Button variant={signatureMode === 'upload' ? 'secondary' : 'ghost'} size="icon" onClick={() => setSignatureMode('upload')} title="Upload">
+                                  <Button variant={signatureMode === 'upload' ? 'secondary' : 'ghost'} size="icon" onClick={() => setSignatureMode('upload')} title="Upload"
+                                    className={cn(signatureMode === 'upload' && "ring-2 ring-primary bg-primary/10 text-primary")}>
                                     <Upload className="h-5 w-5" />
                                   </Button>
                                 </div>
