@@ -49,8 +49,10 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
 
         let scale: number;
         if (pageAspectRatio > canvasAspectRatio) {
+            // Page is wider than canvas, so it's scaled to fit the width
             scale = pageWidth / input.clientCanvasWidth;
         } else {
+            // Page is taller than or equal to canvas aspect ratio, so it's scaled to fit the height
             scale = pageHeight / input.clientCanvasHeight;
         }
         
@@ -80,3 +82,4 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
     return { error: error.message || 'An unexpected error occurred while cropping the PDF.' };
   }
 }
+
