@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PenTool, Upload, Loader2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, User, Signature, Pencil, Building, Type } from 'lucide-react';
@@ -192,22 +192,22 @@ export default function SignPdfPage() {
                       </div>
                     </div>
                     <Tabs defaultValue="signature" className="pt-2">
-                        <TabsList className="w-full grid grid-cols-3 rounded-none bg-transparent border-b px-6">
-                            <TabsTrigger value="signature" className="tabs-trigger-underline"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
-                            <TabsTrigger value="initials" className="tabs-trigger-underline"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
-                            <TabsTrigger value="company-stamp" className="tabs-trigger-underline"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
+                        <TabsList variant="underline" className="w-full grid grid-cols-3 rounded-none bg-transparent border-b px-6">
+                            <TabsTrigger value="signature"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
+                            <TabsTrigger value="initials"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
+                            <TabsTrigger value="company-stamp"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
                         </TabsList>
                         <TabsContent value="signature" className="p-0">
                              <div className="flex">
                                 <Tabs defaultValue="text" onValueChange={(value) => setSignatureMode(value as SignatureMode)} orientation="vertical" className="flex">
-                                    <TabsList className="w-20 flex flex-col items-center gap-2 border-r p-2 bg-muted/40 h-auto rounded-none">
-                                      <TabsTrigger value="text" className="tabs-trigger-underline w-full h-16 flex-col gap-1">
+                                    <TabsList variant="underline" className="w-20 flex flex-col items-center gap-2 border-r p-2 bg-muted/40 h-auto rounded-none">
+                                      <TabsTrigger value="text" className="w-full h-16 flex-col gap-1">
                                         <Type className="h-5 w-5" /> Text
                                       </TabsTrigger>
-                                      <TabsTrigger value="draw" className="tabs-trigger-underline w-full h-16 flex-col gap-1">
+                                      <TabsTrigger value="draw" className="w-full h-16 flex-col gap-1">
                                         <Pencil className="h-5 w-5" /> Draw
                                       </TabsTrigger>
-                                      <TabsTrigger value="upload" className="tabs-trigger-underline w-full h-16 flex-col gap-1">
+                                      <TabsTrigger value="upload" className="w-full h-16 flex-col gap-1">
                                         <Upload className="h-5 w-5" /> Upload
                                       </TabsTrigger>
                                     </TabsList>
@@ -260,3 +260,5 @@ export default function SignPdfPage() {
     </div>
   );
 }
+
+    
