@@ -10,6 +10,12 @@ export default {
   ],
   theme: {
   	extend: {
+      fontFamily: {
+        'cursive': ['cursive'],
+        'dancing-script': ['var(--font-dancing-script)'],
+        'pacifico': ['var(--font-pacifico)'],
+        'caveat': ['var(--font-caveat)'],
+      },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',

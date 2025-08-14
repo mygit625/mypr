@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -22,10 +21,10 @@ interface PageInfo {
 }
 
 const signatureFonts = [
-  "font-cursive",
   "font-dancing-script",
   "font-pacifico",
-  "font-caveat"
+  "font-caveat",
+  "font-cursive",
 ];
 
 const signatureColors = [
@@ -188,9 +187,9 @@ export default function SignPdfPage() {
                     </div>
                     <Tabs defaultValue="signature">
                         <TabsList className="w-full grid grid-cols-3">
-                            <TabsTrigger value="signature"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
-                            <TabsTrigger value="initials"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
-                            <TabsTrigger value="company-stamp"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
+                            <TabsTrigger value="signature" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
+                            <TabsTrigger value="initials" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
+                            <TabsTrigger value="company-stamp" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
                         </TabsList>
                         <TabsContent value="signature" className="p-4">
                              <RadioGroup value={selectedSignatureStyle} onValueChange={setSelectedSignatureStyle} className="space-y-4">
