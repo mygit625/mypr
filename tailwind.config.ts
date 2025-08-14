@@ -99,7 +99,17 @@ export default {
   				to: {
   					height: '0'
   				}
-  			}
+  			},
+          'confetti-fall': {
+            from: { 
+              transform: 'translateY(var(--y-start, -20px)) translateX(var(--x-start)) rotate(var(--rotation-start))',
+              opacity: '1'
+            },
+            to: {
+              transform: 'translateY(var(--y-end)) translateX(var(--x-start)) rotate(var(--rotation-end))',
+              opacity: '0'
+            }
+          }
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
