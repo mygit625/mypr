@@ -1,6 +1,7 @@
 
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { Dancing_Script, Pacifico, Caveat } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/layout/navbar';
 import { Toaster } from '@/components/ui/toaster';
@@ -18,6 +19,25 @@ const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
 });
+
+const dancingScript = Dancing_Script({
+  variable: '--font-dancing-script',
+  subsets: ['latin'],
+  weight: "400",
+});
+
+const pacifico = Pacifico({
+  variable: '--font-pacifico',
+  subsets: ['latin'],
+  weight: "400",
+});
+
+const caveat = Caveat({
+    variable: '--font-caveat',
+    subsets: ['latin'],
+    weight: "400",
+});
+
 
 export const metadata: Metadata = {
   title: {
@@ -60,7 +80,7 @@ export default function RootLayout({
         </Script>
       </head>
       <body 
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen bg-background`}
+        className={`${geistSans.variable} ${geistMono.variable} ${dancingScript.variable} ${pacifico.variable} ${caveat.variable} antialiased flex flex-col min-h-screen bg-background`}
         suppressHydrationWarning={true}
       >
           <ThemeProvider
