@@ -193,9 +193,9 @@ export default function SignPdfPage() {
                     </div>
                     <Tabs defaultValue="signature" className="pt-2">
                         <TabsList className="w-full grid grid-cols-3 rounded-none bg-transparent border-b px-6">
-                            <TabsTrigger value="signature"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
-                            <TabsTrigger value="initials"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
-                            <TabsTrigger value="company-stamp"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
+                            <TabsTrigger value="signature" className="tabs-trigger-underline"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
+                            <TabsTrigger value="initials" className="tabs-trigger-underline"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
+                            <TabsTrigger value="company-stamp" className="tabs-trigger-underline"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
                         </TabsList>
                         <TabsContent value="signature" className="p-0">
                              <div className="flex">
@@ -260,5 +260,3 @@ export default function SignPdfPage() {
     </div>
   );
 }
-
-    
