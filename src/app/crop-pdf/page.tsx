@@ -101,14 +101,37 @@ export default function CropPdfPage() {
       if (context) {
         await page.render({ canvasContext: context, viewport: scaledViewport }).promise;
       }
+      return { canvasWidth: canvas.width, canvasHeight: canvas.height };
     } catch (e: any) {
       setError(`Failed to render page ${pageNumber}: ${e.message}`);
+      return null;
     }
   };
 
   useEffect(() => {
     if (pdfDoc) {
-      renderPage(currentPage);
+      renderPage(currentPage).then((dims) => {
+        if (dims && containerRef.current) {
+            const { clientWidth: containerWidth, clientHeight: containerHeight } = containerRef.current;
+            const { canvasWidth, canvasHeight } = dims;
+
+            // Canvas is centered, find its top-left corner relative to the container
+            const canvasX = (containerWidth - canvasWidth) / 2;
+            const canvasY = (containerHeight - canvasHeight) / 2;
+
+            const newWidth = canvasWidth * 0.8;
+            const newHeight = canvasHeight * 0.8;
+            const newX = canvasX + (canvasWidth - newWidth) / 2;
+            const newY = canvasY + (canvasHeight - newHeight) / 2;
+
+             setCropBox({
+                x: (newX / containerWidth) * 100,
+                y: (newY / containerHeight) * 100,
+                width: (newWidth / containerWidth) * 100,
+                height: (newHeight / containerHeight) * 100,
+            });
+        }
+      });
     }
   }, [pdfDoc, currentPage]);
 
