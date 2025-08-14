@@ -16,10 +16,7 @@ import { cn } from '@/lib/utils';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { useToast } from '@/hooks/use-toast';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-
-interface PageInfo {
-  pageIndex: number;
-}
+import { getInitialPageDataAction, type PageData } from '@/app/organize/actions';
 
 const signatureFonts = [
   "font-dancing-script",
@@ -40,9 +37,10 @@ type SignatureMode = 'text' | 'draw' | 'upload';
 export default function SignPdfPage() {
   const [file, setFile] = useState<File | null>(null);
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
-  const [pages, setPages] = useState<PageInfo[]>([]);
+  const [pages, setPages] = useState<PageData[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const [fullName, setFullName] = useState('Test Signature');
@@ -59,13 +57,18 @@ export default function SignPdfPage() {
       try {
         const dataUri = await readFileAsDataURL(selectedFile);
         setPdfDataUri(dataUri);
-        // Mock loading pages
-        setTimeout(() => {
-          setPages([{ pageIndex: 0 }, { pageIndex: 1 }]);
-          setIsLoadingPdf(false);
-        }, 1000);
+        
+        const pageDataResult = await getInitialPageDataAction({ pdfDataUri: dataUri });
+        if (pageDataResult.pages) {
+            setPages(pageDataResult.pages);
+            setIsSignatureDialogOpen(true); // Open dialog on successful load
+        } else {
+            throw new Error(pageDataResult.error || "Could not load PDF pages.");
+        }
+
       } catch (e: any) {
         toast({ title: "File Error", description: e.message, variant: "destructive" });
+      } finally {
         setIsLoadingPdf(false);
       }
     }
@@ -109,30 +112,29 @@ export default function SignPdfPage() {
       )}
 
       {file && pdfDataUri && !isLoadingPdf && (
-         <Dialog open={true}>
+         <Dialog open={isSignatureDialogOpen} onOpenChange={setIsSignatureDialogOpen}>
+            {/* The background content (PDF Viewer) shows when the dialog is open */}
             <div className="flex h-[calc(100vh-120px)] bg-muted/30 -m-4">
-                {/* Left Sidebar: Page Thumbnails */}
                 <aside className="w-64 bg-background border-r p-2">
                     <ScrollArea className="h-full">
                         <div className="space-y-2">
                         {pages.map((page) => (
                             <div
-                            key={page.pageIndex}
-                            onClick={() => setCurrentPage(page.pageIndex)}
+                            key={page.id}
+                            onClick={() => setCurrentPage(page.originalIndex)}
                             className={cn(
                                 "cursor-pointer border-2 rounded-md overflow-hidden",
-                                currentPage === page.pageIndex ? "border-primary" : "border-transparent"
+                                currentPage === page.originalIndex ? "border-primary" : "border-transparent"
                             )}
                             >
-                            <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={page.pageIndex} targetHeight={150} />
-                             <p className="text-center text-xs text-muted-foreground bg-card py-0.5">{page.pageIndex + 1}</p>
+                            <PdfPagePreview pdfDataUri={pdfDataUri} pageIndex={page.originalIndex} targetHeight={150} />
+                             <p className="text-center text-xs text-muted-foreground bg-card py-0.5">{page.originalIndex + 1}</p>
                             </div>
                         ))}
                         </div>
                     </ScrollArea>
                 </aside>
                 
-                {/* Main Content: PDF Viewer */}
                 <main className="flex-1 flex flex-col">
                     <header className="flex-shrink-0 h-14 bg-background border-b flex items-center justify-between px-4">
                        <div className="flex items-center gap-2">
@@ -152,14 +154,13 @@ export default function SignPdfPage() {
                     </div>
                 </main>
 
-                {/* Right Sidebar: Signing Options */}
                 <aside className="w-80 bg-background border-l p-4">
                     <Card className="h-full">
                         <CardHeader>
                             <CardTitle>Signing options</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                             <Button variant="outline" className="w-full h-20 text-lg">Simple Signature</Button>
+                             <Button variant="outline" className="w-full h-20 text-lg" onClick={() => setIsSignatureDialogOpen(true)}>Simple Signature</Button>
                              <Button variant="outline" className="w-full h-20 text-lg" disabled>Digital Signature</Button>
                         </CardContent>
                         <CardFooter>
@@ -167,98 +168,96 @@ export default function SignPdfPage() {
                         </CardFooter>
                     </Card>
                 </aside>
-                
-                {/* Signature Dialog */}
-                <DialogContent className="max-w-2xl p-0 gap-0">
-                    <DialogHeader className="p-6 pb-4">
-                        <div className="flex items-center justify-between">
-                            <DialogTitle>Set your signature details</DialogTitle>
-                            <Button variant="outline" size="sm">Login</Button>
-                        </div>
-                    </DialogHeader>
-                    <div className="px-6 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                              <Label htmlFor="full-name">Full name</Label>
-                              <div className="relative">
-                                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                                  <Input id="full-name" value={fullName} onChange={handleFullNameChange} className="pl-10" />
-                              </div>
-                          </div>
-                          <div className="space-y-1">
-                              <Label htmlFor="initials">Initials</Label>
-                              <Input id="initials" value={initials} readOnly />
+            </div>
+            
+            {/* Signature Dialog */}
+            <DialogContent className="max-w-2xl p-0 gap-0">
+                <DialogHeader className="p-6 pb-4">
+                    <div className="flex items-center justify-between">
+                        <DialogTitle>Set your signature details</DialogTitle>
+                        <Button variant="outline" size="sm">Login</Button>
+                    </div>
+                </DialogHeader>
+                <div className="px-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                          <Label htmlFor="full-name">Full name</Label>
+                          <div className="relative">
+                              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                              <Input id="full-name" value={fullName} onChange={handleFullNameChange} className="pl-10" />
                           </div>
                       </div>
-                    </div>
-                    <Tabs defaultValue="signature" className="pt-2">
-                        <TabsList variant="underline" className="w-full grid grid-cols-3 rounded-none bg-transparent border-b px-6">
-                            <TabsTrigger value="signature"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
-                            <TabsTrigger value="initials"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
-                            <TabsTrigger value="company-stamp"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="signature" className="p-0">
-                             <div className="flex">
-                                <Tabs defaultValue="text" onValueChange={(value) => setSignatureMode(value as SignatureMode)} orientation="vertical" className="flex">
-                                    <TabsList variant="underline" className="w-20 flex flex-col items-center gap-2 border-r p-2 bg-muted/40 h-auto rounded-none">
-                                      <TabsTrigger value="text" className="w-full h-16 flex-col gap-1">
-                                        <Type className="h-5 w-5" /> Text
-                                      </TabsTrigger>
-                                      <TabsTrigger value="draw" className="w-full h-16 flex-col gap-1">
-                                        <Pencil className="h-5 w-5" /> Draw
-                                      </TabsTrigger>
-                                      <TabsTrigger value="upload" className="w-full h-16 flex-col gap-1">
-                                        <Upload className="h-5 w-5" /> Upload
-                                      </TabsTrigger>
-                                    </TabsList>
-                                    <TabsContent value="text" className="flex-1 p-4 mt-0">
-                                      <RadioGroup value={selectedSignatureStyle} onValueChange={setSelectedSignatureStyle} className="space-y-4">
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                                              {signatureFonts.map((fontClass) => (
-                                                  <Label key={fontClass} htmlFor={fontClass} className="flex items-center space-x-3 p-2 border rounded-md cursor-pointer hover:bg-accent/50 has-[:checked]:bg-accent/80 has-[:checked]:ring-2 has-[:checked]:ring-primary">
-                                                      <RadioGroupItem value={fontClass} id={fontClass} />
-                                                      <span className={cn("text-2xl w-full", fontClass)} style={{ color: selectedColor }}>
-                                                          {fullName || "Your Name"}
-                                                      </span>
-                                                  </Label>
-                                              ))}
-                                          </div>
-                                      </RadioGroup>
-                                      <div className="mt-6">
-                                          <Label className="mb-2 block text-sm font-medium">Color</Label>
-                                          <div className="flex items-center gap-4">
-                                              {signatureColors.map(color => (
-                                                  <button 
-                                                      key={color.name}
-                                                      onClick={() => setSelectedColor(color.value)}
-                                                      className={cn(
-                                                          "h-8 w-8 rounded-full border-2 transition-transform transform hover:scale-110",
-                                                          selectedColor === color.value ? "border-primary scale-110 ring-2 ring-primary ring-offset-2" : "border-muted"
-                                                      )}
-                                                      style={{ backgroundColor: color.value }}
-                                                      aria-label={`Select ${color.name} color`}
-                                                  />
-                                              ))}
-                                          </div>
+                      <div className="space-y-1">
+                          <Label htmlFor="initials">Initials</Label>
+                          <Input id="initials" value={initials} readOnly />
+                      </div>
+                  </div>
+                </div>
+                <Tabs defaultValue="signature" className="pt-2">
+                    <TabsList variant="underline" className="w-full grid grid-cols-3 rounded-none bg-transparent border-b px-6">
+                        <TabsTrigger value="signature" className="tabs-trigger-underline"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
+                        <TabsTrigger value="initials" className="tabs-trigger-underline"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
+                        <TabsTrigger value="company-stamp" className="tabs-trigger-underline"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="signature" className="p-0">
+                         <div className="flex">
+                            <Tabs defaultValue="text" onValueChange={(value) => setSignatureMode(value as SignatureMode)} orientation="vertical" className="flex">
+                                <TabsList variant="underline" className="w-20 flex flex-col items-center gap-2 border-r p-2 bg-muted/40 h-auto rounded-none">
+                                  <TabsTrigger value="text" className="w-full h-16 flex-col gap-1 tabs-trigger-underline">
+                                    <Type className="h-5 w-5" /> Text
+                                  </TabsTrigger>
+                                  <TabsTrigger value="draw" className="w-full h-16 flex-col gap-1 tabs-trigger-underline">
+                                    <Pencil className="h-5 w-5" /> Draw
+                                  </TabsTrigger>
+                                  <TabsTrigger value="upload" className="w-full h-16 flex-col gap-1 tabs-trigger-underline">
+                                    <Upload className="h-5 w-5" /> Upload
+                                  </TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="text" className="flex-1 p-4 mt-0">
+                                  <RadioGroup value={selectedSignatureStyle} onValueChange={setSelectedSignatureStyle} className="space-y-4">
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                          {signatureFonts.map((fontClass) => (
+                                              <Label key={fontClass} htmlFor={fontClass} className="flex items-center space-x-3 p-2 border rounded-md cursor-pointer hover:bg-accent/50 has-[:checked]:bg-accent/80 has-[:checked]:ring-2 has-[:checked]:ring-primary">
+                                                  <RadioGroupItem value={fontClass} id={fontClass} />
+                                                  <span className={cn("text-2xl w-full", fontClass)} style={{ color: selectedColor }}>
+                                                      {fullName || "Your Name"}
+                                                  </span>
+                                              </Label>
+                                          ))}
                                       </div>
-                                    </TabsContent>
-                                    <TabsContent value="draw" className="p-4 mt-0"><div className="text-center text-muted-foreground py-10">Drawing canvas will be here.</div></TabsContent>
-                                    <TabsContent value="upload" className="p-4 mt-0"><div className="text-center text-muted-foreground py-10">Image upload area will be here.</div></TabsContent>
-                                </Tabs>
-                             </div>
-                        </TabsContent>
-                         <TabsContent value="initials" className="p-4 text-center text-muted-foreground">Initials signing options will be here.</TabsContent>
-                         <TabsContent value="company-stamp" className="p-4 text-center text-muted-foreground">Company stamp options will be here.</TabsContent>
-                    </Tabs>
-                    <div className="flex justify-end p-6 border-t bg-muted/40">
-                        <Button size="lg" className="bg-red-600 hover:bg-red-700">Apply</Button>
-                    </div>
-                </DialogContent>
-            </div>
+                                  </RadioGroup>
+                                  <div className="mt-6">
+                                      <Label className="mb-2 block text-sm font-medium">Color</Label>
+                                      <div className="flex items-center gap-4">
+                                          {signatureColors.map(color => (
+                                              <button 
+                                                  key={color.name}
+                                                  onClick={() => setSelectedColor(color.value)}
+                                                  className={cn(
+                                                      "h-8 w-8 rounded-full border-2 transition-transform transform hover:scale-110",
+                                                      selectedColor === color.value ? "border-primary scale-110 ring-2 ring-primary ring-offset-2" : "border-muted"
+                                                  )}
+                                                  style={{ backgroundColor: color.value }}
+                                                  aria-label={`Select ${color.name} color`}
+                                              />
+                                          ))}
+                                      </div>
+                                  </div>
+                                </TabsContent>
+                                <TabsContent value="draw" className="p-4 mt-0"><div className="text-center text-muted-foreground py-10">Drawing canvas will be here.</div></TabsContent>
+                                <TabsContent value="upload" className="p-4 mt-0"><div className="text-center text-muted-foreground py-10">Image upload area will be here.</div></TabsContent>
+                            </Tabs>
+                         </div>
+                    </TabsContent>
+                     <TabsContent value="initials" className="p-4 text-center text-muted-foreground">Initials signing options will be here.</TabsContent>
+                     <TabsContent value="company-stamp" className="p-4 text-center text-muted-foreground">Company stamp options will be here.</TabsContent>
+                </Tabs>
+                <div className="flex justify-end p-6 border-t bg-muted/40">
+                    <Button size="lg" className="bg-red-600 hover:bg-red-700">Apply</Button>
+                </div>
+            </DialogContent>
          </Dialog>
       )}
     </div>
   );
 }
-
-    

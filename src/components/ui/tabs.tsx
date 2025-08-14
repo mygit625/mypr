@@ -13,7 +13,7 @@ const tabsListVariants = cva(
     variants: {
       variant: {
         default: "bg-muted",
-        underline: "bg-transparent border-b-2 rounded-none p-0",
+        underline: "bg-transparent border-b rounded-none p-0",
       },
     },
     defaultVariants: {
@@ -82,5 +82,3 @@ const TabsContent = React.forwardRef<
 TabsContent.displayName = TabsPrimitive.Content.displayName
 
 export { Tabs, TabsList, TabsTrigger, TabsContent }
-
-    
