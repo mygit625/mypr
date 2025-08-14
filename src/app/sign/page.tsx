@@ -199,23 +199,19 @@ export default function SignPdfPage() {
                         </TabsList>
                         <TabsContent value="signature" className="p-0">
                              <div className="flex">
-                                <div className="w-16 flex flex-col items-center gap-2 border-r p-2 bg-muted/40">
-                                  <Button variant={signatureMode === 'text' ? 'secondary' : 'ghost'} size="icon" onClick={() => setSignatureMode('text')} title="Text"
-                                    className={cn(signatureMode === 'text' && "ring-2 ring-primary bg-primary/10 text-primary")}>
-                                    <Type className="h-5 w-5" />
-                                  </Button>
-                                  <Button variant={signatureMode === 'draw' ? 'secondary' : 'ghost'} size="icon" onClick={() => setSignatureMode('draw')} title="Draw"
-                                    className={cn(signatureMode === 'draw' && "ring-2 ring-primary bg-primary/10 text-primary")}>
-                                    <Pencil className="h-5 w-5" />
-                                  </Button>
-                                  <Button variant={signatureMode === 'upload' ? 'secondary' : 'ghost'} size="icon" onClick={() => setSignatureMode('upload')} title="Upload"
-                                    className={cn(signatureMode === 'upload' && "ring-2 ring-primary bg-primary/10 text-primary")}>
-                                    <Upload className="h-5 w-5" />
-                                  </Button>
-                                </div>
-                                <div className="flex-1 p-4">
-                                  {signatureMode === 'text' && (
-                                    <>
+                                <Tabs defaultValue="text" orientation="vertical" className="flex">
+                                    <TabsList className="w-20 flex flex-col items-center gap-2 border-r p-2 bg-muted/40 h-auto rounded-none">
+                                      <TabsTrigger value="text" className={cn("w-full h-16 flex-col gap-1", signatureMode === 'text' && "ring-2 ring-primary bg-primary/10 text-primary")}>
+                                        <Type className="h-5 w-5" /> Text
+                                      </TabsTrigger>
+                                      <TabsTrigger value="draw" className={cn("w-full h-16 flex-col gap-1", signatureMode === 'draw' && "ring-2 ring-primary bg-primary/10 text-primary")}>
+                                        <Pencil className="h-5 w-5" /> Draw
+                                      </TabsTrigger>
+                                      <TabsTrigger value="upload" className={cn("w-full h-16 flex-col gap-1", signatureMode === 'upload' && "ring-2 ring-primary bg-primary/10 text-primary")}>
+                                        <Upload className="h-5 w-5" /> Upload
+                                      </TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="text" className="flex-1 p-4 mt-0">
                                       <RadioGroup value={selectedSignatureStyle} onValueChange={setSelectedSignatureStyle} className="space-y-4">
                                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                                               {signatureFonts.map((fontClass) => (
@@ -245,11 +241,10 @@ export default function SignPdfPage() {
                                               ))}
                                           </div>
                                       </div>
-                                    </>
-                                  )}
-                                  {signatureMode === 'draw' && <div className="text-center text-muted-foreground py-10">Drawing canvas will be here.</div>}
-                                  {signatureMode === 'upload' && <div className="text-center text-muted-foreground py-10">Image upload area will be here.</div>}
-                                </div>
+                                    </TabsContent>
+                                    <TabsContent value="draw" className="p-4 mt-0"><div className="text-center text-muted-foreground py-10">Drawing canvas will be here.</div></TabsContent>
+                                    <TabsContent value="upload" className="p-4 mt-0"><div className="text-center text-muted-foreground py-10">Image upload area will be here.</div></TabsContent>
+                                </Tabs>
                              </div>
                         </TabsContent>
                          <TabsContent value="initials" className="p-4 text-center text-muted-foreground">Initials signing options will be here.</TabsContent>
