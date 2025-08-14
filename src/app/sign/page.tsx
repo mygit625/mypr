@@ -28,6 +28,7 @@ import {
   ZoomIn,
   ZoomOut
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const signatureStyles = [
   { id: 'style1', font: 'font-dancing-script', size: 'text-3xl' },
@@ -48,6 +49,7 @@ export default function SignPdfPage() {
   const [initials, setInitials] = useState('TS');
   const [selectedColor, setSelectedColor] = useState('#000000');
   const [selectedSignatureStyle, setSelectedSignatureStyle] = useState('style1');
+  const [selectedInitialStyle, setSelectedInitialStyle] = useState('style1');
   
   const [showSignatureDialog, setShowSignatureDialog] = useState(true);
 
@@ -147,9 +149,10 @@ export default function SignPdfPage() {
                       <Tabs defaultValue="signature" className="w-full">
                           <TabsList variant="underline" className="grid w-full grid-cols-3">
                               <TabsTrigger value="signature" className="tabs-trigger-underline"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
-                              <TabsTrigger value="initials" className="tabs-trigger-underline"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
+                              <TabsTrigger value="initials" className="tabs-trigger-underline"><span className="font-bold mr-2">AC</span>Initials</TabsTrigger>
                               <TabsTrigger value="company_stamp" className="tabs-trigger-underline"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
                           </TabsList>
+                          
                           <TabsContent value="signature" className="mt-4">
                               <div className="flex">
                                   <Tabs defaultValue="text" orientation="vertical" className="w-32 border-r mr-4">
@@ -160,12 +163,13 @@ export default function SignPdfPage() {
                                       </TabsList>
                                   </Tabs>
                                   <div className="flex-1">
+                                    <TabsContent value="text">
                                       <RadioGroup value={selectedSignatureStyle} onValueChange={setSelectedSignatureStyle} className="grid grid-cols-2 gap-4">
                                           {signatureStyles.map(style => (
                                               <div key={style.id} className="flex items-center">
                                                   <RadioGroupItem value={style.id} id={style.id} className="sr-only" />
                                                   <Label htmlFor={style.id} className="w-full cursor-pointer">
-                                                      <div className={`py-2 px-3 border rounded-md ${selectedSignatureStyle === style.id ? 'border-primary ring-2 ring-primary' : ''}`}>
+                                                      <div className={cn('py-2 px-3 border rounded-md', selectedSignatureStyle === style.id ? 'border-primary ring-2 ring-primary' : '')}>
                                                           <p className={`${style.font} ${style.size}`} style={{ color: selectedColor }}>
                                                               {fullName || 'Your Name'}
                                                           </p>
@@ -181,21 +185,59 @@ export default function SignPdfPage() {
                                                   <button
                                                       key={color.id}
                                                       onClick={() => setSelectedColor(color.value)}
-                                                      className={`w-6 h-6 rounded-full transition-all ${selectedColor === color.value ? `ring-2 ${color.ringColor} ring-offset-2` : ''}`}
+                                                      className={cn('w-6 h-6 rounded-full transition-all', selectedColor === color.value ? `ring-2 ${color.ringColor} ring-offset-2` : '')}
                                                       style={{ backgroundColor: color.value }}
                                                       aria-label={`Select ${color.id} color`}
                                                   />
                                               ))}
                                           </div>
                                       </div>
+                                    </TabsContent>
+                                    <TabsContent value="draw">
+                                        <div className="border rounded-md h-48 bg-muted/30 flex items-center justify-center">
+                                            <p className="text-muted-foreground">Drawing canvas placeholder</p>
+                                        </div>
+                                    </TabsContent>
+                                    <TabsContent value="upload">
+                                        <Button variant="outline" className="w-full h-48"><Upload className="mr-2 h-5 w-5"/> Upload Image</Button>
+                                    </TabsContent>
                                   </div>
                               </div>
                           </TabsContent>
-                          <TabsContent value="initials">
-                               <p className="text-center text-muted-foreground p-8">Initials content goes here.</p>
+
+                          <TabsContent value="initials" className="mt-4">
+                               <RadioGroup value={selectedInitialStyle} onValueChange={setSelectedInitialStyle} className="grid grid-cols-2 gap-4">
+                                  {signatureStyles.map(style => (
+                                      <div key={`initial-${style.id}`} className="flex items-center">
+                                          <RadioGroupItem value={style.id} id={`initial-${style.id}`} className="sr-only" />
+                                          <Label htmlFor={`initial-${style.id}`} className="w-full cursor-pointer">
+                                              <div className={cn('py-2 px-3 border rounded-md', selectedInitialStyle === style.id ? 'border-primary ring-2 ring-primary' : '')}>
+                                                  <p className={`${style.font} ${style.size}`} style={{ color: selectedColor }}>
+                                                      {initials || 'TS'}
+                                                  </p>
+                                              </div>
+                                          </Label>
+                                      </div>
+                                  ))}
+                              </RadioGroup>
+                               <div className="mt-6 flex items-center gap-4">
+                                  <Label>Color:</Label>
+                                  <div className="flex items-center gap-2">
+                                      {colorOptions.map(color => (
+                                          <button
+                                              key={color.id}
+                                              onClick={() => setSelectedColor(color.value)}
+                                              className={cn('w-6 h-6 rounded-full transition-all', selectedColor === color.value ? `ring-2 ${color.ringColor} ring-offset-2` : '')}
+                                              style={{ backgroundColor: color.value }}
+                                              aria-label={`Select ${color.id} color`}
+                                          />
+                                      ))}
+                                  </div>
+                              </div>
                           </TabsContent>
-                           <TabsContent value="company_stamp">
-                               <p className="text-center text-muted-foreground p-8">Company Stamp content goes here.</p>
+
+                           <TabsContent value="company_stamp" className="mt-4">
+                                <Button variant="outline" className="w-full h-48"><Upload className="mr-2 h-5 w-5"/> Upload Company Stamp</Button>
                           </TabsContent>
                       </Tabs>
                   </CardContent>
