@@ -5,10 +5,10 @@ import { PDFDocument, type PDFPage } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
 export interface CropArea {
-  x: number; // as percentage of width from left (0-1)
-  y: number; // as percentage of height from top (0-1)
-  width: number; // as percentage of width (0-1)
-  height: number; // as percentage of height (0-1)
+  x: number; // in pixels, relative to the top-left of the client canvas
+  y: number; // in pixels, relative to the top-left of the client canvas
+  width: number; // in pixels
+  height: number; // in pixels
 }
 
 export interface CropPdfInput {
@@ -44,27 +44,24 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
         const page = pdfDoc.getPage(pageIndex);
         const { width: pageWidth, height: pageHeight } = page.getSize();
         
-        // The client canvas is scaled to fit. We need to respect its aspect ratio
-        // to find the correct scale factor for our calculations.
         const pageAspectRatio = pageWidth / pageHeight;
         const canvasAspectRatio = input.clientCanvasWidth / input.clientCanvasHeight;
 
         let scale: number;
         if (pageAspectRatio > canvasAspectRatio) {
-            // Page is wider than canvas area, so width is the limiting factor
             scale = pageWidth / input.clientCanvasWidth;
         } else {
-            // Page is taller or same aspect ratio, so height is the limiting factor
             scale = pageHeight / input.clientCanvasHeight;
         }
         
+        // The cropArea values are now relative to the canvas, so direct scaling works.
         const cropX = input.cropArea.x * scale;
         const cropY = input.cropArea.y * scale;
         const cropWidth = input.cropArea.width * scale;
         const cropHeight = input.cropArea.height * scale;
-
+        
         // pdf-lib's y-coordinate starts from the bottom.
-        // The final Y is: page_height - (y_offset_from_top + crop_height)
+        // Final Y is: page_height - (y_offset_from_top + crop_height)
         const finalY = pageHeight - (cropY + cropHeight);
 
         page.setCropBox(cropX, finalY, cropWidth, cropHeight);

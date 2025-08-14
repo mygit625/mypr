@@ -223,19 +223,23 @@ export default function CropPdfPage() {
   };
   
   const handleCrop = async () => {
-    if (!file || !canvasRef.current) return;
+    if (!file || !canvasRef.current || !containerRef.current) return;
     setIsProcessing(true);
     setError(null);
     try {
       const pdfDataUri = await readFileAsDataURL(file);
       const canvas = canvasRef.current;
-      const container = containerRef.current!;
+      const container = containerRef.current;
 
-      // The canvas is centered, calculate its offset within the container
-      const canvasXOffset = (container.clientWidth - canvas.width) / 2;
-      const canvasYOffset = (container.clientHeight - canvas.height) / 2;
+      const canvasRect = canvas.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      
+      // Calculate the offset of the canvas within its container
+      const canvasXOffset = canvasRect.left - containerRect.left;
+      const canvasYOffset = canvasRect.top - containerRect.top;
 
-      // Convert the absolute crop box pixels into pixels relative to the canvas
+      // Convert the absolute crop box pixels (relative to container) 
+      // into pixels relative to the canvas itself. This is the crucial fix.
       const cropArea: CropArea = {
           x: cropBox.x - canvasXOffset,
           y: cropBox.y - canvasYOffset,
