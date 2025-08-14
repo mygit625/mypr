@@ -22,7 +22,12 @@ if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== 
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 }
 
-type InteractionMode = 'move' | 'resize-br' | 'resize-bl' | 'resize-tr' | 'resize-tl' | null;
+type InteractionMode =
+  | 'move'
+  | 'resize-br' | 'resize-bl' | 'resize-tr' | 'resize-tl'
+  | 'resize-t' | 'resize-b' | 'resize-l' | 'resize-r'
+  | null;
+
 
 export default function CropPdfPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -134,35 +139,46 @@ export default function CropPdfPage() {
     const dx = currentPos.x - startPos.x;
     const dy = currentPos.y - startPos.y;
 
-    let newX = startCropBox.x;
-    let newY = startCropBox.y;
-    let newWidth = startCropBox.width;
-    let newHeight = startCropBox.height;
+    let { x: newX, y: newY, width: newWidth, height: newHeight } = startCropBox;
 
     switch (interaction) {
         case 'move':
-            newX = startCropBox.x + dx;
-            newY = startCropBox.y + dy;
+            newX += dx;
+            newY += dy;
             break;
         case 'resize-br':
-            newWidth = startCropBox.width + dx;
-            newHeight = startCropBox.height + dy;
+            newWidth += dx;
+            newHeight += dy;
             break;
         case 'resize-bl':
-            newX = startCropBox.x + dx;
-            newWidth = startCropBox.width - dx;
-            newHeight = startCropBox.height + dy;
+            newX += dx;
+            newWidth -= dx;
+            newHeight += dy;
             break;
         case 'resize-tr':
-            newY = startCropBox.y + dy;
-            newWidth = startCropBox.width + dx;
-            newHeight = startCropBox.height - dy;
+            newY += dy;
+            newWidth += dx;
+            newHeight -= dy;
             break;
         case 'resize-tl':
-            newX = startCropBox.x + dx;
-            newY = startCropBox.y + dy;
-            newWidth = startCropBox.width - dx;
-            newHeight = startCropBox.height - dy;
+            newX += dx;
+            newY += dy;
+            newWidth -= dx;
+            newHeight -= dy;
+            break;
+        case 'resize-t':
+            newY += dy;
+            newHeight -= dy;
+            break;
+        case 'resize-b':
+            newHeight += dy;
+            break;
+        case 'resize-l':
+            newX += dx;
+            newWidth -= dx;
+            break;
+        case 'resize-r':
+            newWidth += dx;
             break;
     }
     
@@ -271,10 +287,17 @@ export default function CropPdfPage() {
                     onMouseDown={(e) => startInteraction(e, 'move')}
                     onTouchStart={(e) => startInteraction(e, 'move')}
                   >
+                    {/* Corner Handles */}
                     <div className={cn(resizeHandleClasses, "-top-1.5 -left-1.5 cursor-nwse-resize")} onMouseDown={(e) => startInteraction(e, 'resize-tl')} onTouchStart={(e) => startInteraction(e, 'resize-tl')} />
                     <div className={cn(resizeHandleClasses, "-top-1.5 -right-1.5 cursor-nesw-resize")} onMouseDown={(e) => startInteraction(e, 'resize-tr')} onTouchStart={(e) => startInteraction(e, 'resize-tr')} />
                     <div className={cn(resizeHandleClasses, "-bottom-1.5 -left-1.5 cursor-nesw-resize")} onMouseDown={(e) => startInteraction(e, 'resize-bl')} onTouchStart={(e) => startInteraction(e, 'resize-bl')} />
                     <div className={cn(resizeHandleClasses, "-bottom-1.5 -right-1.5 cursor-nwse-resize")} onMouseDown={(e) => startInteraction(e, 'resize-br')} onTouchStart={(e) => startInteraction(e, 'resize-br')} />
+                    
+                    {/* Side Handles */}
+                    <div className={cn(resizeHandleClasses, "top-1/2 -translate-y-1/2 -left-1.5 cursor-ew-resize")} onMouseDown={(e) => startInteraction(e, 'resize-l')} onTouchStart={(e) => startInteraction(e, 'resize-l')} />
+                    <div className={cn(resizeHandleClasses, "top-1/2 -translate-y-1/2 -right-1.5 cursor-ew-resize")} onMouseDown={(e) => startInteraction(e, 'resize-r')} onTouchStart={(e) => startInteraction(e, 'resize-r')} />
+                    <div className={cn(resizeHandleClasses, "left-1/2 -translate-x-1/2 -top-1.5 cursor-ns-resize")} onMouseDown={(e) => startInteraction(e, 'resize-t')} onTouchStart={(e) => startInteraction(e, 'resize-t')} />
+                    <div className={cn(resizeHandleClasses, "left-1/2 -translate-x-1/2 -bottom-1.5 cursor-ns-resize")} onMouseDown={(e) => startInteraction(e, 'resize-b')} onTouchStart={(e) => startInteraction(e, 'resize-b')} />
                   </div>
                 </div>
               </CardContent>
