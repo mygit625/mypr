@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
@@ -182,6 +183,12 @@ export default function CropPdfPage() {
         setIsProcessing(false);
     }
   };
+  
+  const handleDownload = () => {
+    if(croppedPdfUri && file) {
+      downloadDataUri(croppedPdfUri, `cropped_${file.name}`);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -205,7 +212,7 @@ export default function CropPdfPage() {
 
       {isLoading && <div className="text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></div>}
       
-      {file && pdfDoc && !croppedPdfUri && (
+      {file && pdfDoc && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <Card>
@@ -267,30 +274,28 @@ export default function CropPdfPage() {
                     </div>
                 </RadioGroup>
               </CardContent>
-              <CardFooter>
-                 <Button onClick={handleCrop} disabled={isProcessing} className="w-full" size="lg">
-                    {isProcessing ? <Loader2 className="mr-2 animate-spin" /> : <Scissors className="mr-2" />}
-                    Crop PDF
-                </Button>
+              <CardFooter className="flex-col gap-2">
+                 {croppedPdfUri ? (
+                    <>
+                        <Button onClick={handleDownload} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" size="lg">
+                            <Download className="mr-2 h-5 w-5"/> Download Cropped PDF
+                        </Button>
+                        <Button onClick={resetState} className="w-full" variant="outline">
+                            Start Over
+                        </Button>
+                    </>
+                ) : (
+                    <Button onClick={handleCrop} disabled={isProcessing} className="w-full" size="lg">
+                        {isProcessing ? <Loader2 className="mr-2 animate-spin" /> : <Scissors className="mr-2" />}
+                        Crop PDF
+                    </Button>
+                )}
               </CardFooter>
             </Card>
           </div>
         </div>
       )}
-
-      {croppedPdfUri && (
-        <Card className="text-center max-w-lg mx-auto">
-            <CardHeader><CardTitle>Cropping Complete!</CardTitle></CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground mb-4">Your PDF has been successfully cropped.</p>
-            </CardContent>
-            <CardFooter className="flex-col sm:flex-row gap-4">
-                <Button onClick={() => downloadDataUri(croppedPdfUri, `cropped_${file?.name}`)} className="w-full" size="lg"><Download className="mr-2 h-5 w-5" /> Download</Button>
-                <Button onClick={resetState} className="w-full" variant="outline" size="lg"><Upload className="mr-2 h-5 w-5" /> Start Over</Button>
-            </CardFooter>
-        </Card>
-      )}
-
+      
       {error && (
         <Alert variant="destructive" className="max-w-2xl mx-auto">
           <Info className="h-4 w-4" />
