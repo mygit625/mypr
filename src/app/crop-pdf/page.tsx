@@ -3,7 +3,7 @@
 
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
-import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
+import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -22,7 +22,7 @@ if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== 
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 }
 
-type InteractionMode = 'move' | 'resize-br' | null;
+type InteractionMode = 'move' | 'resize-br' | 'resize-bl' | 'resize-tr' | 'resize-tl' | null;
 
 export default function CropPdfPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -134,19 +134,50 @@ export default function CropPdfPage() {
     const dx = currentPos.x - startPos.x;
     const dy = currentPos.y - startPos.y;
 
-    if (interaction === 'move') {
-      let newX = startCropBox.x + dx;
-      let newY = startCropBox.y + dy;
-      newX = Math.max(0, Math.min(newX, 100 - cropBox.width));
-      newY = Math.max(0, Math.min(newY, 100 - cropBox.height));
-      setCropBox({ ...cropBox, x: newX, y: newY });
-    } else if (interaction === 'resize-br') {
-      let newWidth = startCropBox.width + dx;
-      let newHeight = startCropBox.height + dy;
-      newWidth = Math.max(5, Math.min(newWidth, 100 - cropBox.x));
-      newHeight = Math.max(5, Math.min(newHeight, 100 - cropBox.y));
-      setCropBox({ ...cropBox, width: newWidth, height: newHeight });
+    let newX = startCropBox.x;
+    let newY = startCropBox.y;
+    let newWidth = startCropBox.width;
+    let newHeight = startCropBox.height;
+
+    switch (interaction) {
+        case 'move':
+            newX = startCropBox.x + dx;
+            newY = startCropBox.y + dy;
+            break;
+        case 'resize-br':
+            newWidth = startCropBox.width + dx;
+            newHeight = startCropBox.height + dy;
+            break;
+        case 'resize-bl':
+            newX = startCropBox.x + dx;
+            newWidth = startCropBox.width - dx;
+            newHeight = startCropBox.height + dy;
+            break;
+        case 'resize-tr':
+            newY = startCropBox.y + dy;
+            newWidth = startCropBox.width + dx;
+            newHeight = startCropBox.height - dy;
+            break;
+        case 'resize-tl':
+            newX = startCropBox.x + dx;
+            newY = startCropBox.y + dy;
+            newWidth = startCropBox.width - dx;
+            newHeight = startCropBox.height - dy;
+            break;
     }
+    
+    // Clamp values to be within bounds [0, 100] and have minimum size
+    newWidth = Math.max(5, newWidth);
+    newHeight = Math.max(5, newHeight);
+
+    newX = Math.max(0, Math.min(newX, 100 - newWidth));
+    newY = Math.max(0, Math.min(newY, 100 - newHeight));
+    
+    // Ensure width/height don't go beyond boundaries from the new X/Y
+    newWidth = Math.min(newWidth, 100 - newX);
+    newHeight = Math.min(newHeight, 100 - newY);
+
+    setCropBox({ x: newX, y: newY, width: newWidth, height: newHeight });
   };
 
   const endInteraction = () => {
@@ -163,7 +194,7 @@ export default function CropPdfPage() {
         pdfDataUri,
         cropArea: {
             x: cropBox.x / 100,
-            y: (100 - cropBox.y - cropBox.height) / 100, // pdf-lib y-axis is from bottom
+            y: cropBox.y / 100,
             width: cropBox.width / 100,
             height: cropBox.height / 100,
         },
@@ -189,6 +220,8 @@ export default function CropPdfPage() {
       downloadDataUri(croppedPdfUri, `cropped_${file.name}`);
     }
   };
+  
+  const resizeHandleClasses = "absolute w-3 h-3 bg-primary rounded-full border-2 border-white";
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -238,11 +271,10 @@ export default function CropPdfPage() {
                     onMouseDown={(e) => startInteraction(e, 'move')}
                     onTouchStart={(e) => startInteraction(e, 'move')}
                   >
-                    <div
-                      className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-primary cursor-nwse-resize rounded-full border-2 border-white"
-                      onMouseDown={(e) => startInteraction(e, 'resize-br')}
-                      onTouchStart={(e) => startInteraction(e, 'resize-br')}
-                    />
+                    <div className={cn(resizeHandleClasses, "-top-1.5 -left-1.5 cursor-nwse-resize")} onMouseDown={(e) => startInteraction(e, 'resize-tl')} onTouchStart={(e) => startInteraction(e, 'resize-tl')} />
+                    <div className={cn(resizeHandleClasses, "-top-1.5 -right-1.5 cursor-nesw-resize")} onMouseDown={(e) => startInteraction(e, 'resize-tr')} onTouchStart={(e) => startInteraction(e, 'resize-tr')} />
+                    <div className={cn(resizeHandleClasses, "-bottom-1.5 -left-1.5 cursor-nesw-resize")} onMouseDown={(e) => startInteraction(e, 'resize-bl')} onTouchStart={(e) => startInteraction(e, 'resize-bl')} />
+                    <div className={cn(resizeHandleClasses, "-bottom-1.5 -right-1.5 cursor-nwse-resize")} onMouseDown={(e) => startInteraction(e, 'resize-br')} onTouchStart={(e) => startInteraction(e, 'resize-br')} />
                   </div>
                 </div>
               </CardContent>

@@ -5,10 +5,10 @@ import { PDFDocument, type PDFPage } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
 export interface CropArea {
-  x: number; // as percentage of width from left
-  y: number; // as percentage of height from top
-  width: number; // as percentage of width
-  height: number; // as percentage of height
+  x: number; // as percentage of width from left (0-1)
+  y: number; // as percentage of height from top (0-1)
+  width: number; // as percentage of width (0-1)
+  height: number; // as percentage of height (0-1)
 }
 
 export interface CropPdfInput {
@@ -37,15 +37,16 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
       : [pdfDoc.getPage(input.currentPage - 1)];
 
     for (const page of pagesToCrop) {
-      const { width, height } = page.getSize();
+      const { width: pageWidth, height: pageHeight } = page.getSize();
       
-      const newX = width * input.cropArea.x;
-      const newWidth = width * input.cropArea.width;
-      const newHeight = height * input.cropArea.height;
-      // pdf-lib's y-coordinate starts from the bottom of the page.
+      const newWidth = pageWidth * input.cropArea.width;
+      const newHeight = pageHeight * input.cropArea.height;
+      const newX = pageWidth * input.cropArea.x;
+      
+      // Correct calculation for pdf-lib's y-coordinate system (origin is bottom-left).
       // The client sends `y` as the top offset percentage.
-      // Correct y = page_height - (top_offset + crop_height)
-      const newY = height - (height * input.cropArea.y + newHeight);
+      // The correct y for pdf-lib is: page_height - (top_offset_in_points + crop_box_height_in_points)
+      const newY = pageHeight - (pageHeight * input.cropArea.y + newHeight);
       
       page.setCropBox(newX, newY, newWidth, newHeight);
     }
