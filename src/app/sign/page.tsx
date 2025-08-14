@@ -29,29 +29,6 @@ import {
   ZoomOut
 } from 'lucide-react';
 
-// Custom DrawIcon as it's not in lucide-react
-const DrawIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.44 2.9 8.19 6.84 9.49" />
-    <path d="M20.35 6.65A9.94 9.94 0 0 0 12 2" />
-    <path d="M12 12H2" />
-    <path d="M12 22v-3" />
-    <path d="M17 3.5v3" />
-    <path d="M20.5 8.5h-3" />
-  </svg>
-);
-
 const signatureStyles = [
   { id: 'style1', font: 'font-dancing-script', size: 'text-3xl' },
   { id: 'style2', font: 'font-pacifico', size: 'text-2xl' },
@@ -122,7 +99,7 @@ export default function SignPdfPage() {
                     <p className="font-semibold text-primary">Simple Signature</p>
                 </CardContent>
             </Card>
-             <Card className="text-center p-4 cursor-pointer hover:border-primary/50">
+             <Card className="text-center p-4 cursor-pointer hover:border-primary/50 relative">
                 <CardContent className="p-0">
                     <p className="text-xs text-yellow-500 font-bold absolute top-2 right-2">PRO</p>
                     <Signature className="h-8 w-8 text-muted-foreground mx-auto mb-2"/>
@@ -169,17 +146,17 @@ export default function SignPdfPage() {
 
                       <Tabs defaultValue="signature" className="w-full">
                           <TabsList variant="underline" className="grid w-full grid-cols-3">
-                              <TabsTrigger value="signature" variant="underline"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
-                              <TabsTrigger value="initials" variant="underline"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
-                              <TabsTrigger value="company_stamp" variant="underline"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
+                              <TabsTrigger value="signature" className="tabs-trigger-underline"><Pencil className="mr-2 h-4 w-4"/>Signature</TabsTrigger>
+                              <TabsTrigger value="initials" className="tabs-trigger-underline"><Signature className="mr-2 h-4 w-4"/>Initials</TabsTrigger>
+                              <TabsTrigger value="company_stamp" className="tabs-trigger-underline"><Building className="mr-2 h-4 w-4"/>Company Stamp</TabsTrigger>
                           </TabsList>
                           <TabsContent value="signature" className="mt-4">
                               <div className="flex">
                                   <Tabs defaultValue="text" orientation="vertical" className="w-32 border-r mr-4">
                                       <TabsList className="grid grid-cols-1 h-auto p-0 bg-transparent">
-                                          <TabsTrigger value="text" variant="underline" className="justify-start h-12"><Type className="mr-2 h-5 w-5"/> Text</TabsTrigger>
-                                          <TabsTrigger value="draw" variant="underline" className="justify-start h-12"><DrawIcon className="mr-2 h-5 w-5"/> Draw</TabsTrigger>
-                                          <TabsTrigger value="upload" variant="underline" className="justify-start h-12"><Upload className="mr-2 h-5 w-5"/> Upload</TabsTrigger>
+                                          <TabsTrigger value="text" className="tabs-trigger-underline justify-start h-12"><Type className="mr-2 h-5 w-5"/> Text</TabsTrigger>
+                                          <TabsTrigger value="draw" className="tabs-trigger-underline justify-start h-12"><Pencil className="mr-2 h-5 w-5"/> Draw</TabsTrigger>
+                                          <TabsTrigger value="upload" className="tabs-trigger-underline justify-start h-12"><Upload className="mr-2 h-5 w-5"/> Upload</TabsTrigger>
                                       </TabsList>
                                   </Tabs>
                                   <div className="flex-1">
