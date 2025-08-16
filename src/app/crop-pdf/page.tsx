@@ -235,7 +235,7 @@ export default function CropPdfPage() {
         : [currentPage - 1];
 
       const imageDataUris: string[] = [];
-      const RENDER_SCALE = 2.0;
+      const RENDER_SCALE = 3.0;
 
       for (const pageIndex of pageIndicesToProcess) {
         const page = await pdfDoc.getPage(pageIndex + 1);
