@@ -8,7 +8,7 @@ import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dis
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
-import { Crop, Download, Upload, Loader2, Info, ArrowLeft, ArrowRight, Scissors, FileUp, MousePointerSquare, DownloadCloud, HelpCircle } from 'lucide-react';
+import { Crop, Download, Upload, Loader2, Info, ArrowLeft, ArrowRight, Scissors, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
@@ -447,7 +447,7 @@ export default function CropPdfPage() {
               </div>
               <div className="flex flex-col items-center">
                 <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
-                  <MousePointerSquare className="h-8 w-8" />
+                  <MousePointerClick className="h-8 w-8" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">2. Select Your Crop Area</h3>
                 <p className="text-muted-foreground">A preview of your PDF will appear. Click and drag on the page to draw a crop box. You can adjust the box by dragging its edges and corners.</p>
