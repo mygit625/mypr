@@ -10,13 +10,14 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { RotateCcw, RotateCw, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download } from 'lucide-react';
+import { RotateCcw, RotateCw, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { assembleIndividualPagesAction } from '@/app/rotate/actions';
 import { cn } from '@/lib/utils';
 import { PageConfetti } from '@/components/ui/page-confetti';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -102,10 +103,21 @@ export default function RotatePdfPage() {
     setIsLoadingPreviews(false);
     return newPageItems;
   };
+  
+  const handleFilesSelected = async (newFilesFromInput: File[]) => {
+    const processedNewPageItems = await processFiles(newFilesFromInput);
+    setSelectedPdfItems((prevItems) => [...prevItems, ...processedNewPageItems]);
+  };
 
   const handleInitialFilesSelected = async (newFilesFromInput: File[]) => {
     const processedNewPageItems = await processFiles(newFilesFromInput);
     setSelectedPdfItems(processedNewPageItems);
+  };
+  
+  const handleHiddenInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      handleFilesSelected(Array.from(event.target.files));
+    }
   };
 
   const handleRemovePage = (idToRemove: string) => {
@@ -214,6 +226,15 @@ export default function RotatePdfPage() {
           </CardContent>
         </Card>
       )}
+
+      <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleHiddenInputChange}
+          multiple
+          accept="application/pdf"
+          className="hidden"
+      />
 
       {isLoadingPreviews && (
         <div className="flex justify-center items-center py-12">
@@ -334,6 +355,76 @@ export default function RotatePdfPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Rotate PDF Pages</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDF(s)</h3>
+              <p className="text-muted-foreground">Select one or more PDF files. Each page will be displayed as a thumbnail, ready for you to manage.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Rotate and Reorder</h3>
+              <p className="text-muted-foreground">Click the rotate buttons on any page to change its orientation. Drag and drop pages to reorder them as needed.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Apply and Download</h3>
+              <p className="text-muted-foreground">Once your pages are correctly oriented and ordered, click "Apply & Download" to get your new PDF file.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Can I rotate just one page in a multi-page PDF?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes, absolutely. Our tool displays each page of your document individually. You can click the rotate buttons on a specific page thumbnail to adjust its orientation without affecting any other pages in the document.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">Is it possible to rotate all pages at once?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes. For convenience, we provide a "Rotate All Pages" button above the page previews. Clicking this will rotate every page in your document 90 degrees clockwise at the same time.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">Will rotating a PDF affect its quality?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                No, rotating a PDF is a lossless operation. Our tool changes the orientation metadata for the pages without re-compressing or altering the quality of the text or images within your document.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+        
+        <section>
+          <div className="prose dark:prose-invert lg:prose-lg max-w-full">
+            <h2 className="text-3xl font-bold text-center">Mastering PDF Orientation</h2>
+            <p>Incorrect page orientation is a common annoyance when dealing with PDF documents. A scanned document might be sideways, or a table might be in landscape while the rest of the report is in portrait. Our free online PDF rotator provides a simple and powerful solution to fix these issues permanently.</p>
+            <h3>Why You Need to Rotate PDF Files</h3>
+            <ul>
+              <li><strong>Correcting Scanned Documents:</strong> Scanners don't always get the orientation right. Our tool lets you quickly fix pages that are upside down or sideways.</li>
+              <li><strong>Combining Portrait and Landscape:</strong> When merging documents, you might have pages with different orientations. Our rotator lets you adjust each page individually for a consistent final document.</li>
+              <li><strong>Improving Readability:</strong> A document with the correct orientation is easier to read on any screen, eliminating the need for viewers to manually rotate the view each time.</li>
+            </ul>
+            <p>Unlike simple viewers that only temporarily change the view, our tool permanently saves the rotation changes to the file itself. This means that when you share the new PDF, it will open in the correct orientation for everyone, on any device. With the ability to handle multiple files, reorder pages, and rotate individual pages or the entire document at once, you have complete control over your final output.</p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

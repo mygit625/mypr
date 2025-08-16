@@ -11,12 +11,14 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { LayoutGrid, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine, RotateCcw, RotateCw, Download } from 'lucide-react';
+import { LayoutGrid, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine, RotateCcw, RotateCw, Download, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { assembleIndividualPagesAction } from '@/app/organize/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -49,6 +51,7 @@ export default function OrganizePage() {
   const [isOrganizing, setIsOrganizing] = useState(false);
   const [organizedPdfUri, setOrganizedPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,6 +63,7 @@ export default function OrganizePage() {
       setSelectedPdfItems([]);
       setOrganizedPdfUri(null);
       setError(null);
+      setShowConfetti(false);
       if (fileInputRef.current) {
           fileInputRef.current.value = "";
       }
@@ -215,6 +219,7 @@ export default function OrganizePage() {
         });
       } else if (result.organizedPdfDataUri) {
         setOrganizedPdfUri(result.organizedPdfDataUri);
+        setShowConfetti(true);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during organization.";
@@ -264,6 +269,7 @@ export default function OrganizePage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <LayoutGrid className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Organize PDF Pages</h1>
@@ -450,6 +456,55 @@ export default function OrganizePage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-    </div>
-  );
-}
+
+      <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Organize a PDF</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDF(s)</h3>
+              <p className="text-muted-foreground">Select one or more PDF files. All pages will appear as individual thumbnails, ready for you to manage.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Reorder, Rotate & Delete</h3>
+              <p className="text-muted-foreground">Simply drag and drop the page thumbnails to change their order. Use the buttons on each page to rotate or remove them.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Create and Download</h3>
+              <p className="text-muted-foreground">Once you are happy with the arrangement, click the "Organize & Save" button to create your new PDF file.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Can I add pages from a different PDF?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes. Our tool is designed for flexibility. After uploading your first PDF, you can use the '+' buttons that appear between the pages to upload another PDF. All pages from the new document will be added to your workspace, allowing you to integrate and reorder them with the existing pages.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">How do I remove a page I don't want?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Each page thumbnail has a small 'X' icon in the top right corner. Simply click this icon to remove any unwanted page from your document before saving the final version.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">Will organizing the pages affect the PDF quality?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                No. Reordering, rotating, and deleting pages are lossless operations. The quality and formatting of your original pages are perfectly preserved in the final, organized PDF document.
+              </A
