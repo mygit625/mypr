@@ -1,13 +1,14 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
-// This is a temporary workaround for local development due to persistent issues with env variables.
-// In a production environment managed by apphosting.yaml, process.env.GEMINI_API_KEY will be used.
-const geminiApiKey = process.env.GEMINI_API_KEY || 'AIzaSyBnVDKYBs_WhDy7mdSinfm8lWCLA71iHVY';
+// In a production environment managed by apphosting.yaml, 
+// process.env.GEMINI_API_KEY will be provided.
+// For local development, ensure this is set in your .env.local file.
+const geminiApiKey = process.env.GEMINI_API_KEY;
 
-if (geminiApiKey === 'YOUR_GEMINI_API_KEY' || !geminiApiKey) {
+if (!geminiApiKey) {
   console.warn(
-    'Gemini API key is not set. Please set it in your environment for production.'
+    'Gemini API key is not set. Please set it in your environment for the application to function correctly.'
   );
 }
 
