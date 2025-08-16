@@ -240,7 +240,7 @@ export default function CropPdfPage() {
       const canvasXOffset = canvasRect.left - containerRect.left;
       const canvasYOffset = canvasRect.top - containerRect.top;
 
-      // Convert the container-relative crop box to be canvas-relative.
+      // Convert the container-relative crop box to be canvas-relative. This is the crucial step.
       const cropArea: CropArea = {
           x: cropBox.x - canvasXOffset,
           y: cropBox.y - canvasYOffset,

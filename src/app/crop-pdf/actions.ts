@@ -1,7 +1,7 @@
 
 'use server';
 
-import { PDFDocument, type PDFPage } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
 export interface CropArea {
