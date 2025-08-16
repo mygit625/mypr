@@ -15,7 +15,6 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { cropPdfAction, type CropArea } from './actions';
 import { PageConfetti } from '@/components/ui/page-confetti';
 
@@ -242,7 +241,7 @@ export default function CropPdfPage() {
       const canvasYOffset = canvasRect.top - containerRect.top;
 
       // Convert the absolute crop box pixels (relative to container) 
-      // into pixels relative to the canvas itself.
+      // into pixels relative to the canvas itself. This is the crucial fix.
       const cropArea: CropArea = {
           x: cropBox.x - canvasXOffset,
           y: cropBox.y - canvasYOffset,
