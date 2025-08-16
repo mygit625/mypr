@@ -27,11 +27,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { FileImage, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, RotateCcw, RotateCw, Settings2 } from 'lucide-react';
+import { FileImage, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, RotateCcw, RotateCw, Settings2, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -63,6 +66,7 @@ export default function PdfToJpgPage() {
   const [isLoadingPreviews, setIsLoadingPreviews] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false); // Used for both single and ZIP conversion
   const [processedUri, setProcessedUri] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -78,6 +82,7 @@ export default function PdfToJpgPage() {
     setSelectedPdfItems([]);
     setProcessedUri(null);
     setError(null);
+    setShowConfetti(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -202,6 +207,7 @@ export default function PdfToJpgPage() {
       zipReader.onload = function(event) {
         if (event.target && typeof event.target.result === 'string') {
           setProcessedUri(event.target.result);
+          setShowConfetti(true);
         } else {
             throw new Error("Failed to read ZIP blob as Data URI.");
         }
@@ -369,6 +375,7 @@ export default function PdfToJpgPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <FileImage className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">PDF to JPG Converter</h1>
@@ -564,6 +571,77 @@ export default function PdfToJpgPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Convert PDF to JPG</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDF</h3>
+              <p className="text-muted-foreground">Select your PDF file. All pages will be displayed as individual thumbnails, ready for conversion.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Adjust & Convert</h3>
+              <p className="text-muted-foreground">Rotate or reorder pages as needed. You can download each page as a JPG individually or all pages together in a ZIP file.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Download Your Images</h3>
+              <p className="text-muted-foreground">Click the download button for a single image or the "Download All as ZIP" button to get all your high-quality JPG files at once.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Can I convert a specific page from the PDF to JPG?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes. After you upload your PDF, each page is displayed as a thumbnail. Every thumbnail has its own "Download JPG" button, allowing you to convert and save just the specific pages you need.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">How do I control the quality of the output JPG?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                In the "Conversion Options" panel, you'll find sliders for "JPG Quality" and "Image Scale". Adjusting the quality slider changes the compression level, while the scale slider changes the output resolution of the image. A higher scale results in a larger, more detailed image.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">Will my converted JPG files have a watermark?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                No. Our PDF to JPG converter is completely free and does not add any watermarks to your images. You get clean, high-quality JPG files every time.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+
+        <section>
+          <div className="prose dark:prose-invert lg:prose-lg max-w-full">
+            <h2 className="text-3xl font-bold text-center">Your Go-To PDF to JPG Converter</h2>
+            <p>The need to convert a PDF to a JPG image is common. JPGs are perfect for web use, social media posts, email attachments, and embedding in presentations. Our free online PDF to JPG converter is designed to make this process as simple and flexible as possible, giving you full control over the output.</p>
+            <h3>When to Convert a PDF to an Image</h3>
+            <ul>
+              <li><strong>Web Graphics:</strong> Easily extract a chart, graph, or infographic from a PDF report to use on your website or blog.</li>
+              <li><strong>Social Media Sharing:</strong> Turn a flyer or a single page from a PDF into an image that's easy to share on platforms like Instagram, Facebook, or Twitter.</li>
+              <li><strong>Presentation Slides:</strong> Insert a high-quality image of a PDF page directly into your PowerPoint or Google Slides presentation.</li>
+              <li><strong>Email Previews:</strong> Send a quick preview of a document as an image in an email instead of a larger PDF attachment.</li>
+            </ul>
+            <p>Our tool goes beyond simple conversion. We provide page-level control, allowing you to rotate, reorder, and select exactly which pages you want to convert. With adjustable quality and resolution settings, you can tailor the output to be perfect for your needs, whether you require a high-resolution image for printing or a small, web-optimized file. It’s the fastest and most flexible way to turn your PDF pages into versatile JPG images.</p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

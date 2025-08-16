@@ -11,13 +11,15 @@ import { Slider } from '@/components/ui/slider';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Droplets, Loader2, Info, ArrowRightCircle, Check, Download } from 'lucide-react';
+import { Droplets, Loader2, Info, ArrowRightCircle, Check, Download, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { watermarkPdfAction, type WatermarkPosition } from '@/app/watermark/actions';
 import { cn } from '@/lib/utils';
 import { getInitialPageDataAction, type PageData } from '@/app/organize/actions';
+import { PageConfetti } from '@/components/ui/page-confetti';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const PREVIEW_TARGET_HEIGHT_WATERMARK = 250;
 
@@ -28,6 +30,7 @@ export default function WatermarkPage() {
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedUri, setProcessedUri] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -45,6 +48,7 @@ export default function WatermarkPage() {
     setPages([]);
     setError(null);
     setProcessedUri(null);
+    setShowConfetti(false);
   };
 
   const handleFileSelected = async (selectedFiles: File[]) => {
@@ -99,6 +103,7 @@ export default function WatermarkPage() {
         toast({ title: "Processing Error", description: result.error, variant: "destructive" });
       } else if (result.watermarkedPdfDataUri) {
         setProcessedUri(result.watermarkedPdfDataUri);
+        setShowConfetti(true);
       }
     } catch (e: any) {
       setError(e.message || "An unexpected error occurred.");
@@ -128,6 +133,7 @@ export default function WatermarkPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Droplets className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-4xl font-bold tracking-tight">Add Watermark to PDF</h1>
@@ -282,6 +288,83 @@ export default function WatermarkPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+      
+      <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Add a Watermark to a PDF</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDF</h3>
+              <p className="text-muted-foreground">Select or drag your PDF file into the upload area. The document will be securely processed in your browser.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Customize Your Watermark</h3>
+              <p className="text-muted-foreground">Enter your text and use the options panel to choose the position, font size, color, opacity, and rotation. See a live preview of your changes.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Apply & Download</h3>
+              <p className="text-muted-foreground">Click the "Apply Watermark" button. Your new, watermarked PDF will be ready for instant download.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Can I add an image as a watermark?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Currently, our tool specializes in adding text-based watermarks. This provides a wide range of customization options for protecting or labeling your documents. We are exploring the possibility of adding image watermark support in the future.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">Is the watermark applied to every page?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes. When you apply the watermark, it will be added to every page of your PDF document in the same position and style you have selected, ensuring consistent branding or labeling throughout the file.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">Can the watermark be removed after it's been added?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Once the watermark is applied and you download the new PDF, it becomes a permanent part of each page and cannot be easily removed by standard PDF viewers. This makes it effective for protecting your content.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-4">
+              <AccordionTrigger className="text-lg text-left">Are my uploaded PDF files secure?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Your privacy is our priority. All processing happens directly on our secure servers, and your files are automatically deleted after one hour. We never share or access your files.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+
+        <section>
+          <div className="prose dark:prose-invert lg:prose-lg max-w-full">
+            <h2 className="text-3xl font-bold text-center">Protect and Brand Your Documents</h2>
+            <p>Adding a watermark to a PDF is a simple yet powerful way to protect your intellectual property, assert ownership, or indicate the status of a document. Whether you're a photographer sharing a portfolio, a business sending a confidential proposal, or a writer distributing a draft, a watermark is an essential tool. Our free online "Add Watermark to PDF" tool makes this process effortless.</p>
+            <h3>Common Uses for Watermarking PDFs</h3>
+            <ul>
+              <li><strong>Copyright Protection:</strong> Place your name or company logo on your work to deter unauthorized use and ensure you are credited.</li>
+              <li><strong>Branding:</strong> Consistently brand your documents with your company name or website, reinforcing your brand identity with every file you share.</li>
+              <li><strong>Document Status:</strong> Clearly label documents with terms like "DRAFT," "CONFIDENTIAL," "COPY," or "SAMPLE" to prevent misuse and manage document versions effectively.</li>
+              <li><strong>Information Tagging:</strong> Add important information like a date, a username, or a transaction ID to each page for tracking and reference purposes.</li>
+            </ul>
+            <p>Our tool offers complete control over your text watermark's appearance. You can fine-tune the font size, transparency (opacity), rotation, and color to create a watermark that is either subtle or prominent, depending on your needs. With nine placement options, you can position your watermark precisely where it works best for your layout. Protect and professionalize your documents in seconds with our easy-to-use watermarking tool.</p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
