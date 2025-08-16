@@ -235,14 +235,12 @@ export default function CropPdfPage() {
         : [currentPage - 1];
 
       const imageDataUris: string[] = [];
-      const RENDER_SCALE = 2.0; // Render at 2x resolution for better quality
-      const JPEG_QUALITY = 0.9;
+      const RENDER_SCALE = 2.0;
 
       for (const pageIndex of pageIndicesToProcess) {
         const page = await pdfDoc.getPage(pageIndex + 1);
         const viewport = page.getViewport({ scale: 1 });
         
-        // --- Get canvas and container dimensions for the current page preview
         const previewCanvas = canvasRef.current!;
         const previewContainer = containerRef.current!;
         const previewScale = Math.min(
@@ -252,19 +250,15 @@ export default function CropPdfPage() {
         const previewViewport = page.getViewport({ scale: previewScale });
         const offsetX = (previewContainer.clientWidth - previewViewport.width) / 2;
         const offsetY = (previewContainer.clientHeight - previewViewport.height) / 2;
-        // ---
 
-        // Translate crop box from container-relative to canvas-relative
         const canvasRelativeCropX = cropBox.x - offsetX;
         const canvasRelativeCropY = cropBox.y - offsetY;
 
-        // Scale the canvas-relative crop box to the full-resolution page
         const finalCropX = canvasRelativeCropX / previewScale * RENDER_SCALE;
         const finalCropY = canvasRelativeCropY / previewScale * RENDER_SCALE;
         const finalCropWidth = cropBox.width / previewScale * RENDER_SCALE;
         const finalCropHeight = cropBox.height / previewScale * RENDER_SCALE;
 
-        // Render the full page at high resolution
         const highResViewport = page.getViewport({ scale: RENDER_SCALE });
         const renderCanvas = document.createElement('canvas');
         renderCanvas.width = highResViewport.width;
@@ -273,21 +267,19 @@ export default function CropPdfPage() {
         if (!renderCtx) throw new Error("Could not create render context");
         await page.render({ canvasContext: renderCtx, viewport: highResViewport }).promise;
 
-        // Create the final cropped canvas
         const finalCanvas = document.createElement('canvas');
         finalCanvas.width = finalCropWidth;
         finalCanvas.height = finalCropHeight;
         const finalCtx = finalCanvas.getContext('2d');
         if (!finalCtx) throw new Error("Could not create final context");
 
-        // Draw the cropped section from the high-res canvas to the final canvas
         finalCtx.drawImage(
           renderCanvas,
-          finalCropX, finalCropY, finalCropWidth, finalCropHeight, // Source rect
-          0, 0, finalCropWidth, finalCropHeight // Destination rect
+          finalCropX, finalCropY, finalCropWidth, finalCropHeight,
+          0, 0, finalCropWidth, finalCropHeight
         );
 
-        imageDataUris.push(finalCanvas.toDataURL('image/jpeg', JPEG_QUALITY));
+        imageDataUris.push(finalCanvas.toDataURL('image/png'));
       }
 
       const result = await createPdfFromImagesAction({ imageDataUris });
@@ -364,13 +356,11 @@ export default function CropPdfPage() {
                     onMouseDown={(e) => startInteraction(e, 'move')}
                     onTouchStart={(e) => startInteraction(e, 'move')}
                   >
-                    {/* Corner Handles */}
                     <div className={cn(resizeHandleClasses, "-top-1.5 -left-1.5 cursor-nwse-resize")} onMouseDown={(e) => startInteraction(e, 'resize-tl')} onTouchStart={(e) => startInteraction(e, 'resize-tl')} />
                     <div className={cn(resizeHandleClasses, "-top-1.5 -right-1.5 cursor-nesw-resize")} onMouseDown={(e) => startInteraction(e, 'resize-tr')} onTouchStart={(e) => startInteraction(e, 'resize-tr')} />
                     <div className={cn(resizeHandleClasses, "-bottom-1.5 -left-1.5 cursor-nesw-resize")} onMouseDown={(e) => startInteraction(e, 'resize-bl')} onTouchStart={(e) => startInteraction(e, 'resize-bl')} />
                     <div className={cn(resizeHandleClasses, "-bottom-1.5 -right-1.5 cursor-nwse-resize")} onMouseDown={(e) => startInteraction(e, 'resize-br')} onTouchStart={(e) => startInteraction(e, 'resize-br')} />
                     
-                    {/* Side Handles */}
                     <div className={cn(resizeHandleClasses, "top-1/2 -translate-y-1/2 -left-1.5 cursor-ew-resize")} onMouseDown={(e) => startInteraction(e, 'resize-l')} onTouchStart={(e) => startInteraction(e, 'resize-l')} />
                     <div className={cn(resizeHandleClasses, "top-1/2 -translate-y-1/2 -right-1.5 cursor-ew-resize")} onMouseDown={(e) => startInteraction(e, 'resize-r')} onTouchStart={(e) => startInteraction(e, 'resize-r')} />
                     <div className={cn(resizeHandleClasses, "left-1/2 -translate-x-1/2 -top-1.5 cursor-ns-resize")} onMouseDown={(e) => startInteraction(e, 'resize-t')} onTouchStart={(e) => startInteraction(e, 'resize-t')} />
