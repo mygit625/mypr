@@ -432,99 +432,97 @@ export default function CropPdfPage() {
         </Alert>
       )}
 
-      {file && (
-        <div className="max-w-4xl mx-auto space-y-16 pt-16">
-          {/* How to Use Section */}
-          <section>
-            <h2 className="text-3xl font-bold text-center mb-8">How to Use Our Free Online PDF Cropper</h2>
-            <div className="grid md:grid-cols-3 gap-8 text-center">
-              <div className="flex flex-col items-center">
-                <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
-                  <FileUp className="h-8 w-8" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">1. Upload Your PDF</h3>
-                <p className="text-muted-foreground">Click the upload button or drag and drop your file into the designated area. Your file is processed securely in your browser.</p>
+      <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        {/* How to Use Section */}
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Use Our Free Online PDF Cropper</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
               </div>
-              <div className="flex flex-col items-center">
-                <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
-                  <MousePointerClick className="h-8 w-8" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">2. Select Your Crop Area</h3>
-                <p className="text-muted-foreground">A preview of your PDF will appear. Click and drag on the page to draw a crop box. You can adjust the box by dragging its edges and corners.</p>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDF</h3>
+              <p className="text-muted-foreground">Click the upload button or drag and drop your file into the designated area. Your file is processed securely in your browser.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
               </div>
-              <div className="flex flex-col items-center">
-                <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
-                  <DownloadCloud className="h-8 w-8" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">3. Crop and Download</h3>
-                <p className="text-muted-foreground">Choose to apply the crop to a single page or all pages, then click the "Crop PDF" button. Download your perfectly cropped PDF instantly.</p>
+              <h3 className="text-xl font-semibold mb-2">2. Select Your Crop Area</h3>
+              <p className="text-muted-foreground">A preview of your PDF will appear. Click and drag on the page to draw a crop box. You can adjust the box by dragging its edges and corners.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
               </div>
+              <h3 className="text-xl font-semibold mb-2">3. Crop and Download</h3>
+              <p className="text-muted-foreground">Choose to apply the crop to a single page or all pages, then click the "Crop PDF" button. Download your perfectly cropped PDF instantly.</p>
             </div>
-          </section>
+          </div>
+        </section>
 
-          {/* FAQ Section */}
-          <section>
-            <div className="text-center mb-12">
-              <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
-              <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
-              <p className="mt-2 text-muted-foreground">Quick answers to common questions about our PDF cropping tool.</p>
-            </div>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="item-1">
-                <AccordionTrigger className="text-lg text-left">Is this PDF cropping tool free to use?</AccordionTrigger>
-                <AccordionContent className="text-base text-muted-foreground">
-                  Yes, absolutely. Our online PDF cropper is completely free to use. There are no hidden fees, watermarks, or sign-up requirements. You can crop as many PDF files as you need.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="item-2">
-                <AccordionTrigger className="text-lg text-left">Are my uploaded files secure?</AccordionTrigger>
-                <AccordionContent className="text-base text-muted-foreground">
-                  We prioritize your privacy and security. The entire cropping process happens in your browser, meaning your files are never uploaded to our servers. Your data remains private and secure on your own device.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="item-3">
-                <AccordionTrigger className="text-lg text-left">Can I crop multiple pages of a PDF at once?</AccordionTrigger>
-                <AccordionContent className="text-base text-muted-foreground">
-                  Yes, you can. After defining your crop area on a single page, you have the option to apply that same crop selection to all pages in the document. This is perfect for consistently removing headers, footers, or margins from an entire file.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="item-4">
-                <AccordionTrigger className="text-lg text-left">Will cropping a PDF reduce its quality?</AccordionTrigger>
-                <AccordionContent className="text-base text-muted-foreground">
-                  No, our tool is designed to maintain the highest possible quality. When you crop a PDF, we don't re-compress the content within your selected area. The text, images, and graphics will retain their original clarity and resolution.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </section>
+        {/* FAQ Section */}
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+            <p className="mt-2 text-muted-foreground">Quick answers to common questions about our PDF cropping tool.</p>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Is this PDF cropping tool free to use?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes, absolutely. Our online PDF cropper is completely free to use. There are no hidden fees, watermarks, or sign-up requirements. You can crop as many PDF files as you need.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">Are my uploaded files secure?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                We prioritize your privacy and security. The entire cropping process happens in your browser, meaning your files are never uploaded to our servers. Your data remains private and secure on your own device.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">Can I crop multiple pages of a PDF at once?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes, you can. After defining your crop area on a single page, you have the option to apply that same crop selection to all pages in the document. This is perfect for consistently removing headers, footers, or margins from an entire file.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-4">
+              <AccordionTrigger className="text-lg text-left">Will cropping a PDF reduce its quality?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                No, our tool is designed to maintain the highest possible quality. When you crop a PDF, we don't re-compress the content within your selected area. The text, images, and graphics will retain their original clarity and resolution.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
 
-          {/* Blog Post Section */}
-          <section>
-            <div className="prose dark:prose-invert lg:prose-lg max-w-full">
-              <h2 className="text-3xl font-bold text-center">The Ultimate Guide to Cropping PDF Files</h2>
-              <p>Cropping a PDF is a common task, but it can be surprisingly tricky without the right tool. Whether you need to remove unwanted margins, trim away unnecessary white space, or focus on a specific part of a page, a reliable PDF cropper is essential. Our free online tool makes this process simple, secure, and efficient.</p>
-              
-              <h3>Why Crop a PDF?</h3>
-              <p>There are many reasons you might need to crop a PDF document. Here are a few common scenarios:</p>
-              <ul>
-                <li><strong>Removing White Margins:</strong> Many documents have large margins that are unnecessary for digital viewing or can waste space when printing. Cropping the PDF allows you to create a cleaner, more focused document that is easier to read on screens of all sizes.</li>
-                <li><strong>Focusing on Specific Content:</strong> You might have a page with multiple charts, images, or blocks of text, but you only need to share or present one specific area. Our tool lets you crop a PDF to isolate that specific content, creating a new, targeted document.</li>
-                <li><strong>Preparing for Presentations:</strong> When using a PDF in a presentation, cropping allows you to remove distracting elements like headers, footers, or page numbers, ensuring your audience focuses only on the important information.</li>
-                <li><strong>Standardizing Document Sizes:</strong> If you're combining multiple PDFs from different sources, they may have different page sizes. Cropping can help you standardize the dimensions for a more professional and consistent final document.</li>
-              </ul>
+        {/* Blog Post Section */}
+        <section>
+          <div className="prose dark:prose-invert lg:prose-lg max-w-full">
+            <h2 className="text-3xl font-bold text-center">The Ultimate Guide to Cropping PDF Files</h2>
+            <p>Cropping a PDF is a common task, but it can be surprisingly tricky without the right tool. Whether you need to remove unwanted margins, trim away unnecessary white space, or focus on a specific part of a page, a reliable PDF cropper is essential. Our free online tool makes this process simple, secure, and efficient.</p>
+            
+            <h3>Why Crop a PDF?</h3>
+            <p>There are many reasons you might need to crop a PDF document. Here are a few common scenarios:</p>
+            <ul>
+              <li><strong>Removing White Margins:</strong> Many documents have large margins that are unnecessary for digital viewing or can waste space when printing. Cropping the PDF allows you to create a cleaner, more focused document that is easier to read on screens of all sizes.</li>
+              <li><strong>Focusing on Specific Content:</strong> You might have a page with multiple charts, images, or blocks of text, but you only need to share or present one specific area. Our tool lets you crop a PDF to isolate that specific content, creating a new, targeted document.</li>
+              <li><strong>Preparing for Presentations:</strong> When using a PDF in a presentation, cropping allows you to remove distracting elements like headers, footers, or page numbers, ensuring your audience focuses only on the important information.</li>
+              <li><strong>Standardizing Document Sizes:</strong> If you're combining multiple PDFs from different sources, they may have different page sizes. Cropping can help you standardize the dimensions for a more professional and consistent final document.</li>
+            </ul>
 
-              <h3>Advantages of Using Our Online PDF Cropper</h3>
-              <p>While some desktop software offers PDF cropping capabilities, using a free online tool like ours has several key advantages:</p>
-              <ul>
-                <li><strong>Accessibility:</strong> Access our tool from any device with a web browser. There's no software to install or update.</li>
-                <li><strong>Security:</strong> Because the cropping process is handled client-side (in your browser), your files never leave your computer. This offers unparalleled privacy and security for your sensitive documents.</li>
-                <li><strong>Ease of Use:</strong> Our visual interface is incredibly intuitive. Simply draw a box around the area you want to keep. It's that easy to crop a PDF online.</li>
-                <li><strong>High-Quality Results:</strong> We ensure that the quality of your content is preserved. Your cropped PDF will maintain the original resolution and clarity of the text and images within the selected area.</li>
-              </ul>
-              <p>Whether you're a student, a professional, or just someone who needs to quickly edit a document, our tool provides a fast and reliable solution for all your PDF cropping needs. Try it today and see how easy it is to get the perfect crop every time.</p>
-            </div>
-          </section>
-        </div>
-      )}
+            <h3>Advantages of Using Our Online PDF Cropper</h3>
+            <p>While some desktop software offers PDF cropping capabilities, using a free online tool like ours has several key advantages:</p>
+            <ul>
+              <li><strong>Accessibility:</strong> Access our tool from any device with a web browser. There's no software to install or update.</li>
+              <li><strong>Security:</strong> Because the cropping process is handled client-side (in your browser), your files never leave your computer. This offers unparalleled privacy and security for your sensitive documents.</li>
+              <li><strong>Ease of Use:</strong> Our visual interface is incredibly intuitive. Simply draw a box around the area you want to keep. It's that easy to crop a PDF online.</li>
+              <li><strong>High-Quality Results:</strong> We ensure that the quality of your content is preserved. Your cropped PDF will maintain the original resolution and clarity of the text and images within the selected area.</li>
+            </ul>
+            <p>Whether you're a student, a professional, or just someone who needs to quickly edit a document, our tool provides a fast and reliable solution for all your PDF cropping needs. Try it today and see how easy it is to get the perfect crop every time.</p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
