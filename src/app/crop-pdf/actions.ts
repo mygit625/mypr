@@ -1,12 +1,11 @@
-
 'use server';
 
 import { PDFDocument } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
 export interface CropArea {
-  x: number; // in pixels, relative to the top-left of the client canvas
-  y: number; // in pixels, relative to the top-left of the client canvas
+  x: number; // in pixels, relative to the top-left of the client container
+  y: number; // in pixels, relative to the top-left of the client container
   width: number; // in pixels
   height: number; // in pixels
 }
@@ -16,8 +15,10 @@ export interface CropPdfInput {
   cropArea: CropArea;
   applyTo: 'all' | 'current';
   currentPage: number; // 1-indexed
-  clientCanvasWidth: number; // Width of the rendered canvas on the client
-  clientCanvasHeight: number; // Height of the rendered canvas on the client
+  clientCanvasWidth: number; // Actual rendered width of the canvas
+  clientCanvasHeight: number; // Actual rendered height of the canvas
+  clientContainerWidth: number; // Width of the container div holding the canvas
+  clientContainerHeight: number; // Height of the container div holding the canvas
 }
 
 export interface CropPdfOutput {
@@ -38,6 +39,10 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
       ? pdfDoc.getPageIndices()
       : [input.currentPage - 1];
 
+    // Calculate the offsets of the centered canvas within its container
+    const offsetX = (input.clientContainerWidth - input.clientCanvasWidth) / 2;
+    const offsetY = (input.clientContainerHeight - input.clientCanvasHeight) / 2;
+
     for (const pageIndex of pagesToCropIndices) {
         if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) continue;
 
@@ -45,27 +50,32 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
         const { width: originalWidth, height: originalHeight } = page.getSize();
         const rotation = page.getRotation().angle;
 
-        // Determine the visual dimensions of the page after rotation.
+        // Determine the visual dimensions of the page (what the user sees)
         const isSideways = rotation === 90 || rotation === 270;
         const visualPageWidth = isSideways ? originalHeight : originalWidth;
         const visualPageHeight = isSideways ? originalWidth : originalHeight;
         
-        // Calculate the scale factor based on how the client-side rendering fits the page into the canvas.
+        // Calculate the scale factor based on the actual rendered canvas size
         const scale = Math.min(
             input.clientCanvasWidth / visualPageWidth,
             input.clientCanvasHeight / visualPageHeight
         );
 
-        // Convert the client's canvas-relative pixel coordinates to the PDF's internal point system.
-        const cropX = input.cropArea.x / scale;
-        const cropY = input.cropArea.y / scale;
+        // Convert the container-relative crop box to be canvas-relative
+        // This is the key step to account for the "gaps" or "letterboxing"
+        const cropX_canvasRelative = input.cropArea.x - offsetX;
+        const cropY_canvasRelative = input.cropArea.y - offsetY;
+
+        // Convert the canvas-relative pixel coordinates to the PDF's internal point system
+        const cropX = cropX_canvasRelative / scale;
+        const cropY = cropY_canvasRelative / scale;
         const cropWidth = input.cropArea.width / scale;
         const cropHeight = input.cropArea.height / scale;
         
-        // pdf-lib's y-coordinate starts from the bottom. We need to translate our top-down coordinates.
+        // pdf-lib's y-coordinate starts from the bottom. Translate our top-down coordinates.
         const finalY = visualPageHeight - (cropY + cropHeight);
 
-        // Apply the crop box. pdf-lib handles rotation correctly internally.
+        // Apply the crop box. pdf-lib handles the rotation correctly internally when setting the box.
         page.setCropBox(cropX, finalY, cropWidth, cropHeight);
     }
     

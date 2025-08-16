@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
@@ -35,7 +34,7 @@ export default function CropPdfPage() {
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 80, height: 80 }); // In pixels relative to container
+  const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 80, height: 80 });
   const [croppedPdfUri, setCroppedPdfUri] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
@@ -234,27 +233,15 @@ export default function CropPdfPage() {
       const canvas = canvasRef.current;
       const container = containerRef.current;
 
-      const canvasRect = canvas.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      
-      const canvasXOffset = canvasRect.left - containerRect.left;
-      const canvasYOffset = canvasRect.top - containerRect.top;
-
-      // Convert the container-relative crop box to be canvas-relative.
-      const cropArea: CropArea = {
-          x: cropBox.x - canvasXOffset,
-          y: cropBox.y - canvasYOffset,
-          width: cropBox.width,
-          height: cropBox.height,
-      };
-
       const result = await cropPdfAction({
         pdfDataUri,
-        cropArea,
+        cropArea: cropBox, // Send container-relative crop box
         applyTo: cropMode,
         currentPage: currentPage,
         clientCanvasWidth: canvas.width,
         clientCanvasHeight: canvas.height,
+        clientContainerWidth: container.clientWidth,
+        clientContainerHeight: container.clientHeight,
       });
 
       if (result.error) throw new Error(result.error);
