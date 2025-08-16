@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { cropPdfAction, type CropArea } from './actions';
+import { createPdfFromImagesAction } from './actions';
 import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
@@ -226,43 +226,79 @@ export default function CropPdfPage() {
   };
   
   const handleCrop = async () => {
-    if (!file || !canvasRef.current || !containerRef.current) return;
+    if (!file || !pdfDoc || !canvasRef.current || !containerRef.current) return;
     setIsProcessing(true);
     setError(null);
     try {
-      const pdfDataUri = await readFileAsDataURL(file);
-      const canvas = canvasRef.current;
-      const container = containerRef.current;
+      const pageIndicesToProcess = cropMode === 'all'
+        ? Array.from({ length: totalPages }, (_, i) => i)
+        : [currentPage - 1];
 
-      // Calculate the offsets of the canvas within the container
-      const containerRect = container.getBoundingClientRect();
-      const canvasRect = canvas.getBoundingClientRect();
-      const offsetX = canvasRect.left - containerRect.left;
-      const offsetY = canvasRect.top - containerRect.top;
+      const imageDataUris: string[] = [];
+      const RENDER_SCALE = 2.0; // Render at 2x resolution for better quality
+      const JPEG_QUALITY = 0.9;
 
-      // Make cropBox coordinates relative to the canvas, not the container
-      const canvasRelativeCropBox: CropArea = {
-          x: cropBox.x - offsetX,
-          y: cropBox.y - offsetY,
-          width: cropBox.width,
-          height: cropBox.height,
-      };
+      for (const pageIndex of pageIndicesToProcess) {
+        const page = await pdfDoc.getPage(pageIndex + 1);
+        const viewport = page.getViewport({ scale: 1 });
+        
+        // --- Get canvas and container dimensions for the current page preview
+        const previewCanvas = canvasRef.current!;
+        const previewContainer = containerRef.current!;
+        const previewScale = Math.min(
+          previewContainer.clientWidth / viewport.width,
+          previewContainer.clientHeight / viewport.height
+        );
+        const previewViewport = page.getViewport({ scale: previewScale });
+        const offsetX = (previewContainer.clientWidth - previewViewport.width) / 2;
+        const offsetY = (previewContainer.clientHeight - previewViewport.height) / 2;
+        // ---
 
-      const result = await cropPdfAction({
-        pdfDataUri,
-        cropArea: canvasRelativeCropBox, // Send canvas-relative crop box
-        applyTo: cropMode,
-        currentPage: currentPage,
-        clientCanvasWidth: canvas.width,
-        clientCanvasHeight: canvas.height,
-      });
+        // Translate crop box from container-relative to canvas-relative
+        const canvasRelativeCropX = cropBox.x - offsetX;
+        const canvasRelativeCropY = cropBox.y - offsetY;
+
+        // Scale the canvas-relative crop box to the full-resolution page
+        const finalCropX = canvasRelativeCropX / previewScale * RENDER_SCALE;
+        const finalCropY = canvasRelativeCropY / previewScale * RENDER_SCALE;
+        const finalCropWidth = cropBox.width / previewScale * RENDER_SCALE;
+        const finalCropHeight = cropBox.height / previewScale * RENDER_SCALE;
+
+        // Render the full page at high resolution
+        const highResViewport = page.getViewport({ scale: RENDER_SCALE });
+        const renderCanvas = document.createElement('canvas');
+        renderCanvas.width = highResViewport.width;
+        renderCanvas.height = highResViewport.height;
+        const renderCtx = renderCanvas.getContext('2d');
+        if (!renderCtx) throw new Error("Could not create render context");
+        await page.render({ canvasContext: renderCtx, viewport: highResViewport }).promise;
+
+        // Create the final cropped canvas
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = finalCropWidth;
+        finalCanvas.height = finalCropHeight;
+        const finalCtx = finalCanvas.getContext('2d');
+        if (!finalCtx) throw new Error("Could not create final context");
+
+        // Draw the cropped section from the high-res canvas to the final canvas
+        finalCtx.drawImage(
+          renderCanvas,
+          finalCropX, finalCropY, finalCropWidth, finalCropHeight, // Source rect
+          0, 0, finalCropWidth, finalCropHeight // Destination rect
+        );
+
+        imageDataUris.push(finalCanvas.toDataURL('image/jpeg', JPEG_QUALITY));
+      }
+
+      const result = await createPdfFromImagesAction({ imageDataUris });
 
       if (result.error) throw new Error(result.error);
-      if (result.croppedPdfDataUri) {
-        setCroppedPdfUri(result.croppedPdfDataUri);
+      if (result.processedPdfDataUri) {
+        setCroppedPdfUri(result.processedPdfDataUri);
         setShowConfetti(true);
         toast({ title: 'Success', description: 'PDF has been cropped.' });
       }
+
     } catch (e: any) {
         setError(e.message);
         toast({ title: 'Error', description: e.message, variant: 'destructive' });
