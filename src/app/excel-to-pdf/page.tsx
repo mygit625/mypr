@@ -1,7 +1,10 @@
+
 "use client";
 
 import { useEffect, useRef } from 'react';
-import { FileSpreadsheet } from 'lucide-react';
+import { FileSpreadsheet, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
 
 export default function ExcelToPdfPage() {
   const widgetContainerRef = useRef<HTMLDivElement>(null);
@@ -75,6 +78,62 @@ export default function ExcelToPdfPage() {
         </div>
         <hr className="watermark-cover" />
       </section>
+      
+      <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Convert Excel to PDF Free</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your Spreadsheet</h3>
+              <p className="text-muted-foreground">Select your XLS or XLSX file by clicking the upload area or by dragging and dropping it.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Adjust and Convert</h3>
+              <p className="text-muted-foreground">Our tool automatically formats your spreadsheet for PDF. The conversion process begins instantly.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Download Your PDF</h3>
+              <p className="text-muted-foreground">Your Excel file is now a professionally formatted PDF, ready for you to download and share.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Will all my Excel sheets be converted?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes, our tool will convert all the worksheets within your Excel workbook into separate pages in a single PDF document, maintaining their order.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">How will my spreadsheet be formatted in the PDF?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                The converter optimizes the layout for standard PDF pages. For very wide spreadsheets, it will automatically adjust the scaling to fit the content onto the page, similar to the "Fit to Page" option in Excel's print settings.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">Is it possible to convert a specific range of cells?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Our online tool converts the entire content of your worksheets. To convert a specific range, we recommend first saving that range as a separate Excel file and then uploading the new file for conversion.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+      </div>
     </div>
   );
 }

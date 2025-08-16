@@ -1,7 +1,9 @@
+
 "use client";
 
 import { useEffect, useRef } from 'react';
-import { Edit3 } from 'lucide-react';
+import { Edit3, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function EditPdfPage() {
   const widgetContainerRef = useRef<HTMLDivElement>(null);
@@ -75,6 +77,62 @@ export default function EditPdfPage() {
         </div>
         <hr className="watermark-cover" />
       </section>
+      
+      <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Edit a PDF Online</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDF</h3>
+              <p className="text-muted-foreground">Select your PDF document. It will be displayed in our online editor interface instantly.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Add Annotations</h3>
+              <p className="text-muted-foreground">Use the toolbar to add text, highlight, draw shapes, insert images, or make freehand annotations directly on the PDF pages.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Download Edited PDF</h3>
+              <p className="text-muted-foreground">Once you're finished editing, apply your changes and download the new, annotated PDF document.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Can I edit the original text in the PDF?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Our online PDF editor works like an annotator. You can add new text boxes, shapes, and images on top of the existing content, and you can white-out sections to cover them, but you cannot directly edit or change the original text that is part of the PDF.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">What kind of annotations can I add?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                You can add text boxes with customizable fonts and colors, insert images (like logos or signatures), draw shapes (rectangles, circles, arrows), and use a freehand drawing tool for signatures or notes.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">Are my edits permanent?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes. When you save and download the document, your annotations are "flattened" and become a permanent part of the PDF pages, so they cannot be easily removed by the recipient.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,9 @@
+
 "use client";
 
 import { useEffect, useRef } from 'react';
-import { Archive } from 'lucide-react';
+import { Archive, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function PdfToPdfAPage() {
   const widgetContainerRef = useRef<HTMLDivElement>(null);
@@ -75,6 +77,62 @@ export default function PdfToPdfAPage() {
         </div>
         <hr className="watermark-cover" />
       </section>
+
+      <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Convert to PDF/A</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDF</h3>
+              <p className="text-muted-foreground">Select the PDF file you wish to convert to the PDF/A format for long-term preservation.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Select Standard & Convert</h3>
+              <p className="text-muted-foreground">Choose the desired PDF/A conformance level. The tool then converts your file to meet archival standards.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Download Archival PDF</h3>
+              <p className="text-muted-foreground">Your PDF/A-compliant file is ready for download, ensuring it remains accessible and readable for years to come.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">What is PDF/A and why do I need it?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                PDF/A is an ISO-standardized version of PDF specialized for long-term archiving of electronic documents. It ensures that the document will look exactly the same in the future by embedding all necessary information like fonts and color profiles directly into the file. It's often required by libraries, archives, and government institutions.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">What is the difference between PDF/A-1b, PDF/A-2b, etc.?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                These are different conformance levels of the PDF/A standard. PDF/A-1b is the most basic level, ensuring the document is visually reproducible. Higher levels like PDF/A-2b and PDF/A-3b add support for more modern PDF features like JPEG 2000 compression and layers, while still guaranteeing long-term preservation. For most users, the recommended level is sufficient.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">What features are not allowed in PDF/A?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                To ensure long-term stability, PDF/A prohibits certain features that rely on external sources or are not self-contained. This includes audio and video content, JavaScript, and font linking (all fonts must be embedded). Our tool will automatically handle these restrictions during conversion.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+      </div>
     </div>
   );
 }
