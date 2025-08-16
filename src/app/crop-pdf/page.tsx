@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { cropPdfAction, type CropArea } from './actions';
+import { PageConfetti } from '@/components/ui/page-confetti';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -34,8 +35,9 @@ export default function CropPdfPage() {
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 80, height: 80 }); // Now in absolute pixels relative to container
+  const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 80, height: 80 }); // In pixels relative to container
   const [croppedPdfUri, setCroppedPdfUri] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -57,6 +59,7 @@ export default function CropPdfPage() {
     setCurrentPage(1);
     setCropBox({ x: 10, y: 10, width: 80, height: 80 });
     setCroppedPdfUri(null);
+    setShowConfetti(false);
     setIsLoading(false);
     setIsProcessing(false);
     setError(null);
@@ -234,7 +237,7 @@ export default function CropPdfPage() {
       const canvasRect = canvas.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
       
-      // Calculate the offset of the canvas within its container
+      // Calculate the offset of the canvas within its container (letterboxing)
       const canvasXOffset = canvasRect.left - containerRect.left;
       const canvasYOffset = canvasRect.top - containerRect.top;
 
@@ -259,6 +262,7 @@ export default function CropPdfPage() {
       if (result.error) throw new Error(result.error);
       if (result.croppedPdfDataUri) {
         setCroppedPdfUri(result.croppedPdfDataUri);
+        setShowConfetti(true);
         toast({ title: 'Success', description: 'PDF has been cropped.' });
       }
     } catch (e: any) {
@@ -279,6 +283,7 @@ export default function CropPdfPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Crop className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Crop PDF</h1>

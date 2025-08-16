@@ -13,7 +13,7 @@ export interface CropArea {
 
 export interface CropPdfInput {
   pdfDataUri: string;
-  cropArea: CropArea;
+  cropArea: CropArea; // This is now expected to be relative to the canvas, not the container.
   applyTo: 'all' | 'current';
   currentPage: number; // 1-indexed
   clientCanvasWidth: number; // Width of the rendered canvas on the client
@@ -52,35 +52,20 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
         const visualPageHeight = isSideways ? originalWidth : originalHeight;
         
         // Calculate the scale factor based on how the client-side rendering fits the page into the canvas.
-        // The client scales the PDF page to fit *within* the canvas dimensions, preserving aspect ratio.
+        // The client provides the exact dimensions of the rendered canvas.
         const scale = Math.min(
             input.clientCanvasWidth / visualPageWidth,
             input.clientCanvasHeight / visualPageHeight
         );
 
-        // Convert the client-side crop coordinates (relative to the canvas container) 
-        // into coordinates relative to the original, unscaled, and unrotated page.
-        
-        // 1. Find the dimensions of the rendered canvas inside the container
-        const renderedCanvasWidth = visualPageWidth * scale;
-        const renderedCanvasHeight = visualPageHeight * scale;
-
-        // 2. Find the offset (letterboxing) of the canvas within the container
-        const canvasXOffset = (input.clientCanvasWidth - renderedCanvasWidth) / 2;
-        const canvasYOffset = (input.clientCanvasHeight - renderedCanvasHeight) / 2;
-        
-        // 3. Translate crop box coordinates to be relative to the canvas itself
-        const cropX_relativeToCanvas = input.cropArea.x - canvasXOffset;
-        const cropY_relativeToCanvas = input.cropArea.y - canvasYOffset;
-        
-        // 4. Scale the canvas-relative coordinates back to the page's original coordinate system
-        const cropX = cropX_relativeToCanvas / scale;
-        const cropY = cropY_relativeToCanvas / scale;
+        // Since the client now provides canvas-relative coordinates, the calculation is direct.
+        const cropX = input.cropArea.x / scale;
+        const cropY = input.cropArea.y / scale;
         const cropWidth = input.cropArea.width / scale;
         const cropHeight = input.cropArea.height / scale;
         
-        // 5. pdf-lib's y-coordinate starts from the bottom. We need to translate our top-down coordinates.
-        // The coordinate system for cropping is based on the VISUAL dimensions.
+        // pdf-lib's y-coordinate starts from the bottom. We need to translate our top-down coordinates.
+        // The coordinate system for cropping is based on the VISUAL dimensions of the page.
         const finalY = visualPageHeight - (cropY + cropHeight);
 
         // Apply the crop box. pdf-lib handles rotation correctly internally.
