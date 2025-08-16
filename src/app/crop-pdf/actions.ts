@@ -13,7 +13,7 @@ export interface CropArea {
 
 export interface CropPdfInput {
   pdfDataUri: string;
-  cropArea: CropArea; // This is now expected to be relative to the canvas.
+  cropArea: CropArea;
   applyTo: 'all' | 'current';
   currentPage: number; // 1-indexed
   clientCanvasWidth: number; // Width of the rendered canvas on the client
