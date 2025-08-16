@@ -2,7 +2,7 @@
 'use server';
 
 import { PDFDocument } from 'pdf-lib';
-import type { Buffer } from 'buffer';
+import { Buffer } from 'buffer';
 
 // This is a new, simplified server action.
 // It takes pre-cropped images (as data URIs) from the client and assembles them into a PDF.
