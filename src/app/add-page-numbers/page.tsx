@@ -403,7 +403,7 @@ export default function AddPageNumbersPage() {
             <AccordionItem value="item-3">
               <AccordionTrigger className="text-lg text-left">How do I format the page numbers, like "Page 1 of 10"?</AccordionTrigger>
               <AccordionContent className="text-base text-muted-foreground">
-                You can use our text format presets to select common styles, including "Page {'{n}'} of {'{N}'}". You can also select "Custom" and create your own format. Use {'{n}'} as a placeholder for the current page number and {'{N}'} for the total number of pages in the document.
+                You can use our text format presets to select common styles, including "Page {'{n}'} of {'{N}'}". You can also select "Custom" and create your own format. Use {'`{n}`'} as a placeholder for the current page number and {'`{N}`'} for the total number of pages in the document.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-4">

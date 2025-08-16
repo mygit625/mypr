@@ -9,13 +9,15 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { CheckCircle, Loader2, Info, Plus, ArrowRightCircle, Minimize2, X, Download } from 'lucide-react';
+import { CheckCircle, Loader2, Info, Plus, ArrowRightCircle, Minimize2, X, Download, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { compressPdfAction, type CompressionLevel } from '@/app/compress/actions';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface CompressionResultStats {
   originalSize: number;
@@ -33,6 +35,7 @@ export default function CompressPage() {
   const [compressedPdfUri, setCompressedPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>("recommended");
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,6 +45,7 @@ export default function CompressPage() {
     setCompressionStats(null);
     setCompressedPdfUri(null);
     setError(null);
+    setShowConfetti(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; 
     }
@@ -112,6 +116,7 @@ export default function CompressPage() {
             reductionPercentage: parseFloat(reduction.toFixed(2))
         });
         setCompressedPdfUri(result.compressedPdfDataUri);
+        setShowConfetti(true);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during compression.";
@@ -144,6 +149,7 @@ export default function CompressPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-0">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Minimize2 className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-4xl font-bold tracking-tight">Compress PDF File</h1>
@@ -278,6 +284,77 @@ export default function CompressPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Compress a PDF</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDF</h3>
+              <p className="text-muted-foreground">Select or drag your PDF file into the upload area. The file is processed securely and is never stored permanently on our servers.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Choose Compression Level</h3>
+              <p className="text-muted-foreground">Select your desired balance between file size and quality. "Recommended" offers the best results for most documents.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Compress & Download</h3>
+              <p className="text-muted-foreground">Click the "Compress PDF" button. After processing, you'll see the size reduction and a button to download your new, smaller PDF.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Will compressing my PDF reduce its quality?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Our tool aims to reduce file size with minimal impact on visual quality. The "Recommended" setting provides a great balance. "Extreme Compression" will result in a smaller file but may show some quality loss, especially in images.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">Is there a limit on the file size I can upload?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                While we support large files, for best performance, we recommend uploading files under 50MB. Very large or complex PDFs may take longer to process or could time out in a browser environment.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">How does the PDF compression work?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Our tool primarily reduces file size by optimizing and re-compressing images within the PDF, which are often the largest contributors to file size. It also removes redundant data and applies efficient compression to the PDF's internal structure.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+
+        <section>
+          <div className="prose dark:prose-invert lg:prose-lg max-w-full">
+            <h2 className="text-3xl font-bold text-center">Optimize Your PDFs with Smart Compression</h2>
+            <p>Large PDF files are cumbersome to share via email, slow to load, and take up unnecessary storage space. Our free online PDF compressor is designed to solve this problem by intelligently reducing your file size without sacrificing readability. Whether you're dealing with scanned documents, image-heavy reports, or lengthy presentations, our tool provides a simple and effective solution.</p>
+            
+            <h3>Why Reduce PDF File Size?</h3>
+            <ul>
+              <li><strong>Easy Sharing:</strong> Compressed PDFs are small enough to meet email attachment size limits, making them easy to send to colleagues, clients, or friends.</li>
+              <li><strong>Faster Loading Times:</strong> Smaller files load significantly faster on websites and in document viewers, improving the user experience for anyone accessing your documents online.</li>
+              <li><strong>Save Storage Space:</strong> Efficiently archive your documents by reducing their footprint on your hard drive or cloud storage.</li>
+            </ul>
+            <p>By using our PDF compression tool, you can choose the level of compression that best suits your needs, from high-quality for professional documents to extreme compression for maximum size reduction. The process is fast, secure, and happens right in your browser, ensuring your data remains private.</p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
