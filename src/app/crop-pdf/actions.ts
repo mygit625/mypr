@@ -4,12 +4,12 @@
 import { PDFDocument } from 'pdf-lib';
 import { Buffer } from 'buffer';
 
-// This is a new, simplified server action.
-// It takes pre-cropped images (as data URIs) from the client and assembles them into a PDF.
-// This eliminates all complex server-side geometry calculations, which was the source of the previous errors.
+// This server action takes pre-cropped images (as data URIs) from the client
+// and assembles them into a new PDF document.
 
 export interface CreatePdfFromImagesInput {
-  // An array of data URIs, each representing a cropped and compressed page image (e.g., JPEG).
+  // An array of data URIs, each representing a cropped page image.
+  // The client-side logic currently generates PNGs.
   imageDataUris: string[];
 }
 
@@ -27,17 +27,13 @@ export async function createPdfFromImagesAction(input: CreatePdfFromImagesInput)
     const newPdfDoc = await PDFDocument.create();
 
     for (const dataUri of input.imageDataUris) {
-      const imageBytes = Buffer.from(dataUri.split(',')[1], 'base64');
-      
-      let embeddedImage;
-      if (dataUri.startsWith('data:image/png')) {
-        embeddedImage = await newPdfDoc.embedPng(imageBytes);
-      } else if (dataUri.startsWith('data:image/jpeg')) {
-        embeddedImage = await newPdfDoc.embedJpg(imageBytes);
-      } else {
-        console.warn('Unsupported image type for PDF embedding, skipping:', dataUri.substring(0, 30));
-        continue;
+      if (!dataUri.startsWith('data:image/png;base64,')) {
+         console.warn('Unsupported image type for PDF embedding, skipping:', dataUri.substring(0, 40));
+         continue; // Skip any non-PNG data URIs
       }
+      
+      const imageBytes = Buffer.from(dataUri.split(',')[1], 'base64');
+      const embeddedImage = await newPdfDoc.embedPng(imageBytes);
       
       const page = newPdfDoc.addPage([embeddedImage.width, embeddedImage.height]);
       
