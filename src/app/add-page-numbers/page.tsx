@@ -403,7 +403,7 @@ export default function AddPageNumbersPage() {
             <AccordionItem value="item-3">
               <AccordionTrigger className="text-lg text-left">How do I format the page numbers, like "Page 1 of 10"?</AccordionTrigger>
               <AccordionContent className="text-base text-muted-foreground">
-                You can use our text format presets to select common styles, including "Page {n} of {N}". You can also select "Custom" and create your own format. Use `{n}` as a placeholder for the current page number and `{N}` for the total number of pages in the document.
+                You can use our text format presets to select common styles, including "Page {'{n}'} of {'{N}'}". You can also select "Custom" and create your own format. Use {'{n}'} as a placeholder for the current page number and {'{N}'} for the total number of pages in the document.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="item-4">
@@ -432,7 +432,7 @@ export default function AddPageNumbersPage() {
             <p>Our tool goes beyond basic numbering. We offer a suite of options to give you full control over how you insert page numbers into your PDF:</p>
             <ul>
               <li><strong>Precise Placement:</strong> Choose from nine different positions—top, middle, or bottom, and left, center, or right—to place your page numbers exactly where you want them.</li>
-              <li><strong>Custom Formatting:</strong> Go beyond simple numbers. Use formats like "Page {n} of {N}" to provide more context, or create your own custom format to match your document's style.</li>
+              <li><strong>Custom Formatting:</strong> Go beyond simple numbers. Use formats like "Page {'{n}'} of {'{N}'}" to provide more context, or create your own custom format to match your document's style.</li>
               <li><strong>Selective Numbering:</strong> You don't always need to number every page. Our tool lets you specify exact page ranges, so you can easily exclude title pages, appendices, or bibliographies from the numbering scheme.</li>
               <li><strong>Styling Options:</strong> Adjust the font size to ensure your page numbers are legible but not intrusive. Match your document's aesthetic and branding with full control over your numbering style.</li>
             </ul>
