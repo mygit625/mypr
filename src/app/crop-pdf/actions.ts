@@ -45,13 +45,12 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
         const { width: originalWidth, height: originalHeight } = page.getSize();
         const rotation = page.getRotation().angle;
 
-        // Determine the visual dimensions of the page after rotation, as seen by the user.
+        // Determine the visual dimensions of the page after rotation.
         const isSideways = rotation === 90 || rotation === 270;
         const visualPageWidth = isSideways ? originalHeight : originalWidth;
         const visualPageHeight = isSideways ? originalWidth : originalHeight;
         
-        // Calculate the actual scale factor the client used to render the page inside the canvas.
-        // The client fits the page within the canvas, preserving aspect ratio.
+        // Calculate the scale factor based on how the client-side rendering fits the page into the canvas.
         const scale = Math.min(
             input.clientCanvasWidth / visualPageWidth,
             input.clientCanvasHeight / visualPageHeight
