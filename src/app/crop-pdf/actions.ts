@@ -5,8 +5,8 @@ import { PDFDocument } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
 export interface CropArea {
-  x: number; // in pixels, relative to the top-left of the client container
-  y: number; // in pixels, relative to the top-left of the client container
+  x: number; // in pixels, relative to the top-left of the client canvas
+  y: number; // in pixels, relative to the top-left of the client canvas
   width: number; // in pixels
   height: number; // in pixels
 }
@@ -18,8 +18,6 @@ export interface CropPdfInput {
   currentPage: number; // 1-indexed
   clientCanvasWidth: number; // Actual rendered width of the canvas
   clientCanvasHeight: number; // Actual rendered height of the canvas
-  clientContainerWidth: number; // Width of the container div holding the canvas
-  clientContainerHeight: number; // Height of the container div holding the canvas
 }
 
 export interface CropPdfOutput {
@@ -47,39 +45,30 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
         const { width: originalWidth, height: originalHeight } = page.getSize();
         const rotation = page.getRotation().angle;
 
-        // Determine the visual dimensions of the page as rendered by pdf-js.
+        // Determine the visual dimensions of the page after rotation.
+        // This is what the user sees and what pdf-js renders.
         const isSideways = rotation === 90 || rotation === 270;
         const visualPageWidth = isSideways ? originalHeight : originalWidth;
         const visualPageHeight = isSideways ? originalWidth : originalHeight;
         
-        // Calculate the scale factor based on how pdf-js fits the visual page into the client's canvas.
+        // Calculate the scale factor based on how the client-side rendering fits the page into the canvas.
+        // The client scales the PDF page to fit *within* the canvas dimensions, preserving aspect ratio.
         const scale = Math.min(
             input.clientCanvasWidth / visualPageWidth,
             input.clientCanvasHeight / visualPageHeight
         );
-        
-        // Calculate the actual dimensions of the rendered PDF image on the canvas.
-        const renderedPdfWidth = visualPageWidth * scale;
-        const renderedPdfHeight = visualPageHeight * scale;
 
-        // Calculate the offsets (letterboxing/pillarboxing) of the rendered PDF within the container.
-        const offsetX = (input.clientContainerWidth - renderedPdfWidth) / 2;
-        const offsetY = (input.clientContainerHeight - renderedPdfHeight) / 2;
-
-        // Convert the container-relative crop box to be relative to the rendered PDF image.
-        const cropX_relative = input.cropArea.x - offsetX;
-        const cropY_relative = input.cropArea.y - offsetY;
-
-        // Convert the client-side pixel coordinates to the PDF's internal point system.
-        const cropX = cropX_relative / scale;
-        const cropY = cropY_relative / scale;
+        // The cropArea received from the client is now ALREADY relative to the canvas, so we can scale it directly.
+        const cropX = input.cropArea.x / scale;
+        const cropY = input.cropArea.y / scale;
         const cropWidth = input.cropArea.width / scale;
         const cropHeight = input.cropArea.height / scale;
         
-        // pdf-lib's y-coordinate starts from the bottom. Translate our top-down coordinates.
+        // pdf-lib's y-coordinate starts from the bottom of the original page.
+        // We need to translate our top-down coordinates.
         const finalY = visualPageHeight - (cropY + cropHeight);
 
-        // Apply the crop box. pdf-lib handles the rotation correctly internally.
+        // Apply the crop box. pdf-lib handles rotation correctly internally.
         page.setCropBox(cropX, finalY, cropWidth, cropHeight);
     }
     
@@ -88,7 +77,8 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
 
     return { croppedPdfDataUri };
 
-  } catch (error: any) {
+  } catch (error: any)
+{
     console.error('Error cropping PDF:', error);
     if (error.message && error.message.toLowerCase().includes('encrypted')) {
         return { error: 'The PDF is encrypted. Please provide a decrypted PDF.'}

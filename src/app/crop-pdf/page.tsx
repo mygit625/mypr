@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
@@ -233,15 +234,27 @@ export default function CropPdfPage() {
       const canvas = canvasRef.current;
       const container = containerRef.current;
 
+      // Calculate the offsets of the canvas within the container
+      const containerRect = container.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const offsetX = canvasRect.left - containerRect.left;
+      const offsetY = canvasRect.top - containerRect.top;
+
+      // Make cropBox coordinates relative to the canvas, not the container
+      const canvasRelativeCropBox: CropArea = {
+          x: cropBox.x - offsetX,
+          y: cropBox.y - offsetY,
+          width: cropBox.width,
+          height: cropBox.height,
+      };
+
       const result = await cropPdfAction({
         pdfDataUri,
-        cropArea: cropBox, // Send container-relative crop box
+        cropArea: canvasRelativeCropBox, // Send canvas-relative crop box
         applyTo: cropMode,
         currentPage: currentPage,
         clientCanvasWidth: canvas.width,
         clientCanvasHeight: canvas.height,
-        clientContainerWidth: container.clientWidth,
-        clientContainerHeight: container.clientHeight,
       });
 
       if (result.error) throw new Error(result.error);
