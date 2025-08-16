@@ -11,7 +11,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { FileMinus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, Trash2, Undo2 } from 'lucide-react';
+import { FileMinus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, Trash2, Undo2, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
@@ -19,6 +19,7 @@ import { getInitialPageDataAction } from '@/app/remove-pages/actions';
 import { assembleIndividualPagesAction } from '@/app/organize/actions';
 import { cn } from '@/lib/utils';
 import { PageConfetti } from '@/components/ui/page-confetti';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -459,6 +460,77 @@ export default function RemovePagesPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+       <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Remove Pages from a PDF</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDF</h3>
+              <p className="text-muted-foreground">Click the upload area to select your PDF file. All pages from your document will be displayed as individual thumbnails.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Mark Pages to Remove</h3>
+              <p className="text-muted-foreground">Hover over any page and click the "Delete" button to mark it for removal. You can unmark it by clicking "Keep".</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Apply & Download</h3>
+              <p className="text-muted-foreground">Once you've marked all unwanted pages, click the "Apply & Download" button. A new PDF without the deleted pages will be created.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Is it possible to undo the removal of a page?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes. Before you apply the changes, any page marked for deletion can be restored. Simply click the "Keep" button that appears on the marked page, and it will be included in the final document.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">Can I remove pages from multiple PDF files at once?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes. You can upload multiple PDF files using the '+' buttons. All pages from all documents will be displayed in the workspace, allowing you to remove and reorder pages from various sources before creating a single, consolidated output file.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">Does deleting pages affect the quality of the remaining pages?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                No, the quality of the pages you choose to keep is not affected at all. Our tool simply removes the unwanted pages and creates a new PDF with the remaining ones, preserving their original quality and formatting.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+
+        <section>
+          <div className="prose dark:prose-invert lg:prose-lg max-w-full">
+            <h2 className="text-3xl font-bold text-center">Streamline Your Documents by Deleting PDF Pages</h2>
+            <p>PDF documents are often final versions, but that doesn't mean they can't be modified. A common need is to remove specific pages—whether it's an unnecessary cover page, a blank page, an outdated appendix, or sensitive information that shouldn't be shared. Our free online tool to "remove pages from PDF" gives you the power to do just that with a simple, visual interface.</p>
+            <h3>Why You Might Need to Delete PDF Pages</h3>
+            <ul>
+              <li><strong>Creating Excerpts:</strong> Easily create a shorter version of a long report or e-book by deleting irrelevant sections, making it easier to share key information.</li>
+              <li><strong>Removing Sensitive Information:</strong> If certain pages of a contract or report contain confidential data, you can remove them before sending the document to external parties.</li>
+              <li><strong>Cleaning Up Scans:</strong> Scanned documents often include blank pages or unwanted cover sheets. Our tool lets you quickly clean up your files for a more professional result.</li>
+              <li><strong>Reducing File Size:</strong> Removing unnecessary, image-heavy pages can significantly reduce the overall file size of your PDF, making it easier to email or store.</li>
+            </ul>
+            <p>Our tool offers more than just deletion. You can see a clear thumbnail of every page, ensuring you know exactly which pages you are keeping and which you are removing. This visual approach prevents mistakes and gives you complete confidence in the final output. Stop sending bulky or irrelevant documents and start sharing perfectly tailored PDFs today.</p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

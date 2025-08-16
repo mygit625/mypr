@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ImagePlus, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, FileType, CheckCircle } from 'lucide-react';
+import { ImagePlus, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, FileType, CheckCircle, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,9 @@ import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { convertJpgsToPdfAction, convertSingleJpgToPdfAction, type CompressionLevel } from '@/app/jpg-to-pdf/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
 
 interface SelectedImageItem {
   id: string;
@@ -39,6 +42,7 @@ export default function JpgToPdfPage() {
   const [isConverting, setIsConverting] = useState(false);
   const [isConvertingSingleImageId, setIsConvertingSingleImageId] = useState<string | null>(null);
   const [processedUri, setProcessedUri] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>("recommended");
   const { toast } = useToast();
@@ -52,6 +56,7 @@ export default function JpgToPdfPage() {
     setSelectedImageItems([]);
     setProcessedUri(null);
     setError(null);
+    setShowConfetti(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -222,6 +227,7 @@ export default function JpgToPdfPage() {
         });
       } else if (result.pdfDataUri) {
         setProcessedUri(result.pdfDataUri);
+        setShowConfetti(true);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during PDF creation.";
@@ -268,6 +274,7 @@ export default function JpgToPdfPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <ImagePlus className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">JPG to PDF Converter</h1>
@@ -473,6 +480,68 @@ export default function JpgToPdfPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+       <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Convert JPG to PDF</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your JPG Images</h3>
+              <p className="text-muted-foreground">Click the upload area to select your JPG files, or simply drag and drop them onto the page. You can add multiple images at once.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Arrange Your Images</h3>
+              <p className="text-muted-foreground">The images will appear as thumbnails. Drag and drop them to arrange them in the desired order for your final PDF document.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Convert and Download</h3>
+              <p className="text-muted-foreground">Click the "Combine & Download PDF" button. Your images will be converted into a single, high-quality PDF, ready for you to save.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Can I convert multiple JPG files at once?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes, our tool is designed for batch conversions. You can upload multiple JPG images, and they will all be combined into one single PDF file in the order you specify.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">Will the quality of my images be preserved?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Absolutely. We prioritize maintaining the original quality of your JPG images. The converter embeds them into the PDF without adding extra compression, so your pictures will look just as crisp and clear as the original files.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">Can I reorder the images before creating the PDF?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes, full control over the image order is a key feature. After uploading, simply drag and drop the image thumbnails into the sequence you want them to appear in the final PDF document.
+              </AccordionContent>
+            </AccordionItem>
+             <AccordionItem value="item-4">
+              <AccordionTrigger className="text-lg text-left">What is the "Compression Level" option for?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                This option controls how the final PDF file is structured. The "Recommended" setting provides a good balance of compatibility and file size. "Extreme Compression" can result in a smaller PDF file size but may not be necessary unless you are trying to optimize for size. The visual quality of the images will not be affected.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+      </div>
     </div>
   );
 }

@@ -27,11 +27,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { ScanText, Loader2, Info, Download, CheckSquare, Square } from 'lucide-react';
+import { ScanText, Loader2, Info, Download, CheckSquare, Square, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -372,6 +373,77 @@ export default function OcrPdfPage() {
           </Card>
         </>
       )}
+
+      <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Use the OCR PDF Tool</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your Scanned PDF</h3>
+              <p className="text-muted-foreground">Select or drag your PDF file into the upload area. The tool will display previews of all pages in your document.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Select Pages & Extract</h3>
+              <p className="text-muted-foreground">Choose the specific pages you want to extract text from. Click the "Extract Text" button to start the AI-powered OCR process.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Review and Download</h3>
+              <p className="text-muted-foreground">The extracted text will appear below each page preview. Once complete, you can download all the text in a single, convenient .txt file.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">What is OCR and how does it work?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                OCR stands for Optical Character Recognition. It's a technology that converts different types of documents, such as scanned paper documents or PDF files, into editable and searchable data. Our tool uses advanced AI models to recognize text in the images of your PDF pages and extract it.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">How accurate is the text extraction?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                The accuracy is very high, especially for clear, high-quality scans with standard fonts. However, factors like poor image quality, handwritten text, or unusual fonts can affect the results. It's always a good idea to proofread the extracted text.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">Can this tool handle handwritten text?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                While our AI is powerful, its primary strength is with printed or typed text. The accuracy for handwritten text can vary significantly based on the clarity and style of the writing. For best results, use documents with clear, printed text.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+
+        <section>
+          <div className="prose dark:prose-invert lg:prose-lg max-w-full">
+            <h2 className="text-3xl font-bold text-center">Unlock the Content in Your Scanned Documents</h2>
+            <p>Many important documents exist only as scans or images, locked away in a non-interactive PDF format. This makes it impossible to search for specific text, copy a paragraph, or edit the content. Our free online OCR PDF tool is designed to solve this problem by transforming your static, scanned PDFs into fully accessible text.</p>
+            <h3>Why You Need to OCR Your PDFs</h3>
+            <ul>
+              <li><strong>Make Content Searchable:</strong> After using our OCR tool, you can easily search for keywords or phrases within your documents, saving you hours of manual searching.</li>
+              <li><strong>Enable Copy and Paste:</strong> Effortlessly copy text from your PDFs to use in other applications, such as word processors, presentations, or spreadsheets.</li>
+              <li><strong>Improve Accessibility:</strong> Converting image-based text to real text makes your documents accessible to screen readers, benefiting visually impaired users.</li>
+              <li><strong>Archive and Index Digitally:</strong> Text-based documents are much easier to index and archive in digital document management systems, making your information more organized and retrievable.</li>
+            </ul>
+            <p>Our tool leverages the power of cutting-edge AI to provide high-accuracy text recognition. By simply uploading your file and selecting the pages, you can convert entire documents from static images into valuable, usable text. It's the essential step for digitizing your paper archives and making your image-only PDFs more powerful.</p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
