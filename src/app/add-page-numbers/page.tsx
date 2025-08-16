@@ -28,13 +28,15 @@ import { Slider } from '@/components/ui/slider';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ListOrdered, Loader2, Info, ArrowRightCircle, Check, Download } from 'lucide-react';
+import { ListOrdered, Loader2, Info, ArrowRightCircle, Check, Download, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { addPageNumbersAction, type PageNumberPosition } from '@/app/add-page-numbers/actions';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PageConfetti } from '@/components/ui/page-confetti';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -54,6 +56,7 @@ export default function AddPageNumbersPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedUri, setProcessedUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   // Form state
@@ -70,6 +73,7 @@ export default function AddPageNumbersPage() {
     setPages([]);
     setError(null);
     setProcessedUri(null);
+    setShowConfetti(false);
   };
 
   const handleFileSelected = async (selectedFiles: File[]) => {
@@ -132,6 +136,7 @@ export default function AddPageNumbersPage() {
         toast({ title: "Processing Error", description: result.error, variant: "destructive" });
       } else if (result.numberedPdfDataUri) {
         setProcessedUri(result.numberedPdfDataUri);
+        setShowConfetti(true);
       }
     } catch (e: any) {
       setError(e.message || "An unexpected error occurred.");
@@ -158,6 +163,7 @@ export default function AddPageNumbersPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <ListOrdered className="mx-auto h-12 w-12 text-primary mb-3" />
         <h1 className="text-4xl font-bold tracking-tight">Add Page Numbers to PDF</h1>
@@ -347,6 +353,93 @@ export default function AddPageNumbersPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Add Page Numbers to a PDF</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDF</h3>
+              <p className="text-muted-foreground">Click the upload area to select your PDF file, or simply drag and drop it onto the page. The document will be processed securely in your browser.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Customize Your Page Numbers</h3>
+              <p className="text-muted-foreground">Use the options panel to choose the position, format, font size, and page range. You can see a live preview of your changes on your document.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Add Numbers & Download</h3>
+              <p className="text-muted-foreground">Click the "Add page numbers" button. Once processed, your new, numbered PDF will be ready for instant download.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Can I choose which pages to number?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes, absolutely. Our tool gives you full control. You can specify a page range (e.g., "2-10"), select individual pages (e.g., "1, 5, 7"), or combine both (e.g., "1, 3-5, 9"). If you leave the field blank, numbers will be added to all pages.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">Is it possible to change the starting number?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes. By default, numbering starts at '1', but you can change the "First number" field to any integer you like. This is useful for documents that are part of a larger set or have a cover page you don't want to count.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">How do I format the page numbers, like "Page 1 of 10"?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                You can use our text format presets to select common styles, including "Page {n} of {N}". You can also select "Custom" and create your own format. Use `{n}` as a placeholder for the current page number and `{N}` for the total number of pages in the document.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-4">
+              <AccordionTrigger className="text-lg text-left">Are my uploaded PDF files secure?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Your privacy is our priority. All processing happens directly in your browser or on our secure servers, and your files are automatically deleted after one hour. We never share or access your files.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+
+        <section>
+          <div className="prose dark:prose-invert lg:prose-lg max-w-full">
+            <h2 className="text-3xl font-bold text-center">The Importance of Numbering PDF Pages</h2>
+            <p>Adding page numbers to a PDF might seem like a small detail, but it's a crucial step in creating professional, navigable, and easy-to-read documents. Whether you're preparing a report for work, a thesis for university, or a legal document, proper pagination is essential. Our free online tool to "add page numbers to PDF" simplifies this process, offering powerful features without the need for expensive software.</p>
+            
+            <h3>Why You Should Number Your PDF Pages</h3>
+            <ul>
+              <li><strong>Improved Navigation:</strong> Page numbers provide a clear reference point, allowing readers to easily find specific sections and navigate through long documents. This is vital for collaboration, reviews, and referencing.</li>
+              <li><strong>Professionalism:</strong> A well-paginated document looks more polished and organized. It shows attention to detail and makes your work easier for others to handle, especially when printed.</li>
+              <li><strong>Clear Structure:</strong> For legal contracts, academic papers, and technical manuals, page numbers ensure the document's integrity. It guarantees that all pages are accounted for and in the correct sequence.</li>
+              <li><strong>Easy Referencing:</strong> When discussing a document, being able to say "refer to page 5" is much more efficient than describing the page's content. This is critical in academic, legal, and business contexts.</li>
+            </ul>
+
+            <h3>Advanced Features of Our Online Tool</h3>
+            <p>Our tool goes beyond basic numbering. We offer a suite of options to give you full control over how you insert page numbers into your PDF:</p>
+            <ul>
+              <li><strong>Precise Placement:</strong> Choose from nine different positions—top, middle, or bottom, and left, center, or right—to place your page numbers exactly where you want them.</li>
+              <li><strong>Custom Formatting:</strong> Go beyond simple numbers. Use formats like "Page {n} of {N}" to provide more context, or create your own custom format to match your document's style.</li>
+              <li><strong>Selective Numbering:</strong> You don't always need to number every page. Our tool lets you specify exact page ranges, so you can easily exclude title pages, appendices, or bibliographies from the numbering scheme.</li>
+              <li><strong>Styling Options:</strong> Adjust the font size to ensure your page numbers are legible but not intrusive. Match your document's aesthetic and branding with full control over your numbering style.</li>
+            </ul>
+            <p>By using our free and secure online PDF page numbering tool, you can enhance your documents in seconds. It’s a simple step that makes a significant difference in the clarity and professionalism of your work. Try it today and experience how easy PDF pagination can be.</p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

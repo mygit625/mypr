@@ -8,12 +8,14 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { Combine, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download } from 'lucide-react';
+import { Combine, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Download, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { mergePdfsAction } from '@/app/merge/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 interface SelectedPdfItem {
   id: string;
@@ -38,6 +40,7 @@ export default function MergeClientPage() {
   const [isMerging, setIsMerging] = useState(false);
   const [mergedPdfUri, setMergedPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +52,7 @@ export default function MergeClientPage() {
     setSelectedPdfItems([]);
     setMergedPdfUri(null);
     setError(null);
+    setShowConfetti(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -165,6 +169,7 @@ export default function MergeClientPage() {
         });
       } else if (result.mergedPdfDataUri) {
         setMergedPdfUri(result.mergedPdfDataUri);
+        setShowConfetti(true);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during merge.";
@@ -217,6 +222,7 @@ export default function MergeClientPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <Combine className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Merge PDF Files</h1>
@@ -384,6 +390,78 @@ export default function MergeClientPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+      
+       <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Merge PDF Files</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDFs</h3>
+              <p className="text-muted-foreground">Select multiple PDF files from your device, or drag and drop them into the upload box. You can add more files later.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Reorder Files</h3>
+              <p className="text-muted-foreground">Drag and drop the file previews to arrange them in the desired order for your final document. You can also sort them alphabetically.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Merge & Download</h3>
+              <p className="text-muted-foreground">Click the "Merge PDFs" button to combine your files. Once the process is complete, you can download your single, merged PDF.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Is there a limit to how many PDFs I can merge?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                You can merge a large number of PDF files at once. While there's no strict limit, we recommend working with a reasonable number of files (e.g., up to 20-30 at a time) for the best performance. You can always add more files using the '+' buttons.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">Does merging PDFs reduce the quality?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                No. Our tool combines your PDF files without altering the original quality of the content. Text, images, and formatting will remain exactly as they were in the source documents.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">Can I reorder the files after uploading?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes, full control over the file order is a key feature. Simply drag and drop the file previews into the sequence you want before clicking the merge button.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+
+        <section>
+          <div className="prose dark:prose-invert lg:prose-lg max-w-full">
+            <h2 className="text-3xl font-bold text-center">Combine PDFs into One Document with Ease</h2>
+            <p>Combining multiple PDF files is a common necessity in today's digital world. Whether you're compiling a report from different sources, creating a single portfolio from various projects, or consolidating invoices for a client, our free online PDF merger is the perfect tool for the job. It allows you to combine PDFs quickly, securely, and without any software installation.</p>
+            
+            <h3>Why Merge PDF Files?</h3>
+            <ul>
+              <li><strong>Simplified Document Management:</strong> Instead of juggling multiple attachments and files, a single merged PDF is easier to store, share, and manage.</li>
+              <li><strong>Professional Presentations:</strong> Combine reports, charts, and cover pages into one cohesive document for a professional presentation to clients or colleagues.</li>
+              <li><strong>Streamlined Archiving:</strong> Keep related documents together. Merge monthly reports, financial statements, or project files into a single PDF for organized, long-term storage.</li>
+              <li><strong>Easy Sharing:</strong> Sending one consolidated file is much simpler and more reliable than sending a folder full of individual documents, reducing the chance of files being missed or opened out of order.</li>
+            </ul>
+            <p>Our tool is designed for simplicity and power. The visual drag-and-drop interface lets you see exactly how your final document will be structured. You're not just appending files; you're building a new document with full control over the order of your content. This makes our online PDF combiner an indispensable tool for students, professionals, and anyone who works with digital documents.</p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

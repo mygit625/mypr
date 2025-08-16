@@ -11,12 +11,14 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfPagePreview from '@/components/feature/pdf-page-preview';
-import { FilePlus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine, Download } from 'lucide-react';
+import { FilePlus2, Loader2, Info, Plus, ArrowDownAZ, X, GripVertical, Combine, Download, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { assemblePdfAction } from '@/app/add-pages/actions';
 import { cn } from '@/lib/utils';
+import { PageConfetti } from '@/components/ui/page-confetti';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -48,6 +50,7 @@ export default function AddPagesPage() {
   const [isAssembling, setIsAssembling] = useState(false);
   const [assembledPdfUri, setAssembledPdfUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,6 +62,7 @@ export default function AddPagesPage() {
     setSelectedPdfItems([]);
     setAssembledPdfUri(null);
     setError(null);
+    setShowConfetti(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -196,6 +200,7 @@ export default function AddPagesPage() {
         });
       } else if (result.assembledPdfDataUri) {
         setAssembledPdfUri(result.assembledPdfDataUri);
+        setShowConfetti(true);
       }
     } catch (e: any) {
       const errorMessage = e.message || "An unexpected error occurred during assembly.";
@@ -247,6 +252,7 @@ export default function AddPagesPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-8">
+      <PageConfetti active={showConfetti} />
       <header className="text-center py-8">
         <FilePlus2 className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-3xl font-bold tracking-tight">Add Pages to PDF</h1>
@@ -414,6 +420,85 @@ export default function AddPagesPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+       <div className="max-w-4xl mx-auto space-y-16 pt-16">
+        <section>
+          <h2 className="text-3xl font-bold text-center mb-8">How to Add Pages to a PDF</h2>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <FileUp className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">1. Upload Your PDFs</h3>
+              <p className="text-muted-foreground">Begin by uploading your primary PDF. You can then use the '+' buttons to upload additional PDFs from which you want to add pages.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <MousePointerClick className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">2. Arrange and Reorder</h3>
+              <p className="text-muted-foreground">All pages from your uploaded files will appear as individual cards. Simply drag and drop the page cards to arrange them in your desired final order.</p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary mb-4">
+                <DownloadCloud className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">3. Assemble and Download</h3>
+              <p className="text-muted-foreground">Once you are happy with the page order, click the "Assemble Pages" button. Your new, combined PDF will be ready for instant download.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="text-center mb-12">
+            <HelpCircle className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg text-left">Can I add pages from a different PDF file?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                Yes. Our tool is designed for this purpose. You can upload an initial PDF, and then use the '+' buttons that appear between the pages to upload another PDF. All pages from the second document will be added to your workspace, allowing you to integrate them into your first document.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger className="text-lg text-left">Will the quality of my PDF be affected?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                No, the quality and formatting of your original pages are preserved. When you add pages to a PDF using our tool, we copy the pages exactly as they are, without re-compressing or altering their content, ensuring the final document remains crisp and clear.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger className="text-lg text-left">How many pages or files can I add?</AccordionTrigger>
+              <AccordionContent className="text-base text-muted-foreground">
+                You can upload multiple PDF files and arrange a large number of pages. While there is a generous limit, for extremely large documents (hundreds of pages), processing may take slightly longer. The tool is optimized for typical business and personal document sizes.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
+
+        <section>
+          <div className="prose dark:prose-invert lg:prose-lg max-w-full">
+            <h2 className="text-3xl font-bold text-center">Master Your Documents by Inserting Pages into PDFs</h2>
+            <p>The need to add a page to a PDF is a common challenge. Whether you've forgotten a crucial slide in a presentation, need to include an updated appendix in a report, or want to combine related documents, our online "Add Pages to PDF" tool provides a seamless solution. It empowers you to insert pages into a PDF file with precision and ease, transforming a static document into a flexible and dynamic one.</p>
+            
+            <h3>Common Scenarios for Adding PDF Pages</h3>
+            <ul>
+              <li><strong>Updating Reports:</strong> Easily insert a new cover page, add a table of contents, or append new data sheets to an existing business report without starting from scratch.</li>
+              <li><strong>Combining Invoices:</strong> Merge multiple invoices or receipts related to a single project into one consolidated PDF for easy record-keeping and submission.</li>
+              <li><strong>Completing Forms:</strong> If you need to add a signature page or supplementary documents to a PDF form, our tool allows you to place them exactly where they need to go.</li>
+              <li><strong>Building Portfolios:</strong> Graphic designers and artists can quickly add new project pages to their digital portfolios, keeping their work up-to-date.</li>
+            </ul>
+
+            <h3>The Advantage of a Visual Page Organizer</h3>
+            <p>Unlike other tools that simply append files, our platform provides a visual workspace. When you upload a PDF, every page is displayed as a thumbnail. This allows you to:</p>
+            <ul>
+              <li><strong>Drag and Drop with Precision:</strong> See the exact order of your pages and rearrange them intuitively.</li>
+              <li><strong>Insert Pages Anywhere:</strong> Use the '+' icons to add new PDF files at any point in your document—at the beginning, end, or in between any two existing pages.</li>
+              <li><strong>Create a Cohesive Final Document:</strong> By visualizing the entire document flow, you can ensure the final assembled PDF is logical, professional, and perfectly organized.</li>
+            </ul>
+            <p>Our free and secure tool simplifies the process of adding pages to a PDF. By breaking down documents into individual pages and providing a flexible canvas, we give you complete control over your final file. Stop struggling with complicated software and start organizing your PDFs the easy way.</p>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
