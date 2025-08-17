@@ -1,7 +1,22 @@
 
 "use client";
 
+// Polyfill for Promise.withResolvers if needed
+if (typeof Promise.withResolvers !== 'function') {
+  Promise.withResolvers = function withResolvers<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: any) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
+import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
@@ -13,10 +28,13 @@ import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { getInitialPageDataAction, cropPdfAction, type PageData } from './actions';
+import { createPdfFromImagesAction } from './actions';
 import { PageConfetti } from '@/components/ui/page-confetti';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import PdfPagePreview from '@/components/feature/pdf-page-preview';
+
+if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+}
 
 type InteractionMode =
   | 'move'
@@ -27,10 +45,10 @@ type InteractionMode =
 export default function CropPdfPage() {
   const [file, setFile] = useState<File | null>(null);
   const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
-  const [pages, setPages] = useState<PageData[]>([]);
+  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 80, height: 80 });
+  const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 200, height: 200 });
   const [croppedPdfUri, setCroppedPdfUri] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
@@ -44,15 +62,17 @@ export default function CropPdfPage() {
   const [cropMode, setCropMode] = useState<'all' | 'current'>('all');
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
   const resetState = () => {
     setFile(null);
     setPdfDataUri(null);
-    setPages([]);
+    if(pdfDoc) pdfDoc.destroy();
+    setPdfDoc(null);
     setTotalPages(0);
     setCurrentPage(1);
-    setCropBox({ x: 10, y: 10, width: 80, height: 80 });
+    setCropBox({ x: 10, y: 10, width: 200, height: 200 });
     setCroppedPdfUri(null);
     setShowConfetti(false);
     setIsLoading(false);
@@ -69,12 +89,10 @@ export default function CropPdfPage() {
       try {
         const dataUri = await readFileAsDataURL(selectedFile);
         setPdfDataUri(dataUri);
-        const result = await getInitialPageDataAction({ pdfDataUri: dataUri });
-        if (result.error) throw new Error(result.error);
-        if (result.pages) {
-          setPages(result.pages);
-          setTotalPages(result.pages.length);
-        }
+        const loadingTask = pdfjsLib.getDocument(dataUri);
+        const doc = await loadingTask.promise;
+        setPdfDoc(doc);
+        setTotalPages(doc.numPages);
       } catch (e: any) {
         setError(e.message || 'Failed to load PDF.');
         toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -84,33 +102,49 @@ export default function CropPdfPage() {
     }
   };
   
-  const currentPageData = pages[currentPage - 1];
-
   useEffect(() => {
-    if (containerRef.current && currentPageData) {
-      const { clientWidth: cWidth, clientHeight: cHeight } = containerRef.current;
-      
-      const isSideways = currentPageData.rotation === 90 || currentPageData.rotation === 270;
-      const visualPageWidth = isSideways ? currentPageData.height : currentPageData.width;
-      const visualPageHeight = isSideways ? currentPageData.width : currentPageData.height;
+    if (!pdfDoc || !canvasRef.current || !containerRef.current) return;
+    
+    let isMounted = true;
+    const renderPage = async () => {
+      try {
+        const page = await pdfDoc.getPage(currentPage);
+        const { clientWidth: containerWidth, clientHeight: containerHeight } = containerRef.current!;
+        const viewport = page.getViewport({ scale: 1 });
+        
+        const scale = Math.min(containerWidth / viewport.width, containerHeight / viewport.height);
+        const scaledViewport = page.getViewport({ scale });
 
-      const scale = Math.min(cWidth / visualPageWidth, cHeight / visualPageHeight);
-      const scaledWidth = visualPageWidth * scale;
-      const scaledHeight = visualPageHeight * scale;
+        const canvas = canvasRef.current!;
+        const context = canvas.getContext('2d')!;
+        canvas.width = scaledViewport.width;
+        canvas.height = scaledViewport.height;
 
-      const newWidth = scaledWidth * 0.8;
-      const newHeight = scaledHeight * 0.8;
-      const newX = (cWidth - newWidth) / 2;
-      const newY = (cHeight - newHeight) / 2;
-      
-      setCropBox({ x: newX, y: newY, width: newWidth, height: newHeight });
-    }
-  }, [currentPageData]);
+        const renderContext: RenderParameters = { canvasContext: context, viewport: scaledViewport };
+        await page.render(renderContext).promise;
+        
+        if (isMounted) {
+            const initialWidth = canvas.width * 0.8;
+            const initialHeight = canvas.height * 0.8;
+            setCropBox({
+                x: (canvas.width - initialWidth) / 2,
+                y: (canvas.height - initialHeight) / 2,
+                width: initialWidth,
+                height: initialHeight,
+            });
+        }
+      } catch (e: any) {
+        if(isMounted) setError(e.message);
+      }
+    };
+    renderPage();
+    return () => { isMounted = false; };
+  }, [pdfDoc, currentPage]);
 
 
   const getRelativeCoords = (e: ReactMouseEvent | ReactTouchEvent) => {
-    if (!containerRef.current) return { x: 0, y: 0 };
-    const rect = containerRef.current.getBoundingClientRect();
+    if (!canvasRef.current) return { x: 0, y: 0 };
+    const rect = canvasRef.current.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     return { x: clientX - rect.left, y: clientY - rect.top };
@@ -125,11 +159,11 @@ export default function CropPdfPage() {
   };
 
   const handleInteractionMove = (e: ReactMouseEvent | ReactTouchEvent) => {
-    if (!interaction || !containerRef.current) return;
+    if (!interaction || !canvasRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     const currentPos = getRelativeCoords(e);
-    const { clientWidth: cWidth, clientHeight: cHeight } = containerRef.current;
+    const { width: cWidth, height: cHeight } = canvasRef.current;
     
     const dx = currentPos.x - startPos.x;
     const dy = currentPos.y - startPos.y;
@@ -161,26 +195,48 @@ export default function CropPdfPage() {
   const endInteraction = () => setInteraction(null);
   
   const handleCrop = async () => {
-    if (!pdfDataUri || !containerRef.current) return;
+    if (!pdfDoc) return;
     setIsProcessing(true);
     setError(null);
     try {
-      const { clientWidth, clientHeight } = containerRef.current;
-      const result = await cropPdfAction({
-        pdfDataUri,
-        cropArea: cropBox,
-        applyTo: cropMode,
-        currentPage,
-        clientCanvasWidth: clientWidth,
-        clientCanvasHeight: clientHeight,
-      });
+      const pageIndices = cropMode === 'all' ? Array.from({ length: totalPages }, (_, i) => i + 1) : [currentPage];
+      const imageDataUris: string[] = [];
+      
+      for(const pageNum of pageIndices) {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2.0 }); // High-res for cropping
+        
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = viewport.width;
+        tempCanvas.height = viewport.height;
+        const tempCtx = tempCanvas.getContext('2d')!;
+        
+        await page.render({ canvasContext: tempCtx, viewport }).promise;
+        
+        const scaleRatio = viewport.width / canvasRef.current!.width;
+        const sx = cropBox.x * scaleRatio;
+        const sy = cropBox.y * scaleRatio;
+        const sWidth = cropBox.width * scaleRatio;
+        const sHeight = cropBox.height * scaleRatio;
+        
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = sWidth;
+        finalCanvas.height = sHeight;
+        const finalCtx = finalCanvas.getContext('2d')!;
+        finalCtx.drawImage(tempCanvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+        
+        imageDataUris.push(finalCanvas.toDataURL('image/png'));
+      }
 
+      const result = await createPdfFromImagesAction({ imageDataUris });
       if (result.error) throw new Error(result.error);
-      if (result.croppedPdfDataUri) {
-        setCroppedPdfUri(result.croppedPdfDataUri);
+
+      if (result.createdPdfDataUri) {
+        setCroppedPdfUri(result.createdPdfDataUri);
         setShowConfetti(true);
         toast({ title: 'Success', description: 'PDF has been cropped.' });
       }
+
     } catch (e: any) {
         setError(e.message);
         toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -215,7 +271,7 @@ export default function CropPdfPage() {
 
       {isLoading && <div className="text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></div>}
       
-      {file && pdfDataUri && pages.length > 0 && (
+      {file && pdfDataUri && pages.length === 0 && !isLoading && pdfDoc && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <Card>
@@ -226,13 +282,7 @@ export default function CropPdfPage() {
                   onMouseMove={handleInteractionMove} onMouseUp={endInteraction} onMouseLeave={endInteraction}
                   onTouchMove={handleInteractionMove} onTouchEnd={endInteraction}
                 >
-                  {currentPageData && (
-                    <PdfPagePreview
-                      pdfDataUri={pdfDataUri}
-                      pageIndex={currentPageData.originalIndex}
-                      targetHeight={containerRef.current ? containerRef.current.clientHeight - 20 : 600}
-                    />
-                  )}
+                  <canvas ref={canvasRef} className="max-w-full max-h-full" />
                   <div
                     className="absolute border-2 border-dashed border-primary bg-primary/20 cursor-move"
                     style={{ left: cropBox.x, top: cropBox.y, width: cropBox.width, height: cropBox.height }}
