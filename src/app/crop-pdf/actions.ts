@@ -1,50 +1,60 @@
+
 'use server';
 
-import { PDFDocument } from 'pdf-lib';
-import type { Buffer } from 'buffer';
+// This is a new, simplified server action.
+// It takes pre-cropped images (as data URIs) from the client and assembles them into a PDF.
+// This eliminates all complex server-side geometry calculations, which was the source of the previous errors.
 
 export interface CreatePdfFromImagesInput {
+  // An array of data URIs, each representing a cropped and compressed page image (e.g., JPEG).
   imageDataUris: string[];
 }
 
 export interface CreatePdfFromImagesOutput {
-  pdfDataUri?: string;
+  processedPdfDataUri?: string;
   error?: string;
 }
 
 export async function createPdfFromImagesAction(input: CreatePdfFromImagesInput): Promise<CreatePdfFromImagesOutput> {
   if (!input.imageDataUris || input.imageDataUris.length === 0) {
-    return { error: 'No image data provided.' };
+    return { error: 'No image data was provided to create the PDF.' };
   }
 
   try {
+    const { PDFDocument } = await import('pdf-lib');
     const newPdfDoc = await PDFDocument.create();
 
     for (const dataUri of input.imageDataUris) {
-        if (!dataUri.startsWith('data:image/png;base64,')) {
-            console.warn('Skipping non-PNG image data URI during PDF creation from images.');
-            continue;
-        }
-        const pngBytes = Buffer.from(dataUri.split(',')[1], 'base64');
-        const pngImage = await newPdfDoc.embedPng(pngBytes);
-        
-        const page = newPdfDoc.addPage([pngImage.width, pngImage.height]);
-        page.drawImage(pngImage, {
-            x: 0,
-            y: 0,
-            width: pngImage.width,
-            height: pngImage.height,
-        });
+      const imageBytes = Buffer.from(dataUri.split(',')[1], 'base64');
+      
+      let embeddedImage;
+      if (dataUri.startsWith('data:image/png')) {
+        embeddedImage = await newPdfDoc.embedPng(imageBytes);
+      } else if (dataUri.startsWith('data:image/jpeg')) {
+        embeddedImage = await newPdfDoc.embedJpg(imageBytes);
+      } else {
+        console.warn('Unsupported image type for PDF embedding, skipping:', dataUri.substring(0, 30));
+        continue;
+      }
+      
+      const page = newPdfDoc.addPage([embeddedImage.width, embeddedImage.height]);
+      
+      page.drawImage(embeddedImage, {
+        x: 0,
+        y: 0,
+        width: embeddedImage.width,
+        height: embeddedImage.height,
+      });
     }
     
     if (newPdfDoc.getPageCount() === 0) {
-        return { error: "No valid images were processed to create the PDF." };
+        return { error: "Could not create PDF as no valid images were processed." };
     }
 
-    const pdfBytes = await newPdfDoc.save();
-    const pdfDataUri = `data:application/pdf;base64,${Buffer.from(pdfBytes).toString('base64')}`;
+    const processedPdfBytes = await newPdfDoc.save();
+    const processedPdfDataUri = `data:application/pdf;base64,${Buffer.from(processedPdfBytes).toString('base64')}`;
 
-    return { pdfDataUri };
+    return { processedPdfDataUri };
 
   } catch (error: any) {
     console.error('Error creating PDF from images:', error);

@@ -1,18 +1,5 @@
+
 "use client";
-
-// Polyfill for Promise.withResolvers if needed by pdfjs-dist client-side
-if (typeof Promise.withResolvers !== 'function') {
-  Promise.withResolvers = function withResolvers<T>() {
-    let resolve!: (value: T | PromiseLike<T>) => void;
-    let reject!: (reason?: any) => void;
-    const promise = new Promise<T>((res, rej) => {
-      resolve = res;
-      reject = rej;
-    });
-    return { promise, resolve, reject };
-  };
-}
-
 
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
@@ -241,61 +228,74 @@ export default function CropPdfPage() {
   };
   
   const handleCrop = async () => {
-    if (!pdfDoc || !canvasRef.current || !containerRef.current) return;
+    if (!file || !pdfDoc || !canvasRef.current || !containerRef.current) return;
     setIsProcessing(true);
     setError(null);
     try {
-        const pagesToCropIndices = cropMode === 'all'
-            ? Array.from({ length: totalPages }, (_, i) => i)
-            : [currentPage - 1];
+      const pageIndicesToProcess = cropMode === 'all'
+        ? Array.from({ length: totalPages }, (_, i) => i)
+        : [currentPage - 1];
 
-        const imagePromises = pagesToCropIndices.map(async (pageIndex) => {
-            const page = await pdfDoc.getPage(pageIndex + 1);
-            const scale = 3.0; // High resolution for cropping
-            const viewport = page.getViewport({ scale });
+      const imageDataUris: string[] = [];
+      const RENDER_SCALE = 4.0;
 
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = viewport.width;
-            tempCanvas.height = viewport.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            if (!tempCtx) throw new Error("Could not create canvas context.");
-            
-            await page.render({ canvasContext: tempCtx, viewport }).promise;
-
-            const mainCanvas = canvasRef.current!;
-            const mainContainer = containerRef.current!;
-            const mainCanvasScale = mainCanvas.width / viewport.width * scale;
-            
-            // Adjust crop box from container-relative to main canvas-relative
-            const canvasXOffset = (mainContainer.clientWidth - mainCanvas.width) / 2;
-            const canvasYOffset = (mainContainer.clientHeight - mainCanvas.height) / 2;
-
-            const sx = (cropBox.x - canvasXOffset) / mainCanvasScale;
-            const sy = (cropBox.y - canvasYOffset) / mainCanvasScale;
-            const sWidth = cropBox.width / mainCanvasScale;
-            const sHeight = cropBox.height / mainCanvasScale;
-
-            const finalCanvas = document.createElement('canvas');
-            finalCanvas.width = sWidth;
-            finalCanvas.height = sHeight;
-            const finalCtx = finalCanvas.getContext('2d');
-            if (!finalCtx) throw new Error("Could not create final canvas context.");
-            
-            finalCtx.drawImage(tempCanvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-            
-            return finalCanvas.toDataURL('image/png');
-        });
-
-        const imageDataUris = await Promise.all(imagePromises);
+      for (const pageIndex of pageIndicesToProcess) {
+        const page = await pdfDoc.getPage(pageIndex + 1);
+        const viewport = page.getViewport({ scale: 1 });
         
-        const result = await createPdfFromImagesAction({ imageDataUris });
+        const previewCanvas = canvasRef.current!;
+        const previewContainer = containerRef.current!;
+        
+        const previewScale = Math.min(
+          previewContainer.clientWidth / viewport.width,
+          previewContainer.clientHeight / viewport.height
+        );
 
-        if (result.error) throw new Error(result.error);
-        if (result.pdfDataUri) {
-            setCroppedPdfUri(result.pdfDataUri);
-            setShowConfetti(true);
-            toast({ title: 'Success', description: 'PDF has been cropped.' });
-        }
+        const renderedCanvasWidth = viewport.width * previewScale;
+        const renderedCanvasHeight = viewport.height * previewScale;
+        
+        const offsetX = (previewContainer.clientWidth - renderedCanvasWidth) / 2;
+        const offsetY = (previewContainer.clientHeight - renderedCanvasHeight) / 2;
+
+        const canvasRelativeCropX = cropBox.x - offsetX;
+        const canvasRelativeCropY = cropBox.y - offsetY;
+
+        const finalCropX = canvasRelativeCropX / previewScale * RENDER_SCALE;
+        const finalCropY = canvasRelativeCropY / previewScale * RENDER_SCALE;
+        const finalCropWidth = cropBox.width / previewScale * RENDER_SCALE;
+        const finalCropHeight = cropBox.height / previewScale * RENDER_SCALE;
+
+        const highResViewport = page.getViewport({ scale: RENDER_SCALE });
+        const renderCanvas = document.createElement('canvas');
+        renderCanvas.width = highResViewport.width;
+        renderCanvas.height = highResViewport.height;
+        const renderCtx = renderCanvas.getContext('2d');
+        if (!renderCtx) throw new Error("Could not create render context");
+        await page.render({ canvasContext: renderCtx, viewport: highResViewport }).promise;
+
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = finalCropWidth;
+        finalCanvas.height = finalCropHeight;
+        const finalCtx = finalCanvas.getContext('2d');
+        if (!finalCtx) throw new Error("Could not create final context");
+
+        finalCtx.drawImage(
+          renderCanvas,
+          finalCropX, finalCropY, finalCropWidth, finalCropHeight,
+          0, 0, finalCropWidth, finalCropHeight
+        );
+
+        imageDataUris.push(finalCanvas.toDataURL('image/png'));
+      }
+
+      const result = await createPdfFromImagesAction({ imageDataUris });
+
+      if (result.error) throw new Error(result.error);
+      if (result.processedPdfDataUri) {
+        setCroppedPdfUri(result.processedPdfDataUri);
+        setShowConfetti(true);
+        toast({ title: 'Success', description: 'PDF has been cropped.' });
+      }
 
     } catch (e: any) {
         setError(e.message);
