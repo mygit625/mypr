@@ -1,5 +1,19 @@
 "use client";
 
+// Polyfill for Promise.withResolvers if needed by pdfjs-dist client-side
+if (typeof Promise.withResolvers !== 'function') {
+  Promise.withResolvers = function withResolvers<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: any) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
+
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
@@ -15,7 +29,7 @@ import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { cropPdfAction } from './actions';
+import { createPdfFromImagesAction } from './actions';
 import { PageConfetti } from '@/components/ui/page-confetti';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
@@ -33,7 +47,6 @@ type InteractionMode =
 
 export default function CropPdfPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,7 +69,6 @@ export default function CropPdfPage() {
 
   const resetState = () => {
     setFile(null);
-    setPdfDataUri(null);
     setPdfDoc(null);
     setTotalPages(0);
     setCurrentPage(1);
@@ -76,7 +88,6 @@ export default function CropPdfPage() {
       setIsLoading(true);
       try {
         const dataUri = await readFileAsDataURL(selectedFile);
-        setPdfDataUri(dataUri);
         const loadingTask = pdfjsLib.getDocument(dataUri);
         const doc = await loadingTask.promise;
         setPdfDoc(doc);
@@ -230,27 +241,61 @@ export default function CropPdfPage() {
   };
   
   const handleCrop = async () => {
-    if (!pdfDataUri || !containerRef.current || !canvasRef.current) return;
+    if (!pdfDoc || !canvasRef.current || !containerRef.current) return;
     setIsProcessing(true);
     setError(null);
     try {
-      const result = await cropPdfAction({
-        pdfDataUri,
-        cropArea: cropBox,
-        applyTo: cropMode,
-        currentPage: currentPage,
-        clientContainerWidth: containerRef.current.clientWidth,
-        clientContainerHeight: containerRef.current.clientHeight,
-        clientCanvasWidth: canvasRef.current.width,
-        clientCanvasHeight: canvasRef.current.height,
-      });
+        const pagesToCropIndices = cropMode === 'all'
+            ? Array.from({ length: totalPages }, (_, i) => i)
+            : [currentPage - 1];
 
-      if (result.error) throw new Error(result.error);
-      if (result.croppedPdfDataUri) {
-        setCroppedPdfUri(result.croppedPdfDataUri);
-        setShowConfetti(true);
-        toast({ title: 'Success', description: 'PDF has been cropped.' });
-      }
+        const imagePromises = pagesToCropIndices.map(async (pageIndex) => {
+            const page = await pdfDoc.getPage(pageIndex + 1);
+            const scale = 3.0; // High resolution for cropping
+            const viewport = page.getViewport({ scale });
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = viewport.width;
+            tempCanvas.height = viewport.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            if (!tempCtx) throw new Error("Could not create canvas context.");
+            
+            await page.render({ canvasContext: tempCtx, viewport }).promise;
+
+            const mainCanvas = canvasRef.current!;
+            const mainContainer = containerRef.current!;
+            const mainCanvasScale = mainCanvas.width / viewport.width * scale;
+            
+            // Adjust crop box from container-relative to main canvas-relative
+            const canvasXOffset = (mainContainer.clientWidth - mainCanvas.width) / 2;
+            const canvasYOffset = (mainContainer.clientHeight - mainCanvas.height) / 2;
+
+            const sx = (cropBox.x - canvasXOffset) / mainCanvasScale;
+            const sy = (cropBox.y - canvasYOffset) / mainCanvasScale;
+            const sWidth = cropBox.width / mainCanvasScale;
+            const sHeight = cropBox.height / mainCanvasScale;
+
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = sWidth;
+            finalCanvas.height = sHeight;
+            const finalCtx = finalCanvas.getContext('2d');
+            if (!finalCtx) throw new Error("Could not create final canvas context.");
+            
+            finalCtx.drawImage(tempCanvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+            
+            return finalCanvas.toDataURL('image/png');
+        });
+
+        const imageDataUris = await Promise.all(imagePromises);
+        
+        const result = await createPdfFromImagesAction({ imageDataUris });
+
+        if (result.error) throw new Error(result.error);
+        if (result.pdfDataUri) {
+            setCroppedPdfUri(result.pdfDataUri);
+            setShowConfetti(true);
+            toast({ title: 'Success', description: 'PDF has been cropped.' });
+        }
 
     } catch (e: any) {
         setError(e.message);
