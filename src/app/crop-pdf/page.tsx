@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
@@ -11,6 +12,7 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { getInitialPageDataAction, cropPdfAction, type PageData } from './actions';
 import { PageConfetti } from '@/components/ui/page-confetti';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
