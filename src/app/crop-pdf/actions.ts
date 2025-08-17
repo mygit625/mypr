@@ -1,12 +1,9 @@
 
 'use server';
 
-// This is a new, simplified server action.
-// It takes pre-cropped images (as data URIs) from the client and assembles them into a PDF.
-// This eliminates all complex server-side geometry calculations, which was the source of the previous errors.
+import { PDFDocument } from 'pdf-lib';
 
 export interface CreatePdfFromImagesInput {
-  // An array of data URIs, each representing a cropped and compressed page image (e.g., JPEG).
   imageDataUris: string[];
 }
 
@@ -21,7 +18,6 @@ export async function createPdfFromImagesAction(input: CreatePdfFromImagesInput)
   }
 
   try {
-    const { PDFDocument } = await import('pdf-lib');
     const newPdfDoc = await PDFDocument.create();
 
     for (const dataUri of input.imageDataUris) {
