@@ -51,12 +51,15 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
         const visualPageWidth = isSideways ? originalHeight : originalWidth;
         const visualPageHeight = isSideways ? originalWidth : originalHeight;
         
-        // This is the scale factor from the original PDF page dimensions to the rendered canvas dimensions
-        const scale = input.clientCanvasWidth / visualPageWidth;
+        // This is the correct scale factor, accounting for how the page is fitted inside the canvas.
+        const scale = Math.min(
+            input.clientCanvasWidth / visualPageWidth,
+            input.clientCanvasHeight / visualPageHeight
+        );
 
         // The canvas is centered within its container. We need to account for this offset.
-        const offsetX = (input.clientContainerWidth - input.clientCanvasWidth) / 2;
-        const offsetY = (input.clientContainerHeight - input.clientCanvasHeight) / 2;
+        const offsetX = (input.clientContainerWidth - (visualPageWidth * scale)) / 2;
+        const offsetY = (input.clientContainerHeight - (visualPageHeight * scale)) / 2;
         
         // Convert client-side crop box coordinates (relative to the container) to be relative to the unscaled, original page.
         // 1. Subtract the canvas offset to get coordinates relative to the canvas itself.
