@@ -271,7 +271,7 @@ export default function CropPdfPage() {
 
       {isLoading && <div className="text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></div>}
       
-      {file && pdfDataUri && pages.length === 0 && !isLoading && pdfDoc && (
+      {file && pdfDataUri && !isLoading && pdfDoc && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <Card>
