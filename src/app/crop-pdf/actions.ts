@@ -1,12 +1,14 @@
 'use server';
 
 import { PDFDocument } from 'pdf-lib';
+import type { Buffer } from 'buffer';
 
 export interface PageData {
   id: string;
   originalIndex: number;
   width: number;
   height: number;
+  rotation: number;
 }
 
 export interface GetInitialPageDataInput {
@@ -27,11 +29,13 @@ export async function getInitialPageDataAction(input: GetInitialPageDataInput): 
     const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
     const pagesData: PageData[] = pdfDoc.getPages().map((page, i) => {
       const { width, height } = page.getSize();
+      const rotation = page.getRotation().angle;
       return {
         id: crypto.randomUUID(),
         originalIndex: i,
         width,
         height,
+        rotation,
       };
     });
     return { pages: pagesData };
@@ -54,8 +58,8 @@ export interface CropPdfInput {
   cropArea: CropArea;
   applyTo: 'all' | 'current';
   currentPage: number; // 1-indexed
-  previewContainerWidth: number;
-  previewContainerHeight: number;
+  clientCanvasWidth: number;
+  clientCanvasHeight: number;
 }
 
 export interface CropPdfOutput {
@@ -81,26 +85,64 @@ export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput>
 
         const page = pdfDoc.getPage(pageIndex);
         const { width: originalWidth, height: originalHeight } = page.getSize();
+        const rotation = page.getRotation().angle;
         
+        const isSideways = rotation === 90 || rotation === 270;
+        const visualPageWidth = isSideways ? originalHeight : originalWidth;
+        const visualPageHeight = isSideways ? originalWidth : originalHeight;
+
         const scale = Math.min(
-            input.previewContainerWidth / originalWidth,
-            input.previewContainerHeight / originalHeight
+            input.clientCanvasWidth / visualPageWidth,
+            input.clientCanvasHeight / visualPageHeight
         );
 
-        const scaledWidth = originalWidth * scale;
-        const scaledHeight = originalHeight * scale;
+        const scaledWidthOnClient = visualPageWidth * scale;
+        const scaledHeightOnClient = visualPageHeight * scale;
 
-        const offsetX = (input.previewContainerWidth - scaledWidth) / 2;
-        const offsetY = (input.previewContainerHeight - scaledHeight) / 2;
+        const offsetXOnClient = (input.clientCanvasWidth - scaledWidthOnClient) / 2;
+        const offsetYOnClient = (input.clientCanvasHeight - scaledHeightOnClient) / 2;
 
-        const cropX_pdf = (input.cropArea.x - offsetX) / scale;
-        const cropY_pdf = (input.cropArea.y - offsetY) / scale;
+        const cropX_pdf = (input.cropArea.x - offsetXOnClient) / scale;
+        const cropY_pdf = (input.cropArea.y - offsetYOnClient) / scale;
         const cropWidth_pdf = input.cropArea.width / scale;
         const cropHeight_pdf = input.cropArea.height / scale;
 
-        const finalY_pdf = originalHeight - (cropY_pdf + cropHeight_pdf);
+        let finalX_pdf, finalY_pdf, finalWidth_pdf, finalHeight_pdf;
         
-        page.setCropBox(cropX_pdf, finalY_pdf, cropWidth_pdf, cropHeight_pdf);
+        switch (rotation) {
+            case 0:
+                finalX_pdf = cropX_pdf;
+                finalY_pdf = visualPageHeight - (cropY_pdf + cropHeight_pdf);
+                finalWidth_pdf = cropWidth_pdf;
+                finalHeight_pdf = cropHeight_pdf;
+                break;
+            case 90:
+                finalX_pdf = cropY_pdf;
+                finalY_pdf = cropX_pdf;
+                finalWidth_pdf = cropHeight_pdf;
+                finalHeight_pdf = cropWidth_pdf;
+                break;
+            case 180:
+                finalX_pdf = visualPageWidth - (cropX_pdf + cropWidth_pdf);
+                finalY_pdf = cropY_pdf;
+                finalWidth_pdf = cropWidth_pdf;
+                finalHeight_pdf = cropHeight_pdf;
+                break;
+            case 270:
+                finalX_pdf = visualPageHeight - (cropY_pdf + cropHeight_pdf);
+                finalY_pdf = visualPageWidth - (cropX_pdf + cropWidth_pdf);
+                finalWidth_pdf = cropHeight_pdf;
+                finalHeight_pdf = cropWidth_pdf;
+                break;
+            default:
+                finalX_pdf = cropX_pdf;
+                finalY_pdf = visualPageHeight - (cropY_pdf + cropHeight_pdf);
+                finalWidth_pdf = cropWidth_pdf;
+                finalHeight_pdf = cropHeight_pdf;
+                break;
+        }
+        
+        page.setCropBox(finalX_pdf, finalY_pdf, finalWidth_pdf, finalHeight_pdf);
     }
     
     const croppedPdfBytes = await pdfDoc.save();

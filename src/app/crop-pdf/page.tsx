@@ -11,10 +11,10 @@ import { downloadDataUri } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { getInitialPageDataAction, cropPdfAction, type PageData } from './actions';
 import { PageConfetti } from '@/components/ui/page-confetti';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import PdfPagePreview from '@/components/feature/pdf-page-preview';
 
 type InteractionMode =
   | 'move'
@@ -87,11 +87,14 @@ export default function CropPdfPage() {
   useEffect(() => {
     if (containerRef.current && currentPageData) {
       const { clientWidth: cWidth, clientHeight: cHeight } = containerRef.current;
-      const { width: pWidth, height: pHeight } = currentPageData;
+      
+      const isSideways = currentPageData.rotation === 90 || currentPageData.rotation === 270;
+      const visualPageWidth = isSideways ? currentPageData.height : currentPageData.width;
+      const visualPageHeight = isSideways ? currentPageData.width : currentPageData.height;
 
-      const scale = Math.min(cWidth / pWidth, cHeight / pHeight);
-      const scaledWidth = pWidth * scale;
-      const scaledHeight = pHeight * scale;
+      const scale = Math.min(cWidth / visualPageWidth, cHeight / visualPageHeight);
+      const scaledWidth = visualPageWidth * scale;
+      const scaledHeight = visualPageHeight * scale;
 
       const newWidth = scaledWidth * 0.8;
       const newHeight = scaledHeight * 0.8;
@@ -166,8 +169,8 @@ export default function CropPdfPage() {
         cropArea: cropBox,
         applyTo: cropMode,
         currentPage,
-        previewContainerWidth: clientWidth,
-        previewContainerHeight: clientHeight,
+        clientCanvasWidth: clientWidth,
+        clientCanvasHeight: clientHeight,
       });
 
       if (result.error) throw new Error(result.error);
@@ -191,23 +194,6 @@ export default function CropPdfPage() {
   };
   
   const resizeHandleClasses = "absolute w-3 h-3 bg-primary rounded-full border-2 border-white";
-
-  const PagePlaceholder = () => {
-    if (!currentPageData) return <div className="w-full h-full bg-muted animate-pulse rounded-md" />;
-    const { width, height } = currentPageData;
-    const aspectRatio = width / height;
-    return (
-      <div className="relative w-full h-full flex items-center justify-center">
-        <div style={{ width: '100%', paddingBottom: `${(1 / aspectRatio) * 100}%` }} />
-        <div className="absolute inset-0 flex items-center justify-center">
-            <div className="bg-white shadow-lg text-center p-4 border rounded-md" style={{ aspectRatio, maxHeight: '100%', maxWidth: '100%' }}>
-                <p className="font-semibold">Page {currentPage}</p>
-                <p className="text-xs text-muted-foreground">{width.toFixed(0)} x {height.toFixed(0)} pts</p>
-            </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -238,7 +224,13 @@ export default function CropPdfPage() {
                   onMouseMove={handleInteractionMove} onMouseUp={endInteraction} onMouseLeave={endInteraction}
                   onTouchMove={handleInteractionMove} onTouchEnd={endInteraction}
                 >
-                  <PagePlaceholder />
+                  {currentPageData && (
+                    <PdfPagePreview
+                      pdfDataUri={pdfDataUri}
+                      pageIndex={currentPageData.originalIndex}
+                      targetHeight={containerRef.current ? containerRef.current.clientHeight - 20 : 600}
+                    />
+                  )}
                   <div
                     className="absolute border-2 border-dashed border-primary bg-primary/20 cursor-move"
                     style={{ left: cropBox.x, top: cropBox.y, width: cropBox.width, height: cropBox.height }}
