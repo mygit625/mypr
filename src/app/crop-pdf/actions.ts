@@ -1,4 +1,3 @@
-
 'use server';
 
 import { PDFDocument } from 'pdf-lib';
@@ -26,11 +25,9 @@ export async function createPdfFromImagesAction(input: CreatePdfFromImagesInput)
       let embeddedImage;
       if (dataUri.startsWith('data:image/png')) {
         embeddedImage = await newPdfDoc.embedPng(imageBytes);
-      } else if (dataUri.startsWith('data:image/jpeg')) {
-        embeddedImage = await newPdfDoc.embedJpg(imageBytes);
       } else {
-        console.warn('Unsupported image type for PDF embedding, skipping:', dataUri.substring(0, 30));
-        continue;
+        // This logic is kept for flexibility, though the client currently sends PNGs.
+        embeddedImage = await newPdfDoc.embedJpg(imageBytes);
       }
       
       const page = newPdfDoc.addPage([embeddedImage.width, embeddedImage.height]);
