@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
@@ -16,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { createPdfFromImagesAction } from './actions';
+import { cropPdfAction } from './actions';
 import { PageConfetti } from '@/components/ui/page-confetti';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
@@ -34,6 +33,7 @@ type InteractionMode =
 
 export default function CropPdfPage() {
   const [file, setFile] = useState<File | null>(null);
+  const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,6 +56,7 @@ export default function CropPdfPage() {
 
   const resetState = () => {
     setFile(null);
+    setPdfDataUri(null);
     setPdfDoc(null);
     setTotalPages(0);
     setCurrentPage(1);
@@ -75,6 +76,7 @@ export default function CropPdfPage() {
       setIsLoading(true);
       try {
         const dataUri = await readFileAsDataURL(selectedFile);
+        setPdfDataUri(dataUri);
         const loadingTask = pdfjsLib.getDocument(dataUri);
         const doc = await loadingTask.promise;
         setPdfDoc(doc);
@@ -228,71 +230,24 @@ export default function CropPdfPage() {
   };
   
   const handleCrop = async () => {
-    if (!file || !pdfDoc || !canvasRef.current || !containerRef.current) return;
+    if (!pdfDataUri || !containerRef.current || !canvasRef.current) return;
     setIsProcessing(true);
     setError(null);
     try {
-      const pageIndicesToProcess = cropMode === 'all'
-        ? Array.from({ length: totalPages }, (_, i) => i)
-        : [currentPage - 1];
-
-      const imageDataUris: string[] = [];
-      const RENDER_SCALE = 4.0;
-
-      for (const pageIndex of pageIndicesToProcess) {
-        const page = await pdfDoc.getPage(pageIndex + 1);
-        const viewport = page.getViewport({ scale: 1 });
-        
-        const previewCanvas = canvasRef.current!;
-        const previewContainer = containerRef.current!;
-        
-        const previewScale = Math.min(
-          previewContainer.clientWidth / viewport.width,
-          previewContainer.clientHeight / viewport.height
-        );
-
-        const renderedCanvasWidth = viewport.width * previewScale;
-        const renderedCanvasHeight = viewport.height * previewScale;
-        
-        const offsetX = (previewContainer.clientWidth - renderedCanvasWidth) / 2;
-        const offsetY = (previewContainer.clientHeight - renderedCanvasHeight) / 2;
-
-        const canvasRelativeCropX = cropBox.x - offsetX;
-        const canvasRelativeCropY = cropBox.y - offsetY;
-
-        const finalCropX = canvasRelativeCropX / previewScale * RENDER_SCALE;
-        const finalCropY = canvasRelativeCropY / previewScale * RENDER_SCALE;
-        const finalCropWidth = cropBox.width / previewScale * RENDER_SCALE;
-        const finalCropHeight = cropBox.height / previewScale * RENDER_SCALE;
-
-        const highResViewport = page.getViewport({ scale: RENDER_SCALE });
-        const renderCanvas = document.createElement('canvas');
-        renderCanvas.width = highResViewport.width;
-        renderCanvas.height = highResViewport.height;
-        const renderCtx = renderCanvas.getContext('2d');
-        if (!renderCtx) throw new Error("Could not create render context");
-        await page.render({ canvasContext: renderCtx, viewport: highResViewport }).promise;
-
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = finalCropWidth;
-        finalCanvas.height = finalCropHeight;
-        const finalCtx = finalCanvas.getContext('2d');
-        if (!finalCtx) throw new Error("Could not create final context");
-
-        finalCtx.drawImage(
-          renderCanvas,
-          finalCropX, finalCropY, finalCropWidth, finalCropHeight,
-          0, 0, finalCropWidth, finalCropHeight
-        );
-
-        imageDataUris.push(finalCanvas.toDataURL('image/png'));
-      }
-
-      const result = await createPdfFromImagesAction({ imageDataUris });
+      const result = await cropPdfAction({
+        pdfDataUri,
+        cropArea: cropBox,
+        applyTo: cropMode,
+        currentPage: currentPage,
+        clientContainerWidth: containerRef.current.clientWidth,
+        clientContainerHeight: containerRef.current.clientHeight,
+        clientCanvasWidth: canvasRef.current.width,
+        clientCanvasHeight: canvasRef.current.height,
+      });
 
       if (result.error) throw new Error(result.error);
-      if (result.processedPdfDataUri) {
-        setCroppedPdfUri(result.processedPdfDataUri);
+      if (result.croppedPdfDataUri) {
+        setCroppedPdfUri(result.croppedPdfDataUri);
         setShowConfetti(true);
         toast({ title: 'Success', description: 'PDF has been cropped.' });
       }

@@ -1,60 +1,87 @@
-
 'use server';
 
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, type PDFPage } from 'pdf-lib';
 
-// This server action takes pre-cropped images (as data URIs) from the client
-// and assembles them into a new PDF document.
-
-export interface CreatePdfFromImagesInput {
-  // An array of data URIs, each representing a cropped page image.
-  // The client-side logic currently generates PNGs.
-  imageDataUris: string[];
+export interface CropArea {
+  x: number; // in pixels, relative to the top-left of the client canvas container
+  y: number; // in pixels, relative to the top-left of the client canvas container
+  width: number; // in pixels
+  height: number; // in pixels
 }
 
-export interface CreatePdfFromImagesOutput {
-  processedPdfDataUri?: string;
+export interface CropPdfInput {
+  pdfDataUri: string;
+  cropArea: CropArea;
+  applyTo: 'all' | 'current';
+  currentPage: number; // 1-indexed
+  // Dimensions of the container that holds the canvas, for calculating offsets
+  clientContainerWidth: number;
+  clientContainerHeight: number;
+  // Dimensions of the actual rendered canvas inside the container
+  clientCanvasWidth: number; 
+  clientCanvasHeight: number;
+}
+
+export interface CropPdfOutput {
+  croppedPdfDataUri?: string;
   error?: string;
 }
 
-export async function createPdfFromImagesAction(input: CreatePdfFromImagesInput): Promise<CreatePdfFromImagesOutput> {
-  if (!input.imageDataUris || input.imageDataUris.length === 0) {
-    return { error: 'No image data was provided to create the PDF.' };
+export async function cropPdfAction(input: CropPdfInput): Promise<CropPdfOutput> {
+  if (!input.pdfDataUri) {
+    return { error: 'No PDF data provided.' };
   }
 
   try {
-    const newPdfDoc = await PDFDocument.create();
+    const pdfBytes = Buffer.from(input.pdfDataUri.split(',')[1], 'base64');
+    const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+    
+    const pagesToCropIndices = input.applyTo === 'all'
+      ? pdfDoc.getPageIndices()
+      : [input.currentPage - 1];
 
-    for (const dataUri of input.imageDataUris) {
-      if (!dataUri.startsWith('data:image/png;base64,')) {
-         console.warn('Unsupported image type for PDF embedding, skipping:', dataUri.substring(0, 40));
-         continue; // Skip any non-PNG data URIs
-      }
-      
-      const imageBytes = Buffer.from(dataUri.split(',')[1], 'base64');
-      const embeddedImage = await newPdfDoc.embedPng(imageBytes);
-      
-      const page = newPdfDoc.addPage([embeddedImage.width, embeddedImage.height]);
-      
-      page.drawImage(embeddedImage, {
-        x: 0,
-        y: 0,
-        width: embeddedImage.width,
-        height: embeddedImage.height,
-      });
+    for (const pageIndex of pagesToCropIndices) {
+        if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) continue;
+
+        const page = pdfDoc.getPage(pageIndex);
+        const { width: originalWidth, height: originalHeight } = page.getSize();
+        const rotation = page.getRotation().angle;
+
+        const isSideways = rotation === 90 || rotation === 270;
+        const visualPageWidth = isSideways ? originalHeight : originalWidth;
+        const visualPageHeight = isSideways ? originalWidth : originalHeight;
+        
+        // This is the scale factor from the original PDF page dimensions to the rendered canvas dimensions
+        const scale = input.clientCanvasWidth / visualPageWidth;
+
+        // The canvas is centered within its container. We need to account for this offset.
+        const offsetX = (input.clientContainerWidth - input.clientCanvasWidth) / 2;
+        const offsetY = (input.clientContainerHeight - input.clientCanvasHeight) / 2;
+        
+        // Convert client-side crop box coordinates (relative to the container) to be relative to the unscaled, original page.
+        // 1. Subtract the canvas offset to get coordinates relative to the canvas itself.
+        // 2. Divide by the scale to convert from canvas pixels to PDF points.
+        const cropX = (input.cropArea.x - offsetX) / scale;
+        const cropY = (input.cropArea.y - offsetY) / scale;
+        const cropWidth = input.cropArea.width / scale;
+        const cropHeight = input.cropArea.height / scale;
+        
+        // pdf-lib's y-coordinate starts from the bottom. Convert our top-down coordinate.
+        const finalY = visualPageHeight - (cropY + cropHeight);
+
+        page.setCropBox(cropX, finalY, cropWidth, cropHeight);
     }
     
-    if (newPdfDoc.getPageCount() === 0) {
-        return { error: "Could not create PDF as no valid images were processed." };
-    }
+    const croppedPdfBytes = await pdfDoc.save();
+    const croppedPdfDataUri = `data:application/pdf;base64,${Buffer.from(croppedPdfBytes).toString('base64')}`;
 
-    const processedPdfBytes = await newPdfDoc.save();
-    const processedPdfDataUri = `data:application/pdf;base64,${Buffer.from(processedPdfBytes).toString('base64')}`;
-
-    return { processedPdfDataUri };
+    return { croppedPdfDataUri };
 
   } catch (error: any) {
-    console.error('Error creating PDF from images:', error);
-    return { error: error.message || 'An unexpected error occurred while creating the PDF.' };
+    console.error('Error cropping PDF:', error);
+    if (error.message && error.message.toLowerCase().includes('encrypted')) {
+        return { error: 'The PDF is encrypted. Please provide a decrypted PDF.'}
+    }
+    return { error: error.message || 'An unexpected error occurred while cropping the PDF.' };
   }
 }
