@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -6,20 +7,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Crop, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import CropWorkspace from './CropWorkspace';
+import { readFileAsDataURL } from '@/lib/file-utils';
+import { useToast } from '@/hooks/use-toast';
 
 export default function CropPdfPage() {
-  const [file, setFile] = useState<File | null>(null);
+  const [fileData, setFileData] = useState<{name: string; dataUri: string} | null>(null);
+  const { toast } = useToast();
 
-  const handleFileSelected = (files: File[]) => {
+  const handleFileSelected = async (files: File[]) => {
     if (files.length > 0) {
-      setFile(files[0]);
+      try {
+        const dataUri = await readFileAsDataURL(files[0]);
+        setFileData({ name: files[0].name, dataUri });
+      } catch (e: any) {
+        toast({ title: "File Error", description: `Could not read file: ${e.message}`, variant: "destructive"});
+        setFileData(null);
+      }
     } else {
-      setFile(null);
+      setFileData(null);
     }
   };
 
   const handleReset = () => {
-    setFile(null);
+    setFileData(null);
   };
 
   return (
@@ -30,7 +40,7 @@ export default function CropPdfPage() {
         <p className="text-muted-foreground mt-2">Crop your PDF pages by selecting a visual area.</p>
       </header>
       
-      {!file ? (
+      {!fileData ? (
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>Upload PDF</CardTitle>
@@ -41,7 +51,7 @@ export default function CropPdfPage() {
           </CardContent>
         </Card>
       ) : (
-        <CropWorkspace file={file} onReset={handleReset} />
+        <CropWorkspace pdfDataUri={fileData.dataUri} fileName={fileData.name} onReset={handleReset} />
       )}
 
       <div className="max-w-4xl mx-auto space-y-16 pt-16">
@@ -66,3 +76,5 @@ export default function CropPdfPage() {
     </div>
   );
 }
+
+    

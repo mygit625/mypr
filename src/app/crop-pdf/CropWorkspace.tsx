@@ -1,3 +1,4 @@
+
 "use client";
 
 // Polyfill for Promise.withResolvers if needed
@@ -20,7 +21,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Crop, Download, Upload, Loader2, Info, ArrowLeft, ArrowRight, Scissors, UploadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { readFileAsDataURL } from '@/lib/file-utils';
 import { downloadDataUri } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -40,12 +40,12 @@ type InteractionMode =
   | null;
 
 interface CropWorkspaceProps {
-    file: File;
+    pdfDataUri: string;
+    fileName: string;
     onReset: () => void;
 }
 
-export default function CropWorkspace({ file, onReset }: CropWorkspaceProps) {
-  const [pdfDataUri, setPdfDataUri] = useState<string | null>(null);
+export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWorkspaceProps) {
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -65,17 +65,20 @@ export default function CropWorkspace({ file, onReset }: CropWorkspaceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+  
+  // Ref to store the active render task for cancellation
+  const renderTaskRef = useRef<any | null>(null);
 
   useEffect(() => {
     const loadPdf = async () => {
         setIsLoading(true);
+        setError(null);
         try {
-            const dataUri = await readFileAsDataURL(file);
-            setPdfDataUri(dataUri);
-            const loadingTask = pdfjsLib.getDocument(dataUri);
+            const loadingTask = pdfjsLib.getDocument(pdfDataUri);
             const doc = await loadingTask.promise;
             setPdfDoc(doc);
             setTotalPages(doc.numPages);
+            setCurrentPage(1); // Reset to first page on new file
         } catch (e: any) {
             setError(e.message || 'Failed to load PDF.');
             toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -83,19 +86,26 @@ export default function CropWorkspace({ file, onReset }: CropWorkspaceProps) {
             setIsLoading(false);
         }
     }
-    loadPdf();
-  }, [file, toast]);
+    if (pdfDataUri) {
+        loadPdf();
+    }
+  }, [pdfDataUri, toast]);
 
   useEffect(() => {
     if (!pdfDoc || !canvasRef.current || !containerRef.current) return;
     
-    let isMounted = true;
+    let isCancelled = false;
     const renderPage = async () => {
       try {
+        // Cancel any previous render task before starting a new one
+        if (renderTaskRef.current) {
+          renderTaskRef.current.cancel();
+        }
+
         const page = await pdfDoc.getPage(currentPage);
         const { clientWidth: containerWidth, clientHeight: containerHeight } = containerRef.current!;
-        const viewport = page.getViewport({ scale: 1 });
         
+        const viewport = page.getViewport({ scale: 1 });
         const scale = Math.min(containerWidth / viewport.width, containerHeight / viewport.height);
         const scaledViewport = page.getViewport({ scale });
 
@@ -105,24 +115,39 @@ export default function CropWorkspace({ file, onReset }: CropWorkspaceProps) {
         canvas.height = scaledViewport.height;
 
         const renderContext: RenderParameters = { canvasContext: context, viewport: scaledViewport };
-        await page.render(renderContext).promise;
         
-        if (isMounted) {
-            const initialWidth = canvas.width * 0.8;
-            const initialHeight = canvas.height * 0.8;
-            setCropBox({
-                x: (canvas.width - initialWidth) / 2,
-                y: (canvas.height - initialHeight) / 2,
-                width: initialWidth,
-                height: initialHeight,
-            });
-        }
+        // Store the new render task
+        renderTaskRef.current = page.render(renderContext);
+        await renderTaskRef.current.promise;
+        
+        if (isCancelled) return;
+
+        const initialWidth = canvas.width * 0.8;
+        const initialHeight = canvas.height * 0.8;
+        setCropBox({
+            x: (canvas.width - initialWidth) / 2,
+            y: (canvas.height - initialHeight) / 2,
+            width: initialWidth,
+            height: initialHeight,
+        });
       } catch (e: any) {
-        if(isMounted) setError(e.message);
+        // Don't set error state if it's a cancellation
+        if (e.name !== 'RenderingCancelledException') {
+            if (!isCancelled) setError(e.message);
+        }
+      } finally {
+        renderTaskRef.current = null;
       }
     };
     renderPage();
-    return () => { isMounted = false; };
+
+    return () => {
+      isCancelled = true;
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
+    };
   }, [pdfDoc, currentPage]);
 
 
@@ -230,8 +255,8 @@ export default function CropWorkspace({ file, onReset }: CropWorkspaceProps) {
   };
   
   const handleDownload = () => {
-    if(croppedPdfUri && file) {
-      downloadDataUri(croppedPdfUri, `cropped_${file.name}`);
+    if(croppedPdfUri && fileName) {
+      downloadDataUri(croppedPdfUri, `cropped_${fileName}`);
     }
   };
   
@@ -239,7 +264,7 @@ export default function CropWorkspace({ file, onReset }: CropWorkspaceProps) {
 
   if (isLoading) {
     return (
-        <div className="flex justify-center items-center p-8">
+        <div className="flex justify-center items-center p-8 h-[70vh]">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <span className="ml-2 text-muted-foreground">Loading PDF...</span>
         </div>
@@ -320,3 +345,5 @@ export default function CropWorkspace({ file, onReset }: CropWorkspaceProps) {
   </div>
   );
 }
+
+    
