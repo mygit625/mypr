@@ -1,11 +1,10 @@
-
 'use server';
 
 import { PDFDocument } from 'pdf-lib';
 import type { Buffer } from 'buffer';
 
 export interface CreatePdfFromImagesInput {
-  imageDataUris: string[]; // Expects data URIs, likely 'image/png' from canvas
+  imageDataUris: string[]; // Expects data URIs, 'image/png' from canvas
 }
 
 export interface CreatePdfFromImagesOutput {
@@ -28,14 +27,13 @@ export async function createPdfFromImagesAction(
     const newPdfDoc = await PDFDocument.create();
 
     for (const dataUri of input.imageDataUris) {
-      // The client sends PNG data from the canvas
       if (!dataUri.startsWith('data:image/png;base64,')) {
         console.warn('An invalid image data URI was provided and skipped.');
         continue;
       }
       const imageBytes = Buffer.from(dataUri.split(',')[1], 'base64');
       const image = await newPdfDoc.embedPng(imageBytes);
-      
+
       const page = newPdfDoc.addPage([image.width, image.height]);
       page.drawImage(image, {
         x: 0,
@@ -57,6 +55,9 @@ export async function createPdfFromImagesAction(
     return { createdPdfDataUri };
   } catch (error: any) {
     console.error('Error creating PDF from images:', error);
+    if (error.message && error.message.toLowerCase().includes('encrypted')) {
+        return { error: 'The source PDF appears to be encrypted, preventing image extraction.'}
+    }
     return {
       error:
         error.message ||
