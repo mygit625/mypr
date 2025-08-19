@@ -1,7 +1,7 @@
 
 "use client";
 
-// Polyfill for Promise.withResolvers if needed
+// Polyfill for Promise.withResolvers is needed for some environments
 if (typeof Promise.withResolvers !== 'function') {
   Promise.withResolvers = function withResolvers<T>() {
     let resolve!: (value: T | PromiseLike<T>) => void;
@@ -15,11 +15,9 @@ if (typeof Promise.withResolvers !== 'function') {
 }
 
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
-import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
-import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Crop, Download, Upload, Loader2, Info, ArrowLeft, ArrowRight, Scissors, UploadCloud } from 'lucide-react';
+import { Crop, Download, Loader2, Info, ArrowLeft, ArrowRight, Scissors, UploadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { downloadDataUri } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
@@ -29,9 +27,8 @@ import { Label } from '@/components/ui/label';
 import { createPdfFromImagesAction } from './actions';
 import { PageConfetti } from '@/components/ui/page-confetti';
 
-if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-}
+// Dynamic import for pdfjs-dist
+let pdfjsLib: any = null;
 
 type InteractionMode =
   | 'move'
@@ -46,7 +43,7 @@ interface CropWorkspaceProps {
 }
 
 export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWorkspaceProps) {
-  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
+  const [pdfDoc, setPdfDoc] = useState<any | null>(null); // Use any for PDFDocumentProxy
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 200, height: 200 });
@@ -66,19 +63,30 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
   
-  // Ref to store the active render task for cancellation
   const renderTaskRef = useRef<any | null>(null);
 
   useEffect(() => {
-    const loadPdf = async () => {
+    async function loadPdfJs() {
+      if (!pdfjsLib) {
+        pdfjsLib = await import('pdfjs-dist/build/pdf.mjs');
+        const version = pdfjsLib.version;
+        const workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`;
+        if (pdfjsLib.GlobalWorkerOptions.workerSrc !== workerSrc) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+        }
+      }
+    }
+
+    async function loadPdf() {
         setIsLoading(true);
         setError(null);
         try {
+            await loadPdfJs();
             const loadingTask = pdfjsLib.getDocument(pdfDataUri);
             const doc = await loadingTask.promise;
             setPdfDoc(doc);
             setTotalPages(doc.numPages);
-            setCurrentPage(1); // Reset to first page on new file
+            setCurrentPage(1);
         } catch (e: any) {
             setError(e.message || 'Failed to load PDF.');
             toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -97,7 +105,6 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
     let isCancelled = false;
     const renderPage = async () => {
       try {
-        // Cancel any previous render task before starting a new one
         if (renderTaskRef.current) {
           renderTaskRef.current.cancel();
         }
@@ -114,9 +121,8 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
         canvas.width = scaledViewport.width;
         canvas.height = scaledViewport.height;
 
-        const renderContext: RenderParameters = { canvasContext: context, viewport: scaledViewport };
+        const renderContext = { canvasContext: context, viewport: scaledViewport };
         
-        // Store the new render task
         renderTaskRef.current = page.render(renderContext);
         await renderTaskRef.current.promise;
         
@@ -131,9 +137,8 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
             height: initialHeight,
         });
       } catch (e: any) {
-        // Don't set error state if it's a cancellation
-        if (e.name !== 'RenderingCancelledException') {
-            if (!isCancelled) setError(e.message);
+        if (e.name !== 'RenderingCancelledException' && !isCancelled) {
+            setError(e.message);
         }
       } finally {
         renderTaskRef.current = null;
@@ -345,5 +350,3 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
   </div>
   );
 }
-
-    

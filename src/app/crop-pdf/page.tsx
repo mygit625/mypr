@@ -2,13 +2,26 @@
 "use client";
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { FileUploadZone } from '@/components/feature/file-upload-zone';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Crop, FileUp, MousePointerClick, DownloadCloud, HelpCircle } from 'lucide-react';
+import { Crop, FileUp, MousePointerClick, DownloadCloud, HelpCircle, Loader2 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import CropWorkspace from './CropWorkspace';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { useToast } from '@/hooks/use-toast';
+
+// Dynamically import the CropWorkspace component with SSR turned off.
+// This is the key fix to prevent the server from trying to render a component
+// that relies on the browser-only pdfjs-dist library.
+const CropWorkspace = dynamic(() => import('./CropWorkspace'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col items-center justify-center p-8 h-[70vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading Cropping Tool...</p>
+    </div>
+  )
+});
 
 export default function CropPdfPage() {
   const [fileData, setFileData] = useState<{name: string; dataUri: string} | null>(null);
@@ -16,9 +29,10 @@ export default function CropPdfPage() {
 
   const handleFileSelected = async (files: File[]) => {
     if (files.length > 0) {
+      const file = files[0];
       try {
-        const dataUri = await readFileAsDataURL(files[0]);
-        setFileData({ name: files[0].name, dataUri });
+        const dataUri = await readFileAsDataURL(file);
+        setFileData({ name: file.name, dataUri });
       } catch (e: any) {
         toast({ title: "File Error", description: `Could not read file: ${e.message}`, variant: "destructive"});
         setFileData(null);
@@ -76,5 +90,3 @@ export default function CropPdfPage() {
     </div>
   );
 }
-
-    
