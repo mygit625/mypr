@@ -1,4 +1,3 @@
-
 "use client";
 
 // Polyfill for Promise.withResolvers is needed for some environments
@@ -26,9 +25,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { createPdfFromImagesAction } from './actions';
 import { PageConfetti } from '@/components/ui/page-confetti';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
+import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
 
-// Dynamic import for pdfjs-dist
-let pdfjsLib: any = null;
+if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions.workerSrc !== `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+}
 
 type InteractionMode =
   | 'move'
@@ -43,7 +45,7 @@ interface CropWorkspaceProps {
 }
 
 export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWorkspaceProps) {
-  const [pdfDoc, setPdfDoc] = useState<any | null>(null); // Use any for PDFDocumentProxy
+  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 200, height: 200 });
@@ -66,22 +68,10 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
   const renderTaskRef = useRef<any | null>(null);
 
   useEffect(() => {
-    async function loadPdfJs() {
-      if (!pdfjsLib) {
-        pdfjsLib = await import('pdfjs-dist/build/pdf.mjs');
-        const version = pdfjsLib.version;
-        const workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/pdf.worker.min.mjs`;
-        if (pdfjsLib.GlobalWorkerOptions.workerSrc !== workerSrc) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
-        }
-      }
-    }
-
     async function loadPdf() {
         setIsLoading(true);
         setError(null);
         try {
-            await loadPdfJs();
             const loadingTask = pdfjsLib.getDocument(pdfDataUri);
             const doc = await loadingTask.promise;
             setPdfDoc(doc);
@@ -121,7 +111,7 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
         canvas.width = scaledViewport.width;
         canvas.height = scaledViewport.height;
 
-        const renderContext = { canvasContext: context, viewport: scaledViewport };
+        const renderContext: RenderParameters = { canvasContext: context, viewport: scaledViewport };
         
         renderTaskRef.current = page.render(renderContext);
         await renderTaskRef.current.promise;
@@ -209,16 +199,22 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
   const endInteraction = () => setInteraction(null);
   
   const handleCrop = async () => {
-    if (!pdfDoc) return;
+    if (!pdfDoc || !canvasRef.current) return;
     setIsProcessing(true);
     setError(null);
     try {
       const pageIndices = cropMode === 'all' ? Array.from({ length: totalPages }, (_, i) => i + 1) : [currentPage];
       const imageDataUris: string[] = [];
       
+      const mainCanvas = canvasRef.current;
+      const mainContext = mainCanvas.getContext('2d');
+      if (!mainContext) throw new Error("Could not get canvas context.");
+      
       for(const pageNum of pageIndices) {
         const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 2.0 });
+        // Render at a higher resolution for better quality
+        const scale = 2.0; 
+        const viewport = page.getViewport({ scale });
         
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = viewport.width;
@@ -227,7 +223,8 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
         
         await page.render({ canvasContext: tempCtx, viewport }).promise;
         
-        const scaleRatio = viewport.width / canvasRef.current!.width;
+        // Calculate crop coordinates on the high-res temporary canvas
+        const scaleRatio = tempCanvas.width / mainCanvas.width;
         const sx = cropBox.x * scaleRatio;
         const sy = cropBox.y * scaleRatio;
         const sWidth = cropBox.width * scaleRatio;
@@ -239,6 +236,7 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
         const finalCtx = finalCanvas.getContext('2d')!;
         finalCtx.drawImage(tempCanvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
         
+        // Send final pre-cropped image data to the server action
         imageDataUris.push(finalCanvas.toDataURL('image/png'));
       }
 

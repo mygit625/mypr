@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -10,9 +9,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { useToast } from '@/hooks/use-toast';
 
-// Dynamically import the CropWorkspace component with SSR turned off.
-// This is the key fix to prevent the server from trying to render a component
-// that relies on the browser-only pdfjs-dist library.
 const CropWorkspace = dynamic(() => import('./CropWorkspace'), {
   ssr: false,
   loading: () => (

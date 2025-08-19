@@ -27,6 +27,7 @@ export async function createPdfFromImagesAction(
     const newPdfDoc = await PDFDocument.create();
 
     for (const dataUri of input.imageDataUris) {
+      // The client now sends PNG data URIs after cropping
       if (!dataUri.startsWith('data:image/png;base64,')) {
         console.warn('An invalid image data URI was provided and skipped.');
         continue;
