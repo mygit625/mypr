@@ -147,8 +147,8 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
 
 
   const getRelativeCoords = (e: ReactMouseEvent | ReactTouchEvent) => {
-    if (!canvasRef.current) return { x: 0, y: 0 };
-    const rect = canvasRef.current.getBoundingClientRect();
+    if (!containerRef.current) return { x: 0, y: 0 };
+    const rect = containerRef.current.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     return { x: clientX - rect.left, y: clientY - rect.top };
@@ -163,11 +163,11 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
   };
 
   const handleInteractionMove = (e: ReactMouseEvent | ReactTouchEvent) => {
-    if (!interaction || !canvasRef.current) return;
+    if (!interaction || !containerRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     const currentPos = getRelativeCoords(e);
-    const { width: cWidth, height: cHeight } = canvasRef.current;
+    const { clientWidth: cWidth, clientHeight: cHeight } = containerRef.current;
     
     const dx = currentPos.x - startPos.x;
     const dy = currentPos.y - startPos.y;
@@ -212,7 +212,6 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
       
       for(const pageNum of pageIndices) {
         const page = await pdfDoc.getPage(pageNum);
-        // Render at a higher resolution for better quality
         const scale = 2.0; 
         const viewport = page.getViewport({ scale });
         
@@ -223,7 +222,6 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
         
         await page.render({ canvasContext: tempCtx, viewport }).promise;
         
-        // Calculate crop coordinates on the high-res temporary canvas
         const scaleRatio = tempCanvas.width / mainCanvas.width;
         const sx = cropBox.x * scaleRatio;
         const sy = cropBox.y * scaleRatio;
@@ -236,7 +234,6 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
         const finalCtx = finalCanvas.getContext('2d')!;
         finalCtx.drawImage(tempCanvas, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
         
-        // Send final pre-cropped image data to the server action
         imageDataUris.push(finalCanvas.toDataURL('image/png'));
       }
 
