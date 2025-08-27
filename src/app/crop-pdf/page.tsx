@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -11,7 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { createPdfFromImagesAction } from './actions';
 import { downloadDataUri } from '@/lib/download-utils';
 
-// Dynamically import the workspace component to ensure pdfjs-dist is not bundled on the server.
+// Correctly and dynamically import the workspace component with SSR turned off.
+// This is the key to preventing the server component render error in production.
 const CropWorkspace = dynamic(() => import('./CropWorkspace'), {
   ssr: false,
   loading: () => (
@@ -30,7 +32,7 @@ export default function CropPdfPage() {
   const handleFileSelected = async (files: File[]) => {
     if (files.length > 0) {
       const file = files[0];
-      setIsProcessing(true);
+      setIsProcessing(true); // Show loading indicator while converting to data URI
       try {
         const dataUri = await readFileAsDataURL(file);
         setFileData({ name: file.name, dataUri });
@@ -91,7 +93,13 @@ export default function CropPdfPage() {
             <CardDescription>Select or drag a PDF file to begin cropping.</CardDescription>
           </CardHeader>
           <CardContent>
-            <FileUploadZone onFilesSelected={handleFileSelected} multiple={false} accept="application/pdf" />
+            {isProcessing ? (
+               <div className="flex justify-center items-center p-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+               </div>
+            ) : (
+              <FileUploadZone onFilesSelected={handleFileSelected} multiple={false} accept="application/pdf" />
+            )}
           </CardContent>
         </Card>
       ) : (

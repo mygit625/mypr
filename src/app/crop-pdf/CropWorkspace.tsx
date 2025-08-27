@@ -1,3 +1,4 @@
+
 "use client";
 
 // Polyfill for Promise.withResolvers is needed for some environments
@@ -15,14 +16,13 @@ if (typeof Promise.withResolvers !== 'function') {
 
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Crop, Download, Loader2, Info, ArrowLeft, ArrowRight, Scissors, UploadCloud } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Info, ArrowLeft, ArrowRight, Scissors, UploadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { PageConfetti } from '@/components/ui/page-confetti';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
 
@@ -49,7 +49,6 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset, onCropCom
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 200, height: 200 });
-  const [showConfetti, setShowConfetti] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +118,6 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset, onCropCom
         const initialWidth = canvas.width * 0.8;
         const initialHeight = canvas.height * 0.8;
         
-        // Center the initial crop box relative to the container
         const canvasOffsetX = (containerWidth - canvas.width) / 2;
         const canvasOffsetY = (containerHeight - canvas.height) / 2;
 
@@ -204,14 +202,14 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset, onCropCom
   const handleCrop = async () => {
     if (!pdfDoc || !canvasRef.current || !containerRef.current) return;
     try {
-      const pageIndices = cropMode === 'all' ? Array.from({ length: totalPages }, (_, i) => i + 1) : [currentPage];
+      const pageIndices = cropMode === 'all' ? Array.from({ length: totalPages }, (_, i) => i) : [currentPage - 1];
       const imageDataUris: string[] = [];
       
       const mainCanvas = canvasRef.current;
       const container = containerRef.current;
       
-      for(const pageNum of pageIndices) {
-        const page = await pdfDoc.getPage(pageNum);
+      for(const pageIndex of pageIndices) {
+        const page = await pdfDoc.getPage(pageIndex + 1);
         const scale = 2.0; // Render at high resolution for cropping
         const viewport = page.getViewport({ scale });
         
@@ -276,7 +274,6 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset, onCropCom
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <PageConfetti active={showConfetti} />
         <div className="lg:col-span-2 space-y-4">
         <Card>
             <CardContent className="p-4">
