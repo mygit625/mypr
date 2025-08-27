@@ -1,4 +1,3 @@
-
 "use client";
 
 // Polyfill for Promise.withResolvers is needed for some environments
@@ -19,12 +18,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Crop, Download, Loader2, Info, ArrowLeft, ArrowRight, Scissors, UploadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { downloadDataUri } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { createPdfFromImagesAction } from './actions';
 import { PageConfetti } from '@/components/ui/page-confetti';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 import type { PDFDocumentProxy, PDFPageProxy, RenderParameters } from 'pdfjs-dist/types/src/display/api';
@@ -43,18 +40,18 @@ interface CropWorkspaceProps {
     pdfDataUri: string;
     fileName: string;
     onReset: () => void;
+    onCropComplete: (data: { imageDataUris: string[]; originalFileName: string }) => Promise<void>;
+    isProcessing: boolean;
 }
 
-export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWorkspaceProps) {
+export default function CropWorkspace({ pdfDataUri, fileName, onReset, onCropComplete, isProcessing }: CropWorkspaceProps) {
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [cropBox, setCropBox] = useState({ x: 10, y: 10, width: 200, height: 200 });
-  const [croppedPdfUri, setCroppedPdfUri] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [interaction, setInteraction] = useState<InteractionMode>(null);
@@ -121,9 +118,14 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
 
         const initialWidth = canvas.width * 0.8;
         const initialHeight = canvas.height * 0.8;
+        
+        // Center the initial crop box relative to the container
+        const canvasOffsetX = (containerWidth - canvas.width) / 2;
+        const canvasOffsetY = (containerHeight - canvas.height) / 2;
+
         setCropBox({
-            x: (containerWidth - initialWidth) / 2,
-            y: (containerHeight - initialHeight) / 2,
+            x: canvasOffsetX + (canvas.width - initialWidth) / 2,
+            y: canvasOffsetY + (canvas.height - initialHeight) / 2,
             width: initialWidth,
             height: initialHeight,
         });
@@ -201,8 +203,6 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
   
   const handleCrop = async () => {
     if (!pdfDoc || !canvasRef.current || !containerRef.current) return;
-    setIsProcessing(true);
-    setError(null);
     try {
       const pageIndices = cropMode === 'all' ? Array.from({ length: totalPages }, (_, i) => i + 1) : [currentPage];
       const imageDataUris: string[] = [];
@@ -222,18 +222,14 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
         
         await page.render({ canvasContext: tempCtx, viewport }).promise;
         
-        // Calculate the scale ratio between the high-res temp canvas and the displayed canvas
         const scaleRatio = tempCanvas.width / mainCanvas.width;
         
-        // Calculate the offset of the displayed canvas within its container
         const canvasOffsetX = (container.clientWidth - mainCanvas.width) / 2;
         const canvasOffsetY = (container.clientHeight - mainCanvas.height) / 2;
 
-        // Translate the cropBox coordinates (relative to container) to be relative to the canvas content
         const sx_relative_to_canvas = cropBox.x - canvasOffsetX;
         const sy_relative_to_canvas = cropBox.y - canvasOffsetY;
         
-        // Scale the canvas-relative coordinates to the high-res temporary canvas
         const sx = sx_relative_to_canvas * scaleRatio;
         const sy = sy_relative_to_canvas * scaleRatio;
         const sWidth = cropBox.width * scaleRatio;
@@ -248,26 +244,11 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
         imageDataUris.push(finalCanvas.toDataURL('image/png'));
       }
 
-      const result = await createPdfFromImagesAction({ imageDataUris });
-      if (result.error) throw new Error(result.error);
-
-      if (result.createdPdfDataUri) {
-        setCroppedPdfUri(result.createdPdfDataUri);
-        setShowConfetti(true);
-        toast({ title: 'Success', description: 'PDF has been cropped.' });
-      }
+      await onCropComplete({ imageDataUris, originalFileName: fileName });
 
     } catch (e: any) {
         setError(e.message);
         toast({ title: 'Error', description: e.message, variant: 'destructive' });
-    } finally {
-        setIsProcessing(false);
-    }
-  };
-  
-  const handleDownload = () => {
-    if(croppedPdfUri && fileName) {
-      downloadDataUri(croppedPdfUri, `cropped_${fileName}`);
     }
   };
   
@@ -340,16 +321,10 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
             </RadioGroup>
             </CardContent>
             <CardFooter className="flex-col gap-2">
-                {croppedPdfUri ? (
-                <>
-                    <Button onClick={handleDownload} className="w-full bg-green-600 hover:bg-green-700 text-white animate-pulse-zoom" size="lg"><Download className="mr-2 h-5 w-5"/> Download Cropped PDF</Button>
-                    <Button onClick={onReset} className="w-full" variant="outline">Start Over</Button>
-                </>
-                ) : (
                 <Button onClick={handleCrop} disabled={isProcessing} className="w-full" size="lg">
-                    {isProcessing ? <Loader2 className="mr-2 animate-spin" /> : <Scissors className="mr-2" />} Crop PDF
+                    {isProcessing ? <Loader2 className="mr-2 animate-spin" /> : <Scissors className="mr-2" />} Crop and Download
                 </Button>
-                )}
+                <Button onClick={onReset} className="w-full" variant="outline">Start Over</Button>
             </CardFooter>
         </Card>
         </div>

@@ -8,7 +8,10 @@ import { Crop, FileUp, MousePointerClick, DownloadCloud, HelpCircle, Loader2 } f
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { readFileAsDataURL } from '@/lib/file-utils';
 import { useToast } from '@/hooks/use-toast';
+import { createPdfFromImagesAction } from './actions';
+import { downloadDataUri } from '@/lib/download-utils';
 
+// Dynamically import the workspace component to ensure pdfjs-dist is not bundled on the server.
 const CropWorkspace = dynamic(() => import('./CropWorkspace'), {
   ssr: false,
   loading: () => (
@@ -22,16 +25,20 @@ const CropWorkspace = dynamic(() => import('./CropWorkspace'), {
 export default function CropPdfPage() {
   const [fileData, setFileData] = useState<{name: string; dataUri: string} | null>(null);
   const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileSelected = async (files: File[]) => {
     if (files.length > 0) {
       const file = files[0];
+      setIsProcessing(true);
       try {
         const dataUri = await readFileAsDataURL(file);
         setFileData({ name: file.name, dataUri });
       } catch (e: any) {
         toast({ title: "File Error", description: `Could not read file: ${e.message}`, variant: "destructive"});
         setFileData(null);
+      } finally {
+        setIsProcessing(false);
       }
     } else {
       setFileData(null);
@@ -41,6 +48,33 @@ export default function CropPdfPage() {
   const handleReset = () => {
     setFileData(null);
   };
+  
+  const handleCropComplete = async ({ imageDataUris, originalFileName }: { imageDataUris: string[]; originalFileName: string }) => {
+    setIsProcessing(true);
+    try {
+      const result = await createPdfFromImagesAction({ imageDataUris });
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      if (result.createdPdfDataUri) {
+        downloadDataUri(result.createdPdfDataUri, `cropped_${originalFileName}`);
+        toast({
+            title: 'Success!',
+            description: 'Your cropped PDF has been downloaded.',
+        });
+        handleReset(); // Reset the interface after successful download
+      }
+    } catch (e: any) {
+       toast({
+        title: "Error Creating PDF",
+        description: e.message || 'An unexpected error occurred.',
+        variant: 'destructive'
+       });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -61,7 +95,13 @@ export default function CropPdfPage() {
           </CardContent>
         </Card>
       ) : (
-        <CropWorkspace pdfDataUri={fileData.dataUri} fileName={fileData.name} onReset={handleReset} />
+        <CropWorkspace 
+          pdfDataUri={fileData.dataUri} 
+          fileName={fileData.name} 
+          onReset={handleReset} 
+          onCropComplete={handleCropComplete}
+          isProcessing={isProcessing}
+        />
       )}
 
       <div className="max-w-4xl mx-auto space-y-16 pt-16">
