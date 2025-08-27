@@ -1,7 +1,6 @@
 'use server';
 
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import type { Buffer } from 'buffer';
 
 export type PageNumberPosition =
   | 'top-left'
