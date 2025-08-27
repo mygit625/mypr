@@ -1,3 +1,4 @@
+
 "use client";
 
 // Polyfill for Promise.withResolvers is needed for some environments
@@ -121,8 +122,8 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
         const initialWidth = canvas.width * 0.8;
         const initialHeight = canvas.height * 0.8;
         setCropBox({
-            x: (canvas.width - initialWidth) / 2,
-            y: (canvas.height - initialHeight) / 2,
+            x: (containerWidth - initialWidth) / 2,
+            y: (containerHeight - initialHeight) / 2,
             width: initialWidth,
             height: initialHeight,
         });
@@ -199,7 +200,7 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
   const endInteraction = () => setInteraction(null);
   
   const handleCrop = async () => {
-    if (!pdfDoc || !canvasRef.current) return;
+    if (!pdfDoc || !canvasRef.current || !containerRef.current) return;
     setIsProcessing(true);
     setError(null);
     try {
@@ -207,12 +208,11 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
       const imageDataUris: string[] = [];
       
       const mainCanvas = canvasRef.current;
-      const mainContext = mainCanvas.getContext('2d');
-      if (!mainContext) throw new Error("Could not get canvas context.");
+      const container = containerRef.current;
       
       for(const pageNum of pageIndices) {
         const page = await pdfDoc.getPage(pageNum);
-        const scale = 2.0; 
+        const scale = 2.0; // Render at high resolution for cropping
         const viewport = page.getViewport({ scale });
         
         const tempCanvas = document.createElement('canvas');
@@ -222,9 +222,20 @@ export default function CropWorkspace({ pdfDataUri, fileName, onReset }: CropWor
         
         await page.render({ canvasContext: tempCtx, viewport }).promise;
         
+        // Calculate the scale ratio between the high-res temp canvas and the displayed canvas
         const scaleRatio = tempCanvas.width / mainCanvas.width;
-        const sx = cropBox.x * scaleRatio;
-        const sy = cropBox.y * scaleRatio;
+        
+        // Calculate the offset of the displayed canvas within its container
+        const canvasOffsetX = (container.clientWidth - mainCanvas.width) / 2;
+        const canvasOffsetY = (container.clientHeight - mainCanvas.height) / 2;
+
+        // Translate the cropBox coordinates (relative to container) to be relative to the canvas content
+        const sx_relative_to_canvas = cropBox.x - canvasOffsetX;
+        const sy_relative_to_canvas = cropBox.y - canvasOffsetY;
+        
+        // Scale the canvas-relative coordinates to the high-res temporary canvas
+        const sx = sx_relative_to_canvas * scaleRatio;
+        const sy = sy_relative_to_canvas * scaleRatio;
         const sWidth = cropBox.width * scaleRatio;
         const sHeight = cropBox.height * scaleRatio;
         
