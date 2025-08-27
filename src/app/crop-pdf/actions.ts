@@ -1,7 +1,6 @@
 'use server';
 
 import { PDFDocument } from 'pdf-lib';
-import type { Buffer } from 'buffer';
 
 export interface CreatePdfFromImagesInput {
   imageDataUris: string[]; // Expects data URIs, 'image/png' from canvas
