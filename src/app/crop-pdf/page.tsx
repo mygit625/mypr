@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createPdfFromImagesAction } from './actions';
 import { downloadDataUri } from '@/lib/download-utils';
 
-// Correctly and dynamically import the workspace component with SSR turned off.
+// Dynamically import the workspace component with SSR turned off.
 // This is the key to preventing the server component render error in production.
 const CropWorkspace = dynamic(() => import('./CropWorkspace'), {
   ssr: false,
