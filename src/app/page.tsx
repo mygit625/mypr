@@ -25,7 +25,7 @@ const toolCategories: ToolCategory[] = [
   { title: 'Multi-direction URL Shortener', description: 'Create one short link that redirects users based on their device (iOS, Android, Desktop).', href: '/smart-url-shortener', Icon: LinkIcon, iconColor: 'text-orange-500' },
   { title: 'Unit Converters', description: 'Quickly convert between different units of measurement.', href: '/unit-converters', Icon: Scale, iconColor: 'text-yellow-500' },
   { title: 'Calculators', description: 'Access a variety of calculators for daily use, like finance or baby gender.', href: '#', Icon: Calculator, iconColor: 'text-purple-500' },
-  { title: 'Web Tools', description: 'A collection of useful web utilities for developers and designers.', href: '#', Icon: Globe, iconColor: 'text-sky-500' },
+  { title: 'Web Tools', description: 'A collection of useful web utilities for developers and designers.', href: '/web-tools', Icon: Globe, iconColor: 'text-sky-500' },
   { title: 'Automation Tools', description: 'Jumpstart your workflows with our library of pre-built N8N templates and other tools.', href: '/automation-tools', Icon: Bot, iconColor: 'text-emerald-500' },
 ];
 

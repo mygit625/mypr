@@ -42,8 +42,9 @@ const toolPaths = [
   '/qr-code',
   '/smart-url-shortener',
 
-  // Automation Tools
+  // Automation & Web Tools
   '/automation-tools',
+  '/web-tools',
 
   // Informational Pages
   '/about',

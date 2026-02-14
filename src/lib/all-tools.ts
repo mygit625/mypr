@@ -5,7 +5,8 @@ import {
   BarChart3, FileImage, Archive, Edit3, ListOrdered, Droplets, Unlock, Lock,
   Diff, FileType, Crop, Paintbrush, PanelTop, FileSpreadsheet,
   Image as ImageIcon, Expand, Wand2, CircleEllipsis, Type, ArrowRightLeft, ImageUp,
-  BrainCircuit, QrCode, Link as LinkIcon, Scale, Calculator, Bot, Waypoints, FileJson
+  BrainCircuit, QrCode, Link as LinkIcon, Scale, Calculator, Bot, Waypoints, FileJson,
+  Network, MapPin, Laptop, Search
 } from 'lucide-react';
 
 export interface Tool {
@@ -63,6 +64,15 @@ export const allTools: Tool[] = [
   { title: 'QR Code Generator', description: 'Create custom QR codes for URLs, text, Wi-Fi, and more.', href: '/qr-code', Icon: QrCode, category: 'Utilities' },
   { title: 'URL Shortener', description: 'Create short links that redirect based on device.', href: '/smart-url-shortener', Icon: LinkIcon, category: 'Utilities' },
   { title: 'Unit Converters', description: 'Convert between different units of measurement.', href: '/unit-converters', Icon: Scale, category: 'Utilities' },
+  
+  // Web Tools
+  { title: "What's My IP?", description: 'Quickly find your public IP address and related information.', href: '#', Icon: Network, category: 'Web' },
+  { title: "What's My Location?", description: 'See your approximate geographical location based on your IP address.', href: '#', Icon: MapPin, category: 'Web' },
+  { title: 'User Agent Finder', description: "View your browser's full user agent string and details.", href: '#', Icon: Laptop, category: 'Web' },
+  { title: 'DNS Lookup', description: 'Perform DNS lookups to find records for a domain name.', href: '#', Icon: Search, category: 'Web' },
+  { title: 'URL Parser', description: 'Break down any URL into its constituent parts like protocol, host, and path.', href: '#', Icon: LinkIcon, category: 'Web' },
+
+  // Automation Tools
   { title: 'N8N Templates', description: 'Jumpstart workflows with pre-built N8N templates.', href: '#', Icon: Bot, category: 'Automation' },
   { title: 'Sitemap Generator', description: 'Create an XML sitemap for your website.', href: '#', Icon: Waypoints, category: 'Automation' },
   { title: 'JSON to CSV', description: 'Convert JSON data into structured CSV files.', href: '#', Icon: FileJson, category: 'Automation' },

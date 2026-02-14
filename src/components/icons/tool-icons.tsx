@@ -7,8 +7,9 @@ import {
   Diff, FileType, Crop, Paintbrush, PanelTop, FileSpreadsheet,
   Image as ImageIcon, Expand, Wand2, CircleEllipsis, Type, ArrowRightLeft, ImageUp,
   BrainCircuit, QrCode, Link as LinkIcon, Scale, Calculator, Bot, Waypoints, FileJson,
-  type LucideIcon
+  Network, MapPin, Laptop, Search
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 const iconMap: { [key: string]: LucideIcon } = {
   Combine,
@@ -57,6 +58,10 @@ const iconMap: { [key: string]: LucideIcon } = {
   Bot,
   Waypoints,
   FileJson,
+  Network,
+  MapPin,
+  Laptop,
+  Search,
 };
 
 export function getToolIcon(iconName: string): LucideIcon {
